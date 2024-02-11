@@ -30,4 +30,4 @@ This project is licensed under the Creative Commons CC0 1.0 Universal License. S
 
 ## Acknowledgments
 - Special thanks to Imagination Labs for their collaboration and support.
-- We extend our sincere gratitude to Professor Severin Schneebeli for his invaluable guidance and expertise in supramolecular chemistry and organic synthesis. His contributions have greatly enriched the project's interdisciplinary approach to molecular representation.
+- We extend our sincere gratitude to Professor Severin Schneebeli for his invaluable guidance and expertise. His contributions have greatly enriched the project's interdisciplinary approach to molecular representation.
