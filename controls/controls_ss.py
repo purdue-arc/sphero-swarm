@@ -13,17 +13,33 @@ def control_toy(toy, id):
         while True:    
             print("{}: {}".format(id, commands[id][0]))
             if (commands[id][0] == "%"):
+                commands[id] = "d"
                 break
+            elif (commands[id][0] == "c"):
+                api.calibrate_compass()
+                api.set_compass_direction(0)
+                pass
             elif (commands[id][0] == "m"):
-                api.roll(0, 255, 3)
+                api.roll(0, 255, 0.5)
                 time.sleep(0.5)
-                
             elif (commands[id][0] == "r"):
                 api.spin(90, 1) # need to update
             # probably need to graph sphero turning in order to get a good idea of what the rotate command should be
             else:
                 print(commands[id][0] + " in ball {} is an invalid command!".format(id))
-            time.sleep(0.1)
+            commands[id] = "d" + commands[id][1:]
+            print("{}: {}".format(id, commands))
+            while True:
+                allReady = True
+                for delayed in commands:
+                    if delayed[0] != "d":
+                        allReady = False
+                        break
+                if (allReady):
+                    break
+                else:
+                    time.sleep(0.1)
+                    print("{}: {}".format(id, commands))
             commands[id] = commands[id][1:]
 
 def run_toy_threads(toys):
@@ -31,7 +47,7 @@ def run_toy_threads(toys):
     global commands 
     commands = []
     for toy in toys:
-        commands.append("mmsr%") # matrix is needed for more complex commands
+        commands.append("cmmsr%") # matrix is needed for more complex commands
     id = 0
     for toy in toys:
         thread = threading.Thread(target=control_toy, args=[toy, id])
