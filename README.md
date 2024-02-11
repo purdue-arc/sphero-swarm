@@ -14,14 +14,13 @@ The "Sphero Swarm" project is an innovative endeavor undertaken by the Autonomou
 - **Custom Software:** Specialized software is developed to control and coordinate the movement of the Sphero robots, translating molecular structures into captivating choreographies.
 - **Visualization and Projection:** Visual aids and detailed molecular models are projected alongside the Sphero formations, providing additional context and insight.
 
-## Installation
-- Clone the project repository from [GitHub](https://github.com/sphero-swarm).
-- Install the necessary dependencies listed in the `requirements.txt` file.
-- Follow the setup instructions provided in the project documentation.
-
-## Usage
-- Run the main application script to start the exhibit.
-- Follow the on-screen instructions to interact with the exhibit and explore different molecular structures.
+## Subteams
+The project is divided into five subteams, each focusing on specific aspects:
+1. **Controls:** Controls the balls directly using Bluetooth signals.
+2. **Algorithms:** Creates the algorithms which the balls utilize to move.
+3. **Perception:** Uses OpenCV and a camera to check for errors and correct them.
+4. **Hardware:** Creates, manufactures, and designs the physical matrix field which the Sphero balls move on.
+5. **Interface:** Creates the app which the users will use to interact with the exhibit.
 
 ## Contributing
 - Contributions to the project are welcome. Fork the repository, make your changes, and submit a pull request for review.
