@@ -26,11 +26,8 @@ The project is divided into five subteams, each focusing on specific aspects:
 - Contributions to the project are welcome. Fork the repository, make your changes, and submit a pull request for review.
 
 ## License
-This project is licensed under the MIT License. See the LICENSE file for more details.
-
-## Authors
-- [Your Name] - Autonomous Robotics Club, Purdue University
+This project is licensed under the Creative Commons CC0 1.0 Universal License. See the LICENSE file for more details.
 
 ## Acknowledgments
 - Special thanks to Imagination Labs for their collaboration and support.
-- Acknowledgment of any third-party libraries or resources used in the project.
+- We extend our sincere gratitude to Professor Severin Schneebeli for his invaluable guidance and expertise in supramolecular chemistry and organic synthesis. His contributions have greatly enriched the project's interdisciplinary approach to molecular representation.
