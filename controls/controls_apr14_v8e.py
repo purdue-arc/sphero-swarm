@@ -20,9 +20,6 @@ def toy_manager(toy, id):
             numIterations = 0
 
             while True and commands[id] != []:
-                if (commandLength != len(commands[id])):
-                    commandLength = len(commands[id])
-                    numIterations = 0
                 print("{}: {}".format(id, commands[id][0]))
                 if (commands[id][0] == "%"): # be very careful with this - needs to be the absolute last command!
                     return
@@ -67,6 +64,9 @@ def toy_manager(toy, id):
                 else:
                     print(commands[id][0] + " in ball {} is an invalid command!".format(id))
                 commands[id] = commands[id][1:]
+                if (commandLength != len(commands[id])):
+                    commandLength = len(commands[id])
+                    numIterations = 0
                 allReady[id][numIterations] = 1
                 while True:
                     ready = True
