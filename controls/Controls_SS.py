@@ -10,7 +10,7 @@ import sys  # Import sys for system-specific functions (e.g., exit)
 # ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
-def toy_manager(toy, id):
+def toy_manager(toy, id): 
     global commands  # Access the global commands list
     with SpheroEduAPI(toy) as api:  # Open a connection to the Sphero toy
         while True:  # Infinite loop to keep managing commands
