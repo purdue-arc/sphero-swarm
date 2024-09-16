@@ -43,6 +43,7 @@ def toy_manager(toy, id):
                     # DISCLAIMER all calulations done are with guessed number, have to replace with real measurments we take 
                     # on interval [0,2) avg speed = 3.28 ft/s
                     # on interval [2,inf) avg speed = 6.56 ft/s
+                    # measure and use graph + line of best fit
 
                 elif(commands[id][0][0]== "M"):
                     distance = float(commands[id][1:])  # Convert command substring to float
