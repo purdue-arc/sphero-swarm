@@ -45,7 +45,7 @@ def toy_manager(toy, id):
                     # on interval [2,inf) avg speed = 6.56 ft/s
                     # measure and use graph + line of best fit
 
-                elif(commands[id][0][0]== "M"):
+                elif(commands[id][0][0]== "M"):  # Something is wrong with the time variable
                     distance = float(commands[id][1:])  # Convert command substring to float
                     time = 0.0  # Initialize time variable with float value
                     accDistance = 6.56 # sets the estimated distance per second
