@@ -10,18 +10,22 @@ class Instruction:
       3 = roll
     """
 
-    def __init__(self, spheroID, type: int):
-        self.spheroID = spheroID
-        self.type = type
+    def __init__(self, *args):
+        if (args[1] == 0):
+            self.spheroID = args[0]
+            self.type = args[1]
 
-    def __init__(self, spheroID, type, color: Color):
-        self.spheroID = spheroID
-        self.type = type
-        self.color = color
+        elif (args[1] == 1):
+            self.spheroID = args[0]
+            self.type = args[1]
+        elif (args[1] == 2):
+            self.spheroID = args[0]
+            self.type = args[1]
+            self.color = args[2]
 
-    def __init__(self, spheroID, type: int, heading: int, speed: int, duration: int):
-        self.spheroID = spheroID
-        self.type = type
-        self.heading = heading
-        self.speed = speed
-        self.duration = duration
+        elif (args[1] == 3):
+            self.spheroID = args[0]
+            self.type = args[1]
+            self.heading = args[2]
+            self.speed = args[3]
+            self.duration = args[4]

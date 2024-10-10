@@ -51,12 +51,19 @@ def controls():
 
     s.listen(5)
 
+    print("Waiting for connection")
+
     c, address = s.accept()
 
     while (True):
         instruction = pickle.loads(c.recv(1024))
+
+
         print(instruction.type)
-        if (instruction.type == 3):
+        if (instruction.type == 2):
+            print(instruction.color)
+        elif (instruction.type == 3):
+            print(instruction.spheroID)
             print(instruction.heading)
             print(instruction.speed)
             print(instruction.duration)
@@ -80,14 +87,24 @@ def run_toy_threads(toys):
         thread.start()
         id += 1
 
+    thread = threading.Thread(target=controls, args=[])
+    threads.append(thread)
+
     for thread in threads:
         thread.join()
 
     print("Ending function...")
+# end run_toy_threads()
 
-controls()
+# start main
 
 """
+instructions = [[]] * 3
+
+controls()
+"""
+
+
 toys = scanner.find_toys()
 
 global instructions
@@ -101,7 +118,8 @@ except:
     print("Error!")
     sys.exit()
 
-"""
 
+instructions = [[]] * len(toys)
 
+run_toy_threads(toys)
 
