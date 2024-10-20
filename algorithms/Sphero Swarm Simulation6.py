@@ -18,7 +18,7 @@ GRAY = (150, 150, 150)
 # Pygame initialization
 pygame.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
-pygame.display.set_caption("Sphero Swarm Simulation with Color Change, Pause, Timer, and Raw Data")
+pygame.display.set_caption("Sphero Swarm Simulation with Color Change")
 font = pygame.font.SysFont(None, 24)
 
 
@@ -42,9 +42,6 @@ class Button:
                 self.action()
             return True
         return False
-
-    def update_text(self, new_text):
-        self.text = new_text
 
 
 # Sphero class definition
@@ -121,6 +118,10 @@ class Sphero:
         other.velocity[0] = v2n_new * nx + v2t * tx
         other.velocity[1] = v2n_new * ny + v2t * ty
 
+        # Indicate the collision by changing the color momentarily
+        self.color = RED
+        other.color = RED
+
     def draw(self, screen):
         # Draw the Sphero as a circle
         pygame.draw.circle(screen, self.color, (int(self.position[0]), int(self.position[1])), SPHERO_RADIUS)
@@ -172,14 +173,13 @@ class SpheroSwarm:
             data = initial_data[i]
             self.spheros.append(Sphero(i, data["position"], data["velocity"], data["acceleration"]))
 
-    def update(self, dt, paused):
-        if not paused:
-            for sphero in self.spheros:
-                sphero.update_position(dt)
-                sphero.update_velocity(dt)
-                for other in self.spheros:
-                    if sphero != other:
-                        sphero.check_collision(other)
+    def update(self, dt):
+        for sphero in self.spheros:
+            sphero.update_position(dt)
+            sphero.update_velocity(dt)
+            for other in self.spheros:
+                if sphero != other:
+                    sphero.check_collision(other)
 
     def draw(self, screen):
         for sphero in self.spheros:
@@ -208,9 +208,7 @@ def run_simulation():
     swarm = SpheroSwarm(num_spheros=10)
     clock = pygame.time.Clock()
     running = True
-    paused = False
     show_data = False  # Flag to toggle raw data display
-    simulation_time = 0.0  # Variable to track the time
 
     # Define color change buttons
     buttons = [
@@ -218,10 +216,7 @@ def run_simulation():
         Button(120, 10, 100, 40, "Blue", BLUE, lambda: swarm.change_selected_sphero_color(BLUE)),
         Button(230, 10, 100, 40, "Black", BLACK, lambda: swarm.change_selected_sphero_color(BLACK)),
         Button(10, 60, 200, 40, "Show Raw Data", GRAY, None),  # Button to toggle raw data display
-        Button(350, 10, 100, 40, "Pause", GRAY, None)  # Button to pause/resume simulation
     ]
-
-    pause_button = buttons[-1]  # Reference to the pause button
 
     while running:
         dt = clock.tick(60) / 1000.0  # 60 FPS
@@ -236,26 +231,14 @@ def run_simulation():
                     if button.check_click(pos):
                         if button.text == "Show Raw Data":
                             show_data = not show_data  # Toggle display of raw data
-                        if button.text in ("Pause", "Resume"):
-                            paused = not paused  # Toggle pause state
-                            new_text = "Resume" if paused else "Pause"
-                            pause_button.update_text(new_text)  # Update the button text
                 swarm.select_sphero(pos)  # Select the Sphero on click
 
-        # Update the simulation time only if not paused
-        if not paused:
-            simulation_time += dt
-
-        swarm.update(dt, paused)  # Only update if not paused
+        swarm.update(dt)
         swarm.draw(screen)
 
         # Draw the buttons
         for button in buttons:
             button.draw(screen, font)
-
-        # Draw the timer on the screen
-        timer_text = font.render(f"Time: {simulation_time:.2f} s", True, BLACK)
-        screen.blit(timer_text, (SCREEN_WIDTH - 150, 10))
 
         # Show raw data if the button is clicked
         if show_data:
