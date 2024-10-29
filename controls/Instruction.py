@@ -10,6 +10,13 @@ class Instruction:
       3 = roll
     """
 
+    spheroID = 0
+    type = -1
+    color = 0
+    heading = 0
+    speed = 0
+    duration = 0
+
     def __init__(self, *args):
         if (args[1] == 0):
             self.spheroID = args[0]
