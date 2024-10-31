@@ -4,8 +4,8 @@ from spherov2.types import Color
 class Instruction:
     """
     type:
-      0 = reset yaw
-      1 = reset locator
+      0 = reset yaw (not implemented)
+      1 = reset locator (not implemented)
       2 = reset LED color
       3 = roll
     """
