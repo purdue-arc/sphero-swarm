@@ -8,6 +8,8 @@ class Instruction:
       1 = reset locator (not implemented)
       2 = reset LED color
       3 = roll
+      4 = reset aim
+      5 = stop thread
     """
 
     spheroID = 0

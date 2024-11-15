@@ -11,7 +11,7 @@ import time
 import sys
 
 s = socket.socket()
-port = 12345
+port = 1234
 
 s.connect(('localhost', port))
 
@@ -34,8 +34,12 @@ while (True):
         elif (type == 3):
             heading = int(input("Heading: "))
             speed = int(input("Speed: "))
-            duration = int(input("Duration: "))
+            duration = float(input("Duration: "))
             instruction = Instruction(spheroID, type, heading, speed, duration)
+        elif (type == 4):
+            instruction = Instruction(spheroID, type)
+        elif (type == 5):
+            instruction = Instruction(spheroID, type)
         else:
             print("Enter a valid instruction type")
             continue
