@@ -1,0 +1,195 @@
+from spherov2 import scanner # turning works on relative direction, need to update code to match
+from spherov2.sphero_edu import SpheroEduAPI
+from spherov2.types import Color
+import threading
+import time
+import keyboard
+from events import Events
+
+class Molecule:
+    def __init__(self, bolt, rgb):
+        self.rgb = Color(r = rgb[0], g = rgb[1], b = rgb[2])
+        self.bolt = bolt
+        self.bolt.set_main_led(self.rgb)
+
+    def update_color(self, red, green, blue):
+        self.rgb = Color(r = int(red), g = int(green), b = int(blue))
+        self.bolt.set_main_led(self.rgb)
+        
+    def roll(self, speed, var_time):
+        self.bolt.roll(0, int(speed), float(var_time))
+
+    def rotate(self, degrees, var_time):
+        self.bolt.spin(int(degrees), float(var_time))
+        self.bolt.reset_aim()
+
+    def delay(self, var_time):
+        time.sleep(float(var_time))
+
+    def nodal_move(self, num_paths):
+        direction = num_paths % 6
+
+def toy_manager(toy, id):
+    global latch
+    global commands
+    global hold
+    global open
+
+    with SpheroEduAPI(toy) as api:
+        molecule = Molecule(api, [0, 0, 0])
+
+        print(open)
+
+        open_latch = False
+        if (open[id] == 1):
+            open_latch = True
+
+        while True:
+            while (latch[id] < len(commands[id])):
+                current_command = commands[id][latch[id]]
+                starting_letter = current_command[0]
+                rest_of_command = current_command[1:].split(",")
+
+                print("{}: {}".format(id, commands[id][latch[id]]))
+
+                match starting_letter:
+                    case "M":
+                        molecule.roll(*rest_of_command)
+                    case "R":
+                        molecule.rotate(*rest_of_command)
+                    case "C":
+                        molecule.update_color(*rest_of_command)
+                    case "D":
+                        molecule.delay(*rest_of_command)
+                    case "N":
+                        molecule.nodal_move(*rest_of_command)
+                    case _:
+                        print(f"Doesn't match any preexisting commands: {current_command}")
+
+                while True: # need to build in latch system
+                    exit_code = False
+                    first_value = latch[0]
+                    all_equal = True
+
+                    for depths in latch:
+                        if (first_value != depths):
+                            all_equal = False
+                            if (latch[id] < depths):
+                                exit_code = True
+                                break
+                            elif (latch[id] > depths):
+                                break
+                    if (all_equal):
+                        exit_code = True
+
+                    if (exit_code):
+                        print("exit inner")
+                        break
+                    else:
+                        time.sleep(0.01)
+        
+                latch[id] += 1
+            
+            print("exit outer")
+
+            if (not hold):
+                break
+
+            if (open_latch):
+                open[id] = 0
+
+            time.sleep(0.01)
+
+def reset(num_spheros):
+    global hold    
+    global open
+
+    hold = True
+
+    for id in range(0, num_spheros, 1):
+        open[id] = 0
+
+def set(num_spheros, command):
+    global open
+    global commands
+
+    for id in range(0, num_spheros, 1):
+        commands[id].append(command)
+        open[id] = 1
+
+def command_input(num_spheros): 
+    global open
+    global hold
+    global latch
+    global commands
+
+    open = []
+    commands = []
+    latch = []
+    for _ in range(0, num_spheros, 1):
+        open.append(0)
+        latch.append(0)
+        commands.append([])
+    exit_case = False
+
+    while True:
+        while (sum(open) == 0):
+            reset(num_spheros)
+            if (keyboard.is_pressed("d")):
+                init_time = time.time()
+                while (keyboard.is_pressed("d")):
+                    pass
+                new_time = time.time()
+                set(num_spheros, "R{},0.5".format(int(new_time - init_time) * 30))
+            elif (keyboard.is_pressed("a")):
+                init_time = time.time()
+                while (keyboard.is_pressed("a")):
+                    pass
+                new_time = time.time()
+                set(num_spheros, "R-{},0.5".format(int(new_time - init_time) * 30))
+            elif (keyboard.is_pressed("w")):
+                init_time = time.time()
+                while (keyboard.is_pressed("w")):
+                    pass
+                new_time = time.time()
+                set(num_spheros, "M100,{}".format(float(new_time - init_time)))
+            elif (keyboard.is_pressed(" ")):
+                hold = False
+                exit_case = True
+                break
+        if (exit_case):
+            break
+        time.sleep(0.01)
+
+def run_toy_threads(toys):
+    threads = []
+
+    thread = threading.Thread(target=command_input, args=[len(toys)], daemon=True)
+    threads.append(thread)
+    thread.start()
+
+    for id in range(0, len(toys), 1):
+        thread = threading.Thread(target=toy_manager, args=[toys[id], id], daemon=True)
+        threads.append(thread)
+        thread.start()
+        
+    for thread in threads:
+        thread.join()
+        
+toys = scanner.find_toys(toy_names = ["SB-B5A9"])
+
+"""
+try: 
+    for toy in toys: # fighting back against the bleak error exceptions
+        with SpheroEduAPI(toy) as api:
+            # api.calibrate_compass()
+            # api.reset_aim()
+            pass
+except:
+    print("Error!")
+    sys.exit()
+"""
+
+print(toys)
+
+run_toy_threads(toys)
