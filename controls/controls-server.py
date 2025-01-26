@@ -26,7 +26,6 @@ def toy_manager(toy, id, instructions):
                 #try:
                     #lock.acquire()
                     instruction = instructions.get()
-                    print("new instruction")
                     if (instruction.type == 0):
                         # insert command to reset yaw
                         print("reset yaw")
@@ -58,7 +57,7 @@ def toy_manager(toy, id, instructions):
 def controls(instructions):
 
     s = socket.socket()
-    port = 1234
+    port = 12345
 
     s.bind(('localhost', port))
 
@@ -124,7 +123,7 @@ def run_toy_threads(toys, instructions):
 
 # start main
 
-toys = scanner.find_toys(toy_names = ["SB-E274"])
+toys = scanner.find_toys(toy_names = ["SB-76B3"])
 """
 try:
     for toy in toys:  # fighting back against the bleak error exceptions

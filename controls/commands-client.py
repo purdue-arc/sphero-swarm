@@ -11,7 +11,7 @@ import time
 import sys
 
 s = socket.socket()
-port = 1234
+port = 12345
 
 s.connect(('localhost', port))
 
