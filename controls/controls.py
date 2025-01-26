@@ -33,15 +33,18 @@ def toy_manager(toy, id, instructions):
                 #try:
                     #lock.acquire()
                     instruction = instructions.get()
-                    if (instruction.type == 2): # set led color
+                    if (instruction.type == 0):
+                        print(id, " ", instruction.color)
+                        print("start")
                         api.set_main_led(instruction.color)
                         api.set_back_led(instruction.color)
                         api.set_front_led(instruction.color)
-                    elif (instruction.type == 3): # roll
-                        api.roll(instruction.heading, instruction.speed, instruction.duration)
-                    elif (instruction.type == 4): # reset aim
-                        api.reset_aim()
-                    elif (instruction.type == 5): # stop
+                        print("end")
+                    elif (instruction.type == 1): # roll
+                        api.roll(api.get_heading(), instruction.speed, instruction.duration)
+                    elif (instruction.type == 2): # turn
+                        api.spin(instruction.degrees, instruction.duration)
+                    elif (instruction.type == 3): # stop
                         on = False
                 #finally:
                     #lock.release()
@@ -97,45 +100,43 @@ def controls(instructions):
             spheroID = int(input("What sphero would you like to send the instruction to? "))
             type = int(input("What type of instruction would you like to send? "))
             if (type == 0):
-                instruction = Instruction(spheroID, type)
-            elif (type == 1):
-                instruction = Instruction(spheroID, type)
-            elif (type == 2):
                 red = int(input("R: "))
                 green = int(input("G: "))
                 blue = int(input("B: "))
                 color = Color(red, green, blue)
                 instruction = Instruction(spheroID, type, color)
-            elif (type == 3):
-                heading = int(input("Heading: "))
+            elif (type == 1):
                 speed = int(input("Speed: "))
                 duration = float(input("Duration: "))
-                instruction = Instruction(spheroID, type, heading, speed, duration)
-            elif (type == 4):
-                instruction = Instruction(spheroID, type)
-            elif (type == 5):
+                instruction = Instruction(spheroID, type, speed, duration)
+            elif (type == 2):
+                degrees = int(input("Degrees: "))
+                duration = float(input("Duration: "))
+                instruction = Instruction(spheroID, type, degrees, duration)
+            elif (type == 3):
                 instruction = Instruction(spheroID, type)
             else:
                 print("Enter a valid instruction type")
                 continue
-
-            instructionList.append(instruction)
-            # end if
+                # end if
 
         # add given instructions to global 2d instructions array
         try:
             lock.acquire()
             for instruction in instructionList:
                 print(instruction.type)
-                if (instruction.type == 2):
+                if (instruction.type == 0):
                     print(instruction.spheroID)
                     print(instruction.color)
-                elif (instruction.type == 3):
+                elif (instruction.type == 1):
                     print(instruction.spheroID)
-                    print(instruction.heading)
                     print(instruction.speed)
                     print(instruction.duration)
-                elif (instruction.type == 5):
+                elif (instruction.type == 2):
+                    print(instruction.spheroID)
+                    print(instruction.degrees)
+                    print(instruction.duration)
+                elif (instruction.type == 3):
                     on = False
 
                 if (not (instruction.spheroID < len(instructions))):
