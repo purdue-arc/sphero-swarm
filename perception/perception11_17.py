@@ -2,7 +2,8 @@ import cv2
 import numpy as np
 import math
 
-cap = cv2.VideoCapture('perception/TestVideos/Vid1.mp4')
+# perception/TestVideos/SS_demo_callout25.mp4
+cap = cv2.VideoCapture('perception/TestVideos/SS_demo_callout25.mp4')
 if cap.isOpened():
     print('Video Opened')
 else:
@@ -13,6 +14,7 @@ num_circles = 3
 sentinel = 0
 minDist = 10
 
+# THIS FIRST WHILE GETS THE COORDS OF THE BALLZ IN THE FIRST FRAME, WILL ONLY RUN ONCE
 while cap.isOpened():
     ret, frame = cap.read()
     if not ret:
@@ -49,7 +51,7 @@ while cap.isOpened():
                     yDiff = prev_coords[i][1] - prev_coords[j][1]
                     distBetween = abs(pow(xDiff, 2) + pow(yDiff, 2))
                     if (i != j and distBetween < minDist):
-                        print(prev_coords)
+                        # print(prev_coords)
                         sentinel = -1
                 
             if (sentinel != -1):
@@ -100,17 +102,30 @@ while cap.isOpened():
                         lowestDistanceCoord = circles[j]
                 prev_coords[i] = lowestDistanceCoord
             for i in range (0, len(prev_coords)):
-                print(i, ": ", prev_coords[i])
+                print(f"{i}: ({int(prev_coords[i][0])}, {int(prev_coords[i][1])}, {int(prev_coords[i][2])})")
+                # print(i, ": ", int(prev_coords[i][0]), int(prev_coords[i][1]), int(prev_coords[i][2]), ")")
                 cv2.putText(frame, str(i), (int(prev_coords[i][0]), int(prev_coords[i][1])), cv2.FONT_ITALIC, 1, (0, 0, 0), 1, cv2.LINE_AA)
 
     # prev_coords = np.uint16(np.around(prev_coords))
     count = 0
+    collided = False
     for i in range(0, len(prev_coords)):
-        print(prev_coords[i])
+        # print(prev_coords[i])
         color = (0, count * 100 , 0)
-        count += 1
         coord = (int(prev_coords[i][0]), int(prev_coords[i][1]))
+        for j in range(0, len(prev_coords)):
+            if j == i:
+                break
+            jCoords = (int(prev_coords[j][0]), int(prev_coords[j][1]))
+            if abs(jCoords[0] - coord[0]) < prev_coords[j][2] + prev_coords[i][2]:
+                collided = True
+            if abs(jCoords[1] - coord[1]) < prev_coords[j][2] + prev_coords[i][2]:
+                collided = True
+        if collided:
+            color = (255, 100, 0)
+        count += 1
         cv2.circle(frame, coord, prev_coords[i][2], color, 3)
+        collided = False
 
     cv2.imshow("Detected Circles", frame)
 
