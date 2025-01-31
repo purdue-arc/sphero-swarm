@@ -14,7 +14,7 @@ BACKGROUND_COLOR = (30, 30, 30)
 LINE_COLOR = (200, 200, 200)
 
 # Triangle settings
-TRIANGLE_SIZE = 40  # Length of a side of each triangle
+TRIANGLE_SIZE = 60  # Length of a side of each triangle
 
 # Function to draw a triangular grid
 def draw_triangular_grid(surface, triangle_size, color):
