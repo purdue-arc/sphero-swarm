@@ -1,13 +1,11 @@
 import socket
 from Instruction import Instruction
-from spherov2 import scanner # turning works on relative direction, need to update code to match
+from spherov2 import scanner
 from spherov2.sphero_edu import SpheroEduAPI
 from spherov2.types import Color
 import multiprocessing
 from threading import Lock
 import threading
-import time
-import sys
 import pickle
 import queue
 
@@ -28,23 +26,17 @@ def toy_manager(toy, id, instructions):
                     instruction = instructions.get()
                     print("new instruction")
                     if (instruction.type == 0):
-                        # insert command to reset yaw
-                        print("reset yaw")
-                    elif (instruction.type == 1):
-                        # insert command to reset locator
-                        print("reset locator")
-                    elif (instruction.type == 2): # set led color
                         print(id, " ", instruction.color)
                         print("start")
                         api.set_main_led(instruction.color)
                         api.set_back_led(instruction.color)
                         api.set_front_led(instruction.color)
                         print("end")
-                    elif (instruction.type == 3): # roll
-                        api.roll(instruction.heading, instruction.speed, instruction.duration)
-                    elif (instruction.type == 4): # reset aim
-                        api.reset_aim()
-                    elif (instruction.type == 5): # stop
+                    elif (instruction.type == 1): # roll
+                        api.roll(api.get_heading(), instruction.speed, instruction.duration)
+                    elif (instruction.type == 2): # turn
+                        api.spin(instruction.degrees, instruction.duration)
+                    elif (instruction.type == 3): # stop
                         on = False
                 #finally:
                     #lock.release()
@@ -77,15 +69,18 @@ def controls(instructions):
             lock.acquire()
             for instruction in instructionList:
                 print(instruction.type)
-                if (instruction.type == 2):
+                if (instruction.type == 0):
                     print(instruction.spheroID)
                     print(instruction.color)
-                elif (instruction.type == 3):
+                elif (instruction.type == 1):
                     print(instruction.spheroID)
-                    print(instruction.heading)
                     print(instruction.speed)
                     print(instruction.duration)
-                elif (instruction.type == 5):
+                elif (instruction.type == 2):
+                    print(instruction.spheroID)
+                    print(instruction.degrees)
+                    print(instruction.duration)
+                elif (instruction.type == 3):
                     on = False
 
                 if (not (instruction.spheroID < len(instructions))):
@@ -111,7 +106,7 @@ def run_toy_threads(toys, instructions):
         id += 1
 
     thread = threading.Thread(target=controls, args=[instructions], daemon = True)
-    thread.daemon = True;
+    thread.daemon = True
     threads.append(thread)
     thread.start()
 
@@ -124,7 +119,7 @@ def run_toy_threads(toys, instructions):
 
 # start main
 
-toys = scanner.find_toys(toy_names = ["SB-E274"])
+toys = scanner.find_toys(toy_names = ["SB-76B3"])
 """
 try:
     for toy in toys:  # fighting back against the bleak error exceptions
