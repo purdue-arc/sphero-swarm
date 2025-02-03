@@ -1,27 +1,27 @@
 import pygame
 import math
+import random 
 
 # Initialize Pygame
 pygame.init()
+
+clock = pygame.time.Clock()
 
 # Screen dimensions
 WIDTH, HEIGHT = 1000, 1000
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Sphero Sparm Sim")
 
-# Colors
-BACKGROUND_COLOR = (30, 30, 30)
-LINE_COLOR = (200, 200, 200)
-
-# Constants stole from sim 7
+# Constants 
 SCREEN_WIDTH = 800
 SCREEN_HEIGHT = 600
 SPHERO_RADIUS = 10
-MAX_VELOCITY = 2
+MAX_VELOCITY = 1
 COLLISION_RADIUS = SPHERO_RADIUS
 
-
 # Colors 
+BACKGROUND_COLOR = (30, 30, 30)
+LINE_COLOR = (200, 200, 200)
 BLUE = (0, 0, 255)
 RED = (255, 0, 0)
 BLACK = (0, 0, 0)
@@ -31,6 +31,7 @@ GRAY = (150, 150, 150)
 
 # Triangle settings
 TRIANGLE_SIZE = 100  # Length of a side of each triangle
+TRIANGLE_HEIGHT = 50 * math.sqrt(3)  # Height of a triangle
 
 # Function to draw a triangular grid
 def draw_triangular_grid(surface, triangle_size, color):
@@ -59,7 +60,98 @@ def draw_triangular_grid(surface, triangle_size, color):
                 p4 = (x, y + int(2 * height))
                 pygame.draw.polygon(surface, color, [p2, p4, p3], 1)
 
+# Sphero new class definition
+class Sphero_2:
+    def __init__(self, x, y, target_x, target_y, speed_x, speed_y, color):
+        self.x = x
+        self.y = y
+        self.target_x = target_x
+        self.target_y = target_y
+        self.speed_x = speed_x
+        self.speed_y = speed_y
+        self.color = color
 
+    def update(self):
+
+        # if the speed is 0, then we have stopped and no updating needs to happen
+        if self.speed_x == self.speed_y == 0:
+            return False
+
+        # finds the distance to the target
+        dx = abs(self.target_x - self.x)
+        dy = abs(self.target_y - self.y)
+        # distance = abs(dx) + abs(dy)
+        #distance = math.sqrt(dx**2 + dy**2)
+
+        # if we are far from the target, then go towards it. 
+        # if dx >= self.speed_x and dy >= self.speed_y:
+        #     self.x += self.speed_x
+        #     self.y += self.speed_y
+        #
+        # # if we get close enough of the target, we lock the ball's position
+        NODE_DIST_THRESHOLD = 6
+        if dx + dy < NODE_DIST_THRESHOLD:
+
+            # lock to the target position. This will help avoid movement 
+            # errors accumulating up over time.
+            self.x = self.target_x
+            self.y = self.target_y
+
+            # also set the speed to 0 to show that the ball has stopped.
+            self.speed_x = 0
+            self.speed_y = 0
+        else:
+            self.x += self.speed_x
+            self.y += self.speed_y
+
+        return True
+
+    def draw(self):
+        pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), SPHERO_RADIUS)
+
+    def update_direction(self, direction):
+
+        #mvoe right
+        if (direction == 1):
+            self.speed_x = 2
+            self.speed_y = 0
+
+        #move up right
+        elif (direction == 2):
+            self.speed_x = 1
+            self.speed_y = (math.sqrt(3))
+
+            # move up left
+        elif (direction == 3):
+
+            self.speed_x = -1
+            self.speed_y = (math.sqrt(3))
+
+            # move left
+        elif (direction == 4):
+            self.speed_x = -2
+            self.speed_y = 0
+
+            # move down left
+        elif (direction == 5):
+            self.speed_x = -1
+            self.speed_y = -(math.sqrt(3)) 
+
+            # move down right
+        elif (direction == 6):
+            self.speed_x = 1
+            self.speed_y = -(math.sqrt(3)) 
+
+    # TODO disjoint set implementation
+    # def qui
+
+    # TODO some way to go from our coordinates to the actual ones
+
+    def __str__(self):
+        return (f"Ball(x={self.x}, y={self.y}, "
+                f"target_x={self.target_x}, target_y={self.target_y}, "
+                f"speed_x={self.speed_x}, speed_y={self.speed_y}, "
+                f"color={self.color})")
 
 # Sphero class definition
 class Sphero:
@@ -124,7 +216,7 @@ class Sphero:
     def check_bonding(self, other):
         distance = math.sqrt((self.position[0] - other.position[0]) ** 2 +
                              (self.position[1] - other.position[1]) ** 2)
-        if (distance <= TRIANGLE_SIZE):
+        if (distance <= TRIANGLE_SIZE/2):
             # TODO handle bonding
             self.handle_bonding(other)
 
@@ -133,77 +225,23 @@ class Sphero:
         pygame.draw.circle(screen, self.color, (int(self.position[0]), int(self.position[1])), SPHERO_RADIUS)
 
 
-    #
-    # def handle_collision(self, other):
-    #     # Calculate the normal vector between the two Spheros
-    #     dx = other.position[0] - self.position[0]
-    #     dy = other.position[1] - self.position[1]
-    #     distance = math.sqrt(dx ** 2 + dy ** 2)
-    #
-    #     if distance == 0:
-    #         # Avoid division by zero by slightly offsetting one Sphero
-    #         distance = 0.1
-    #
-    #     # Normal vector (direction of collision)
-    #     nx = dx / distance
-    #     ny = dy / distance
-    #
-    #     # Tangent vector (perpendicular to the normal vector)
-    #     tx = -ny
-    #     ty = nx
-    #
-    #     # Dot product of velocity in the normal direction
-    #     v1n = self.velocity[0] * nx + self.velocity[1] * ny
-    #     v1t = self.velocity[0] * tx + self.velocity[1] * ty
-    #     v2n = other.velocity[0] * nx + other.velocity[1] * ny
-    #     v2t = other.velocity[0] * tx + other.velocity[1] * ty
-    #
-    #     # Since the collision is elastic, we swap the normal velocities
-    #     v1n_new = v2n
-    #     v2n_new = v1n
-    #
-    #     # Update velocities with the new normal and unchanged tangential velocities
-    #     self.velocity[0] = v1n_new * nx + v1t * tx
-    #     self.velocity[1] = v1n_new * ny + v1t * ty
-    #     other.velocity[0] = v2n_new * nx + v2t * tx
-    #     other.velocity[1] = v2n_new * ny + v2t * ty
-    #
-    # def draw(self, screen):
-    #     # Draw the Sphero as a circle
-    #     pygame.draw.circle(screen, self.color, (int(self.position[0]), int(self.position[1])), SPHERO_RADIUS)
-    #
-    #     # Draw an arrow representing the velocity vector
-    #     vx, vy = self.velocity
-    #     arrow_length = 20  # Shorter line for the velocity
-    #     end_x = self.position[0] + vx * arrow_length
-    #     end_y = self.position[1] + vy * arrow_length
-    #     pygame.draw.line(screen, BLACK, (int(self.position[0]), int(self.position[1])), (int(end_x), int(end_y)), 2)
-    #
-    #     # Draw arrowhead
-    #     angle = math.atan2(vy, vx)
-    #     arrowhead_length = 5
-    #     pygame.draw.line(screen, BLACK, (int(end_x), int(end_y)),
-    #                      (int(end_x - arrowhead_length * math.cos(angle - math.pi / 6)),
-    #                       int(end_y - arrowhead_length * math.sin(angle - math.pi / 6))), 2)
-    #     pygame.draw.line(screen, BLACK, (int(end_x), int(end_y)),
-    #                      (int(end_x - arrowhead_length * math.cos(angle + math.pi / 6)),
-    #                       int(end_y - arrowhead_length * math.sin(angle + math.pi / 6))), 2)
-    #
-    # def display_raw_data(self):
-    #     return f"Sphero {self.id} | Pos: ({self.position[0]:.2f}, {self.position[1]:.2f}), " \
-            #            f"Vel: ({self.velocity[0]:.2f}, {self.velocity[1]:.2f}), " \
-            #            f"Acc: ({self.acceleration[0]:.2f}, {self.acceleration[1]:.2f})"
-    #
-
 if __name__ == "__main__":
 
     #instantiate spheros
     spheros = []
 
-    sphero_1 = Sphero(1, [0,0], 1, BLUE)
-    sphero_2 = Sphero(1, [0,0], 2, RED)
+    # here are some hard coded ones. 
+    sphero_1 = Sphero_2(4 * TRIANGLE_SIZE, 4*TRIANGLE_HEIGHT, 4 * TRIANGLE_SIZE, 4 * TRIANGLE_HEIGHT, 0, 0, RED)
+    sphero_2 = Sphero_2(3 * TRIANGLE_SIZE, 3*TRIANGLE_HEIGHT, 3 * TRIANGLE_SIZE, 3 * TRIANGLE_HEIGHT, 0, 0, RED)
     spheros.append(sphero_1)
     spheros.append(sphero_2)
+
+    # TODO make a function that generates N random spheros with valid coordinates.
+    N = 6
+    for i in range(N):
+        x = random.randint(2, WIDTH // TRIANGLE_SIZE * 2 - 2) * TRIANGLE_SIZE// 2
+        y = random.randint(2, int(HEIGHT // TRIANGLE_HEIGHT * 2 - 2)) * TRIANGLE_HEIGHT // 2
+        spheros.append(Sphero_2(x, y, x, y, 0, 0, BLUE))
 
     # Main loop
     running = True
@@ -214,24 +252,37 @@ if __name__ == "__main__":
             if event.type == pygame.QUIT:
                 running = False
 
-
-
         # Fill the screen with the background color
         screen.fill(BACKGROUND_COLOR)
 
         # Draw the triangular grid
         draw_triangular_grid(screen, TRIANGLE_SIZE, LINE_COLOR)
 
+
         # Update the spheros
+        updated = False
         for sphero in spheros:
-            sphero.update_position(1)
+            if sphero.update():
+                updated = True
+
+        # If none have been updated, then 
+        # choose new directions for them to travel in.
+        if not updated:
+            for sphero in spheros:
+                sphero.update_direction(random.randint(1,6))
+                sphero.target_x = sphero.x + sphero.speed_x * TRIANGLE_SIZE / 4
+                sphero.target_y = (sphero.y + sphero.speed_y * TRIANGLE_SIZE / 4)
 
         # Draw the spheros
         for sphero in spheros:
-            sphero.draw(screen)
+            sphero.draw()
+            #print(sphero)
 
         # Update the display
         pygame.display.flip()
+
+        # Control frame rate
+        clock.tick(60)
 
     # Quit Pygame
     pygame.quit()
