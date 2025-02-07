@@ -185,7 +185,7 @@ class Sphero:
 
             # move left
         elif (direction == 4):
-            self.position[0] -= 2 * velocity * dt;
+            self.position[0] -= 2 * velocity * dt
 
             # move down left
         elif (direction == 5):
@@ -240,7 +240,7 @@ if __name__ == "__main__":
     N = 6
     for i in range(N):
         x = random.randint(2, WIDTH // TRIANGLE_SIZE * 2 - 2) * TRIANGLE_SIZE// 2
-        y = random.randint(2, int(HEIGHT // TRIANGLE_HEIGHT * 2 - 2)) * TRIANGLE_HEIGHT // 2
+        y = random.randint(2, int(HEIGHT // TRIANGLE_HEIGHT - 1)) * TRIANGLE_HEIGHT
         spheros.append(Sphero_2(x, y, x, y, 0, 0, BLUE))
 
     # Main loop
