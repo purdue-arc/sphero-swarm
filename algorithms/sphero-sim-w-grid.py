@@ -268,6 +268,9 @@ if __name__ == "__main__":
         # If none have been updated, then 
         # choose new directions for them to travel in.
         if not updated:
+
+            # TODO bonding
+
             for sphero in spheros:
                 sphero.update_direction(random.randint(1,6))
                 sphero.target_x = sphero.x + sphero.speed_x * TRIANGLE_SIZE / 4
