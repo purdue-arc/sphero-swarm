@@ -1,6 +1,9 @@
 import socket
+
+from spherov2.toy.sphero import Sphero
+
 from Instruction import Instruction
-from spherov2 import scanner # turning works on relative direction, need to update code to match
+from spherov2 import scanner
 from spherov2.sphero_edu import SpheroEduAPI
 from spherov2.types import Color
 import multiprocessing
@@ -12,6 +15,7 @@ import pickle
 import queue
 
 lock = Lock()
+active = True
 
 def toy_manager(toy, id, instructions):
     """
@@ -21,6 +25,7 @@ def toy_manager(toy, id, instructions):
     :param id: associated id
     :param instructions: associated instructions array
     """
+    global active
 
     print("start", id)
     print(toy)
@@ -28,24 +33,22 @@ def toy_manager(toy, id, instructions):
     on = True
 
     with SpheroEduAPI(toy) as api:
-        while on:
+        while active:
             if (not instructions.empty()):
                 #try:
                     #lock.acquire()
                     instruction = instructions.get()
                     if (instruction.type == 0):
-                        print(id, " ", instruction.color)
-                        print("start")
+                        # print(id, " ", instruction.color)
                         api.set_main_led(instruction.color)
                         api.set_back_led(instruction.color)
                         api.set_front_led(instruction.color)
-                        print("end")
                     elif (instruction.type == 1): # roll
                         api.roll(api.get_heading(), instruction.speed, instruction.duration)
                     elif (instruction.type == 2): # turn
                         api.spin(instruction.degrees, instruction.duration)
                     elif (instruction.type == 3): # stop
-                        on = False
+                        active = False
                 #finally:
                     #lock.release()
                 # end try
@@ -80,7 +83,6 @@ def run_toy_threads(toys, instructions):
     thread.start()
 
     for thread in threads:
-
         thread.join()
 
 # end run_toy_threads()
@@ -91,9 +93,10 @@ def controls(instructions):
 
     :param instructions: global 2d instructions array
     """
+    global active
 
     # get instructions from terminal
-    while (True):
+    while (active):
         nunIns = int(input("How many instructions would you like to send?"))
         instructionList = []
         for i in range(nunIns):
@@ -105,16 +108,20 @@ def controls(instructions):
                 blue = int(input("B: "))
                 color = Color(red, green, blue)
                 instruction = Instruction(spheroID, type, color)
+                instructionList.append(instruction)
             elif (type == 1):
                 speed = int(input("Speed: "))
                 duration = float(input("Duration: "))
                 instruction = Instruction(spheroID, type, speed, duration)
+                instructionList.append(instruction)
             elif (type == 2):
                 degrees = int(input("Degrees: "))
                 duration = float(input("Duration: "))
                 instruction = Instruction(spheroID, type, degrees, duration)
+                instructionList.append(instruction)
             elif (type == 3):
-                instruction = Instruction(spheroID, type)
+                active = False
+                return
             else:
                 print("Enter a valid instruction type")
                 continue
@@ -150,7 +157,8 @@ def controls(instructions):
 # start main
 
 # find toys
-toys = scanner.find_toys(toy_names = ["SB-B11D", "SB-1840"])
+
+toys = scanner.find_toys()
 """
 try:
     for toy in toys:  # fighting back against the bleak error exceptions
@@ -163,11 +171,14 @@ except:
 """
 
 print(len(toys))
+try:
+    # create 2d instructions array
+    instructions = [multiprocessing.Queue() for i in range(len(toys))]
 
-# create 2d instructions array
-instructions = [multiprocessing.Queue() for i in range(len(toys))]
-
-# create threads for each toy
-run_toy_threads(toys, instructions)
-
+    # create threads for each toy
+    run_toy_threads(toys, instructions)
+finally:
+    for toy in toys:
+        print("ending")
+        SpheroEduAPI(toy).__exit__()
 # get instructions from terminal
