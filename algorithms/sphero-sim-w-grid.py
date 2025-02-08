@@ -8,7 +8,7 @@ pygame.init()
 clock = pygame.time.Clock()
 
 # Screen dimensions
-WIDTH, HEIGHT = 1000, 1000 
+WIDTH, HEIGHT = 800, 800 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Sphero Sparm Sim")
 
@@ -153,6 +153,7 @@ class Sphero_2:
         elif (direction == 6):
             self.speed_x = 1
             self.speed_y = -(math.sqrt(3)) 
+
 
     # TODO disjoint set implementation
     def check_bonding(self, other):
@@ -305,17 +306,11 @@ if __name__ == "__main__":
             #update bonding
             i = 0           
             while(i < len(bonds) ):
-                print("i " + str(i))
-                print("length of total bonds " + str(len(bonds)))
-                print("length of bonds i" + str(len(bonds[i])))
                 j = 0
                 while (j < len(bonds[i])):
-                    print("j " + str(j))
                     sphero = bonds[i][j]
                     k = i + 1
                     while(k < len(bonds)):
-                        print("k " + str(k))
-                        print("length of k bond " + str(len(bonds[k])))
                         l = 0
                         while (l < len(bonds[k])):
                             other = bonds[k][l]
@@ -339,6 +334,14 @@ if __name__ == "__main__":
                     sphero.target_x = sphero.x + sphero.speed_x * TRIANGLE_SIZE / 4
                     sphero.target_y = (sphero.y + sphero.speed_y * TRIANGLE_SIZE / 4)
 
+                    if sphero.target_x  - SPHERO_RADIUS < 1 or sphero.target_x - SPHERO_RADIUS > WIDTH:
+                        sphero.speed_x = -sphero.speed_x
+                        sphero.target_x = sphero.x + sphero.speed_x * TRIANGLE_SIZE / 4
+                
+                    if sphero.target_y - SPHERO_RADIUS < 1 or sphero.target_y - SPHERO_RADIUS > HEIGHT:
+                        sphero.speed_y = -sphero.speed_y
+                        sphero.target_y = (sphero.y + sphero.speed_y * TRIANGLE_SIZE / 4)
+                    
         # Draw the spheros
         for sphero in spheros:
             sphero.draw()
