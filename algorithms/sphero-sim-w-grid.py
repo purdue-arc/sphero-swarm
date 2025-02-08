@@ -8,7 +8,7 @@ pygame.init()
 clock = pygame.time.Clock()
 
 # Screen dimensions
-WIDTH, HEIGHT = 1000, 1000
+WIDTH, HEIGHT = 1000, 1000 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Sphero Sparm Sim")
 
@@ -22,8 +22,14 @@ COLLISION_RADIUS = SPHERO_RADIUS
 # Colors 
 BACKGROUND_COLOR = (30, 30, 30)
 LINE_COLOR = (200, 200, 200)
+
 BLUE = (0, 0, 255)
 RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+YELLOW = (255, 255, 0)
+PURPLE = (128, 0, 128)
+ORANGE = (255, 165, 0)
+
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 GRAY = (150, 150, 150)
@@ -70,6 +76,12 @@ class Sphero_2:
         self.speed_x = speed_x
         self.speed_y = speed_y
         self.color = color
+
+    def update_color(self, new_color):
+        self.color = new_color
+
+    def get_color(self):
+        return self.color
 
     def update(self):
 
@@ -143,7 +155,12 @@ class Sphero_2:
             self.speed_y = -(math.sqrt(3)) 
 
     # TODO disjoint set implementation
-    # def qui
+    def check_bonding(self, other):
+        distance = math.sqrt((self.x - other.x) ** 2 +
+                             (self.y - other.y) ** 2)
+        if (distance <= TRIANGLE_SIZE/2):
+            return True
+        return False
 
     # TODO some way to go from our coordinates to the actual ones
 
@@ -224,24 +241,41 @@ class Sphero:
          # Draw the Sphero as a circle
         pygame.draw.circle(screen, self.color, (int(self.position[0]), int(self.position[1])), SPHERO_RADIUS)
 
+def find(union_find, i):
+    if (union_find[i] != i):
+        union_find[i] = find(union_find, union_find[i])
+    return i
+
+def update_parent(union_find, new_parent, j):
+    if (union_find[j] != j):
+        update_parent(union_find, new_parent, union_find[j])
+    union_find[j] = new_parent
+        
+
 
 if __name__ == "__main__":
 
     #instantiate spheros
     spheros = []
+    colors = []
 
     # here are some hard coded ones. 
     sphero_1 = Sphero_2(4 * TRIANGLE_SIZE, 4*TRIANGLE_HEIGHT, 4 * TRIANGLE_SIZE, 4 * TRIANGLE_HEIGHT, 0, 0, RED)
     sphero_2 = Sphero_2(3 * TRIANGLE_SIZE, 3*TRIANGLE_HEIGHT, 3 * TRIANGLE_SIZE, 3 * TRIANGLE_HEIGHT, 0, 0, RED)
-    spheros.append(sphero_1)
-    spheros.append(sphero_2)
+    
+    
+    # spheros.append(sphero_1)
+    # spheros.append(sphero_2)
 
     # TODO make a function that generates N random spheros with valid coordinates.
     N = 6
+    bonds = []
+    colors = [RED, GREEN, BLUE, YELLOW, ORANGE, PURPLE]
     for i in range(N):
         x = random.randint(2, WIDTH // TRIANGLE_SIZE * 2 - 2) * TRIANGLE_SIZE// 2
         y = random.randint(2, int(HEIGHT // TRIANGLE_HEIGHT - 1)) * TRIANGLE_HEIGHT
-        spheros.append(Sphero_2(x, y, x, y, 0, 0, BLUE))
+        spheros.append(Sphero_2(x, y, x, y, 0, 0, colors[i]))
+        bonds.append([spheros[i]])
 
     # Main loop
     running = True
@@ -268,13 +302,42 @@ if __name__ == "__main__":
         # If none have been updated, then 
         # choose new directions for them to travel in.
         if not updated:
+            #update bonding
+            i = 0           
+            while(i < len(bonds) ):
+                print("i " + str(i))
+                print("length of total bonds " + str(len(bonds)))
+                print("length of bonds i" + str(len(bonds[i])))
+                j = 0
+                while (j < len(bonds[i])):
+                    print("j " + str(j))
+                    sphero = bonds[i][j]
+                    k = i + 1
+                    while(k < len(bonds)):
+                        print("k " + str(k))
+                        print("length of k bond " + str(len(bonds[k])))
+                        l = 0
+                        while (l < len(bonds[k])):
+                            other = bonds[k][l]
+                            if (sphero.check_bonding(other)):
+                                bonds[i].extend(bonds[k])
+                                bonds.pop(k)
+                                k -= 1
+                                break
+                            l += 1
+                        k += 1
+                    j += 1
+                i += 1
 
-            # TODO bonding
+            #update direction
+            for i in range(len(bonds)):
+                direction = random.randint(1, 6)
 
-            for sphero in spheros:
-                sphero.update_direction(random.randint(1,6))
-                sphero.target_x = sphero.x + sphero.speed_x * TRIANGLE_SIZE / 4
-                sphero.target_y = (sphero.y + sphero.speed_y * TRIANGLE_SIZE / 4)
+                for j in range(len(bonds[i])):
+                    sphero = bonds[i][j]
+                    sphero.update_direction(direction)
+                    sphero.target_x = sphero.x + sphero.speed_x * TRIANGLE_SIZE / 4
+                    sphero.target_y = (sphero.y + sphero.speed_y * TRIANGLE_SIZE / 4)
 
         # Draw the spheros
         for sphero in spheros:
