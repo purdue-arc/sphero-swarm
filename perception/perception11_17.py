@@ -3,7 +3,7 @@ import numpy as np
 import math
 
 # perception/TestVideos/SS_demo_callout25.mp4
-cap = cv2.VideoCapture('perception/TestVideos/SS_demo_callout25.mp4')
+cap = cv2.VideoCapture('perception/TestVideos/Vid1.mp4')
 if cap.isOpened():
     print('Video Opened')
 else:
@@ -24,6 +24,9 @@ while cap.isOpened():
 
     # Thresholding the gray image to create a binary mask of white regions (balls).
     _, thresholded = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
+
+    cv2.imshow("Processing Step", frame)
+    cv2.waitKey(10000)
 
     # Finding contours in the binary mask.
     contours, _ = cv2.findContours(thresholded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
