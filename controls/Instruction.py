@@ -34,3 +34,6 @@ class Instruction:
             self.type = args[1]
             self.degrees = args[2]
             self.duration = args[3]
+
+        elif (args[1] == 3):
+            self.type =3
