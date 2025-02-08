@@ -159,7 +159,7 @@ class Sphero_2:
     def check_bonding(self, other):
         distance = math.sqrt((self.x - other.x) ** 2 +
                              (self.y - other.y) ** 2)
-        if (distance <= TRIANGLE_SIZE/2):
+        if (distance <= TRIANGLE_SIZE/2 + TRIANGLE_SIZE/3):
             return True
         return False
 
@@ -234,7 +234,7 @@ class Sphero:
     def check_bonding(self, other):
         distance = math.sqrt((self.position[0] - other.position[0]) ** 2 +
                              (self.position[1] - other.position[1]) ** 2)
-        if (distance <= TRIANGLE_SIZE/2):
+        if (distance <= TRIANGLE_SIZE/2 + TRIANGLE_SIZE/3):
             # TODO handle bonding
             self.handle_bonding(other)
 
