@@ -18,6 +18,7 @@ SCREEN_HEIGHT = 600
 SPHERO_RADIUS = 10
 MAX_VELOCITY = 1
 COLLISION_RADIUS = SPHERO_RADIUS
+EPSILON = 8 # the amount of error we allow while detecting distance
 
 # Colors 
 BACKGROUND_COLOR = (30, 30, 30)
@@ -36,11 +37,12 @@ GRAY = (150, 150, 150)
 
 
 # Triangle settings
-TRIANGLE_SIZE = 100  # Length of a side of each triangle
+TRIANGLE_SIZE = 50  # Length of a side of each triangle
 TRIANGLE_HEIGHT = 50 * math.sqrt(3)  # Height of a triangle
 
 # Function to draw a triangular grid
 def draw_triangular_grid(surface, triangle_size, color):
+    triangle_size *= 2
     height = math.sqrt(3) / 2 * triangle_size  # Height of an equilateral triangle
 
     for y in range(-int(height), HEIGHT + int(height), int(height)):
@@ -158,7 +160,7 @@ class Sphero_2:
     def check_bonding(self, other):
         distance = math.sqrt((self.x - other.x) ** 2 +
                              (self.y - other.y) ** 2)
-        if (distance <= TRIANGLE_SIZE/2):
+        if (distance <= TRIANGLE_SIZE):
             return True
         return False
 
@@ -233,8 +235,7 @@ class Sphero:
     def check_bonding(self, other):
         distance = math.sqrt((self.position[0] - other.position[0]) ** 2 +
                              (self.position[1] - other.position[1]) ** 2)
-        if (distance <= TRIANGLE_SIZE/2):
-            # TODO handle bonding
+        if (distance <= TRIANGLE_SIZE + EPSILON):
             self.handle_bonding(other)
 
     def draw(self, screen):
@@ -260,8 +261,8 @@ if __name__ == "__main__":
     colors = []
 
     # here are some hard coded ones. 
-    sphero_1 = Sphero_2(4 * TRIANGLE_SIZE, 4*TRIANGLE_HEIGHT, 4 * TRIANGLE_SIZE, 4 * TRIANGLE_HEIGHT, 0, 0, RED)
-    sphero_2 = Sphero_2(3 * TRIANGLE_SIZE, 3*TRIANGLE_HEIGHT, 3 * TRIANGLE_SIZE, 3 * TRIANGLE_HEIGHT, 0, 0, RED)
+    #sphero_1 = Sphero_2(4 * TRIANGLE_SIZE, 4*TRIANGLE_HEIGHT, 4 * TRIANGLE_SIZE, 4 * TRIANGLE_HEIGHT, 0, 0, RED)
+    #sphero_2 = Sphero_2(3 * TRIANGLE_SIZE, 3*TRIANGLE_HEIGHT, 3 * TRIANGLE_SIZE, 3 * TRIANGLE_HEIGHT, 0, 0, RED)
     
     
     # spheros.append(sphero_1)
@@ -272,7 +273,8 @@ if __name__ == "__main__":
     bonds = []
     colors = [RED, GREEN, BLUE, YELLOW, ORANGE, PURPLE]
     for i in range(N):
-        x = random.randint(2, WIDTH // TRIANGLE_SIZE * 2 - 2) * TRIANGLE_SIZE// 2
+        x = random.randint(2, WIDTH // (TRIANGLE_SIZE*2) * 2 - 2) * (TRIANGLE_SIZE)
+        print(x)
         y = random.randint(2, int(HEIGHT // TRIANGLE_HEIGHT - 1)) * TRIANGLE_HEIGHT
         spheros.append(Sphero_2(x, y, x, y, 0, 0, colors[i]))
         bonds.append([spheros[i]])
@@ -336,8 +338,8 @@ if __name__ == "__main__":
                 for j in range(len(bonds[i])):
                     sphero = bonds[i][j]
                     sphero.update_direction(direction)
-                    sphero.target_x = sphero.x + sphero.speed_x * TRIANGLE_SIZE / 4
-                    sphero.target_y = (sphero.y + sphero.speed_y * TRIANGLE_SIZE / 4)
+                    sphero.target_x = sphero.x + sphero.speed_x * (TRIANGLE_SIZE) / 2
+                    sphero.target_y = (sphero.y + sphero.speed_y * (TRIANGLE_SIZE) / 2)
 
         # Draw the spheros
         for sphero in spheros:
