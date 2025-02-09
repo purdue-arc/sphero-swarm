@@ -15,45 +15,41 @@ if not leader or not follower:
     print("Error: Could not find both leader and follower Sphero toys. Ensure they are turned on and nearby.")
     exit()
 
-# Global variable for current movement - moved to top
 current_angle = 0
 
 def on_ir_message_follower(api, channel):
     if channel == 4:
-        api.listen_for_ir_message((4,))
         api.set_main_led(Color(255, 0, 0))
         api.roll(current_angle, 50, 2)
         time.sleep(2)
         api.set_main_led(Color(0, 255, 0))
+        api.listen_for_ir_message((4,))
 
 def follower_program(sphero):
     with SpheroEduAPI(sphero) as api:
         api.set_main_led(Color(0, 255, 0))
         api.register_event(EventType.on_ir_message, on_ir_message_follower)
         api.listen_for_ir_message((4,))
+        api.start_ir_follow(0,1)
         while True:
             time.sleep(1)
 
-# Start follower thread
 follower_thread = threading.Thread(target=follower_program, args=(follower,))
 follower_thread.daemon = True
 follower_thread.start()
 
 try:
-    # Leader movement
     with SpheroEduAPI(leader) as api:
         api.set_main_led(Color(255, 0, 255))
         api.start_ir_broadcast(0, 1)
         angles = [0, 90, 180, 270]
         
-        for _ in range(1):  # Two squares
+        for _ in range(1):  
             for angle in angles:
-                # Update global angle and move leader
                 current_angle = angle
                 api.roll(angle, 50, 2)
                 time.sleep(2)
                 
-                # Signal follower to move
                 api.send_ir_message(4, 64)
                 api.listen_for_ir_message((4,))
                 time.sleep(3)
