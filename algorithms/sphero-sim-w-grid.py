@@ -4,11 +4,11 @@ import random
 
 # Initialize Pygame
 pygame.init()
-
+# clock 
 clock = pygame.time.Clock()
 
 # Screen dimensions
-WIDTH, HEIGHT = 1000, 1000 
+WIDTH, HEIGHT = 800, 800 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Sphero Sparm Sim")
 
@@ -18,6 +18,7 @@ SCREEN_HEIGHT = 600
 SPHERO_RADIUS = 10
 MAX_VELOCITY = 1
 COLLISION_RADIUS = SPHERO_RADIUS
+EPSILON = 8 # the amount of error we allow while detecting distance
 
 # Colors 
 BACKGROUND_COLOR = (30, 30, 30)
@@ -36,11 +37,12 @@ GRAY = (150, 150, 150)
 
 
 # Triangle settings
-TRIANGLE_SIZE = 100  # Length of a side of each triangle
+TRIANGLE_SIZE = 50  # Length of a side of each triangle
 TRIANGLE_HEIGHT = 50 * math.sqrt(3)  # Height of a triangle
 
 # Function to draw a triangular grid
 def draw_triangular_grid(surface, triangle_size, color):
+    triangle_size *= 2
     height = math.sqrt(3) / 2 * triangle_size  # Height of an equilateral triangle
 
     for y in range(-int(height), HEIGHT + int(height), int(height)):
@@ -154,11 +156,12 @@ class Sphero_2:
             self.speed_x = 1
             self.speed_y = -(math.sqrt(3)) 
 
+
     # TODO disjoint set implementation
     def check_bonding(self, other):
         distance = math.sqrt((self.x - other.x) ** 2 +
                              (self.y - other.y) ** 2)
-        if (distance <= TRIANGLE_SIZE/2):
+        if (distance <= TRIANGLE_SIZE + EPSILON):
             return True
         return False
 
@@ -169,77 +172,6 @@ class Sphero_2:
                 f"target_x={self.target_x}, target_y={self.target_y}, "
                 f"speed_x={self.speed_x}, speed_y={self.speed_y}, "
                 f"color={self.color})")
-
-# Sphero class definition
-class Sphero:
-    def __init__(self, id, position, direction, color):
-        self.id = id
-        self.position = position  # [x, y]
-        self.direction = direction # A direction 1-6
-        self.color = color
-        self.velocity = MAX_VELOCITY
-
-    def update_position(self, dt):
-        #self.position[0] += self.velocity[0] * dt * 100  # Scaling to make movement visible
-        #self.position[1] += self.velocity[1] * dt * 100  # Scaling to make movement visible
-
-        direction = self.direction
-        velocity = self.velocity
-
-        #mvoe right
-        if (direction == 1):
-            self.position[0] += 2 * velocity
-
-        #move up right
-        elif (direction == 2):
-            self.position[0] += velocity
-            self.position[1] += (math.sqrt(3)) * velocity
-
-            # move up left
-        elif (direction == 3):
-            self.position[0] -= velocity * dt
-            self.position[1] += (math.sqrt(3)) * velocity
-
-            # move left
-        elif (direction == 4):
-            self.position[0] -= 2 * velocity * dt
-
-            # move down left
-        elif (direction == 5):
-            self.position[0] -= velocity * dt
-            self.position[1] -= (math.sqrt(3)) * velocity
-
-            # move down right
-        elif (direction == 6):
-            self.position[0] += velocity * dt
-            self.position[1] -= (math.sqrt(3)) * velocity
-
-        # Handle bouncing off the walls (reverse velocity on contact with the wall)
-        # if self.position[0] - SPHERO_RADIUS < 0 or self.position[0] + SPHERO_RADIUS > SCREEN_WIDTH:
-        #     self.velocity[0] = -self.velocity[0]
-        #
-        # if self.position[1] - SPHERO_RADIUS < 0 or self.position[1] + SPHERO_RADIUS > SCREEN_HEIGHT:
-        #     self.velocity[1] = -self.velocity[1]
-    # def check_collision(self, other):
-    #     distance = math.sqrt((self.position[0] - other.position[0]) ** 2 +
-    #                          (self.position[1] - other.position[1]) ** 2)
-    #     if distance < 2 * COLLISION_RADIUS:
-    #         self.handle_collision(other)
-    #
-    def handle_bonding(self, other):
-        # TODO implement union find first
-        print("")
-        # update set membership
-    def check_bonding(self, other):
-        distance = math.sqrt((self.position[0] - other.position[0]) ** 2 +
-                             (self.position[1] - other.position[1]) ** 2)
-        if (distance <= TRIANGLE_SIZE/2):
-            # TODO handle bonding
-            self.handle_bonding(other)
-
-    def draw(self, screen):
-         # Draw the Sphero as a circle
-        pygame.draw.circle(screen, self.color, (int(self.position[0]), int(self.position[1])), SPHERO_RADIUS)
 
 def find(union_find, i):
     if (union_find[i] != i):
@@ -260,8 +192,8 @@ if __name__ == "__main__":
     colors = []
 
     # here are some hard coded ones. 
-    sphero_1 = Sphero_2(4 * TRIANGLE_SIZE, 4*TRIANGLE_HEIGHT, 4 * TRIANGLE_SIZE, 4 * TRIANGLE_HEIGHT, 0, 0, RED)
-    sphero_2 = Sphero_2(3 * TRIANGLE_SIZE, 3*TRIANGLE_HEIGHT, 3 * TRIANGLE_SIZE, 3 * TRIANGLE_HEIGHT, 0, 0, RED)
+    #sphero_1 = Sphero_2(4 * TRIANGLE_SIZE, 4*TRIANGLE_HEIGHT, 4 * TRIANGLE_SIZE, 4 * TRIANGLE_HEIGHT, 0, 0, RED)
+    #sphero_2 = Sphero_2(3 * TRIANGLE_SIZE, 3*TRIANGLE_HEIGHT, 3 * TRIANGLE_SIZE, 3 * TRIANGLE_HEIGHT, 0, 0, RED)
     
     
     # spheros.append(sphero_1)
@@ -272,7 +204,8 @@ if __name__ == "__main__":
     bonds = []
     colors = [RED, GREEN, BLUE, YELLOW, ORANGE, PURPLE]
     for i in range(N):
-        x = random.randint(2, WIDTH // TRIANGLE_SIZE * 2 - 2) * TRIANGLE_SIZE// 2
+        x = random.randint(2, WIDTH // (TRIANGLE_SIZE*2) * 2 - 2) * (TRIANGLE_SIZE)
+        print(x)
         y = random.randint(2, int(HEIGHT // TRIANGLE_HEIGHT - 1)) * TRIANGLE_HEIGHT
         spheros.append(Sphero_2(x, y, x, y, 0, 0, colors[i]))
         bonds.append([spheros[i]])
@@ -304,18 +237,12 @@ if __name__ == "__main__":
         if not updated:
             #update bonding
             i = 0           
-            while(i < len(bonds) ):
-                print("i " + str(i))
-                print("length of total bonds " + str(len(bonds)))
-                print("length of bonds i" + str(len(bonds[i])))
+            while(i < len(bonds)):
                 j = 0
                 while (j < len(bonds[i])):
-                    print("j " + str(j))
                     sphero = bonds[i][j]
                     k = i + 1
                     while(k < len(bonds)):
-                        print("k " + str(k))
-                        print("length of k bond " + str(len(bonds[k])))
                         l = 0
                         while (l < len(bonds[k])):
                             other = bonds[k][l]
@@ -336,8 +263,22 @@ if __name__ == "__main__":
                 for j in range(len(bonds[i])):
                     sphero = bonds[i][j]
                     sphero.update_direction(direction)
-                    sphero.target_x = sphero.x + sphero.speed_x * TRIANGLE_SIZE / 4
-                    sphero.target_y = (sphero.y + sphero.speed_y * TRIANGLE_SIZE / 4)
+                    sphero.target_x = sphero.x + sphero.speed_x * (TRIANGLE_SIZE) / 2
+                    sphero.target_y = (sphero.y + sphero.speed_y * (TRIANGLE_SIZE) / 2)
+
+                    if sphero.target_x  - SPHERO_RADIUS < 1 or sphero.target_x - SPHERO_RADIUS > WIDTH:
+                        for k in range(len(bonds[i])):
+                            sphero = bonds[i][k]
+                            sphero.update_direction(direction)
+                            sphero.speed_x = -sphero.speed_x
+                            sphero.target_x = sphero.x + sphero.speed_x * TRIANGLE_SIZE / 4
+                
+                    if sphero.target_y - SPHERO_RADIUS < 1 or sphero.target_y - SPHERO_RADIUS > HEIGHT:
+                        for k in range(len(bonds[i])):
+                            sphero = bonds[i][k]
+                            sphero.update_direction(direction)
+                            sphero.speed_y = -sphero.speed_y
+                            sphero.target_y = sphero.y + sphero.speed_y * TRIANGLE_SIZE / 4
 
         # Draw the spheros
         for sphero in spheros:
