@@ -171,77 +171,6 @@ class Sphero_2:
                 f"speed_x={self.speed_x}, speed_y={self.speed_y}, "
                 f"color={self.color})")
 
-# Sphero class definition
-class Sphero:
-    def __init__(self, id, position, direction, color):
-        self.id = id
-        self.position = position  # [x, y]
-        self.direction = direction # A direction 1-6
-        self.color = color
-        self.velocity = MAX_VELOCITY
-
-    def update_position(self, dt):
-        #self.position[0] += self.velocity[0] * dt * 100  # Scaling to make movement visible
-        #self.position[1] += self.velocity[1] * dt * 100  # Scaling to make movement visible
-
-        direction = self.direction
-        velocity = self.velocity
-
-        #mvoe right
-        if (direction == 1):
-            self.position[0] += 2 * velocity
-
-        #move up right
-        elif (direction == 2):
-            self.position[0] += velocity
-            self.position[1] += (math.sqrt(3)) * velocity
-
-            # move up left
-        elif (direction == 3):
-            self.position[0] -= velocity * dt
-            self.position[1] += (math.sqrt(3)) * velocity
-
-            # move left
-        elif (direction == 4):
-            self.position[0] -= 2 * velocity * dt
-
-            # move down left
-        elif (direction == 5):
-            self.position[0] -= velocity * dt
-            self.position[1] -= (math.sqrt(3)) * velocity
-
-            # move down right
-        elif (direction == 6):
-            self.position[0] += velocity * dt
-            self.position[1] -= (math.sqrt(3)) * velocity
-
-        # Handle bouncing off the walls (reverse velocity on contact with the wall)
-        # if self.position[0] - SPHERO_RADIUS < 0 or self.position[0] + SPHERO_RADIUS > SCREEN_WIDTH:
-        #     self.velocity[0] = -self.velocity[0]
-        #
-        # if self.position[1] - SPHERO_RADIUS < 0 or self.position[1] + SPHERO_RADIUS > SCREEN_HEIGHT:
-        #     self.velocity[1] = -self.velocity[1]
-    # def check_collision(self, other):
-    #     distance = math.sqrt((self.position[0] - other.position[0]) ** 2 +
-    #                          (self.position[1] - other.position[1]) ** 2)
-    #     if distance < 2 * COLLISION_RADIUS:
-    #         self.handle_collision(other)
-    #
-    def handle_bonding(self, other):
-        # TODO implement union find first
-        print("")
-        # update set membership
-    def check_bonding(self, other):
-        distance = math.sqrt((self.position[0] - other.position[0]) ** 2 +
-                             (self.position[1] - other.position[1]) ** 2)
-        if (distance <= TRIANGLE_SIZE/2 + TRIANGLE_SIZE/3):
-            # TODO handle bonding
-            self.handle_bonding(other)
-
-    def draw(self, screen):
-         # Draw the Sphero as a circle
-        pygame.draw.circle(screen, self.color, (int(self.position[0]), int(self.position[1])), SPHERO_RADIUS)
-
 def find(union_find, i):
     if (union_find[i] != i):
         union_find[i] = find(union_find, union_find[i])
@@ -305,7 +234,7 @@ if __name__ == "__main__":
         if not updated:
             #update bonding
             i = 0           
-            while(i < len(bonds) ):
+            while(i < len(bonds)):
                 j = 0
                 while (j < len(bonds[i])):
                     sphero = bonds[i][j]
@@ -335,13 +264,19 @@ if __name__ == "__main__":
                     sphero.target_y = (sphero.y + sphero.speed_y * TRIANGLE_SIZE / 4)
 
                     if sphero.target_x  - SPHERO_RADIUS < 1 or sphero.target_x - SPHERO_RADIUS > WIDTH:
-                        sphero.speed_x = -sphero.speed_x
-                        sphero.target_x = sphero.x + sphero.speed_x * TRIANGLE_SIZE / 4
+                        for k in range(len(bonds[i])):
+                            sphero = bonds[i][k]
+                            sphero.update_direction(direction)
+                            sphero.speed_x = -sphero.speed_x
+                            sphero.target_x = sphero.x + sphero.speed_x * TRIANGLE_SIZE / 4
                 
                     if sphero.target_y - SPHERO_RADIUS < 1 or sphero.target_y - SPHERO_RADIUS > HEIGHT:
-                        sphero.speed_y = -sphero.speed_y
-                        sphero.target_y = (sphero.y + sphero.speed_y * TRIANGLE_SIZE / 4)
-                    
+                        for k in range(len(bonds[i])):
+                            sphero = bonds[i][k]
+                            sphero.update_direction(direction)
+                            sphero.speed_y = -sphero.speed_y
+                            sphero.target_y = sphero.y + sphero.speed_y * TRIANGLE_SIZE / 4
+
         # Draw the spheros
         for sphero in spheros:
             sphero.draw()
