@@ -271,14 +271,14 @@ if __name__ == "__main__":
                             sphero = bonds[i][k]
                             sphero.update_direction(direction)
                             sphero.speed_x = -sphero.speed_x
-                            sphero.target_x = sphero.x + sphero.speed_x * TRIANGLE_SIZE / 4
+                            sphero.target_x = sphero.x + sphero.speed_x * TRIANGLE_SIZE / 2
                 
                     if sphero.target_y - SPHERO_RADIUS < 1 or sphero.target_y - SPHERO_RADIUS > HEIGHT:
                         for k in range(len(bonds[i])):
                             sphero = bonds[i][k]
                             sphero.update_direction(direction)
                             sphero.speed_y = -sphero.speed_y
-                            sphero.target_y = sphero.y + sphero.speed_y * TRIANGLE_SIZE / 4
+                            sphero.target_y = sphero.y + sphero.speed_y * TRIANGLE_SIZE / 2
 
         # Draw the spheros
         for sphero in spheros:
