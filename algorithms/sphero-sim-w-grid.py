@@ -4,7 +4,7 @@ import random
 
 # Initialize Pygame
 pygame.init()
-
+# clock 
 clock = pygame.time.Clock()
 
 # Screen dimensions
