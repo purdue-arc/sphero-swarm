@@ -1,4 +1,6 @@
 import socket
+import time
+
 from Instruction import Instruction
 from spherov2 import scanner
 from spherov2.sphero_edu import SpheroEduAPI
@@ -7,6 +9,7 @@ import multiprocessing
 from threading import Lock
 import threading
 import pickle
+from threading import Barrier
 import queue
 
 lock = Lock()
@@ -21,26 +24,24 @@ def toy_manager(toy, id, instructions):
     with SpheroEduAPI(toy) as api:
         while on:
             if (not instructions.empty()):
-                #try:
-                    #lock.acquire()
-                    instruction = instructions.get()
-                    print("new instruction")
-                    if (instruction.type == 0):
-                        print(id, " ", instruction.color)
-                        print("start")
-                        api.set_main_led(instruction.color)
-                        api.set_back_led(instruction.color)
-                        api.set_front_led(instruction.color)
-                        print("end")
-                    elif (instruction.type == 1): # roll
-                        api.roll(api.get_heading(), instruction.speed, instruction.duration)
-                    elif (instruction.type == 2): # turn
-                        api.spin(instruction.degrees, instruction.duration)
-                    elif (instruction.type == 3): # stop
-                        on = False
-                #finally:
-                    #lock.release()
-                # end try
+                instruction = instructions.get()
+                print("new instruction")
+                if (instruction.type == 0):
+                    print(id, " ", instruction.color)
+                    print("start")
+                    api.set_main_led(instruction.color)
+                    api.set_back_led(instruction.color)
+                    api.set_front_led(instruction.color)
+                    print("end")
+                elif (instruction.type == 1): # roll
+                    api.roll(api.get_heading(), instruction.speed, instruction.duration)
+                elif (instruction.type == 2): # turn
+                    api.spin(instruction.degrees, instruction.duration)
+                elif (instruction.type == 4): # stop
+                    on = False
+                    break
+
+                barrier.wait()
             # end if
         # end while
     # end with
@@ -50,7 +51,7 @@ def toy_manager(toy, id, instructions):
 def controls(instructions):
 
     s = socket.socket()
-    port = 1234
+    port = 12345
 
     s.bind(('localhost', port))
 
@@ -90,6 +91,13 @@ def controls(instructions):
         finally:
             lock.release()
             # end try
+
+        barrier.wait() # wait for all instructions to finish
+
+        print("Done")
+        c.send("Done".encode())
+        print("Message Sent")
+
         # end for
     # end while
 # end controls()
@@ -119,7 +127,7 @@ def run_toy_threads(toys, instructions):
 
 # start main
 
-toys = scanner.find_toys(toy_names = ["SB-76B3"])
+toys = scanner.find_toys(toy_names = ["SB-B5A9", "SB-E274"])
 """
 try:
     for toy in toys:  # fighting back against the bleak error exceptions
@@ -132,6 +140,7 @@ except:
 """
 
 print(len(toys))
+barrier = Barrier(len(toys) + 1)
 
 instructions = [multiprocessing.Queue() for i in range(len(toys))]
 
