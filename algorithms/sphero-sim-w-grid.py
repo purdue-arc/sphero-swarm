@@ -95,14 +95,9 @@ class Sphero:
         dx = abs(self.target_x - self.x)
         dy = abs(self.target_y - self.y)
 
-        # if we are far from the target, then go towards it. 
-        # if dx >= self.speed_x and dy >= self.speed_y:
-        #     self.x += self.speed_x
-        #     self.y += self.speed_y
-        #
+
         # # if we get close enough of the target, we lock the ball's position
-        NODE_DIST_THRESHOLD = 6
-        if dx + dy < NODE_DIST_THRESHOLD:
+        if dx + dy < EPSILON:
 
             # lock to the target position. This will help avoid movement 
             # errors accumulating up over time.
