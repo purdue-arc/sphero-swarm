@@ -7,7 +7,8 @@ class Instruction:
       0 = reset LED color
       1 = roll
       2 = turn
-      3 = stop thread
+      3 = wait
+      4 = stop thread
     """
 
     spheroID = 0
@@ -36,4 +37,8 @@ class Instruction:
             self.duration = args[3]
 
         elif (args[1] == 3):
-            self.type =3
+            self.type = 3
+
+        elif (args[1] == 4):
+            self.type = 4
+
