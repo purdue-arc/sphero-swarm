@@ -69,7 +69,7 @@ def draw_triangular_grid(surface, triangle_size, color):
                 pygame.draw.polygon(surface, color, [p2, p4, p3], 1)
 
 # Sphero new class definition
-class Sphero_2:
+class Sphero:
     def __init__(self, x, y, target_x, target_y, speed_x, speed_y, color):
         self.x = x
         self.y = y
@@ -201,7 +201,7 @@ if __name__ == "__main__":
         # repeat process for y except with height of traingle rather than width
         y = random.randint(2, int(HEIGHT // TRIANGLE_HEIGHT - 1)) * TRIANGLE_HEIGHT
 
-        spheros.append(Sphero_2(x, y, x, y, 0, 0, colors[i]))        
+        spheros.append(Sphero(x, y, x, y, 0, 0, colors[i]))        
         bonds.append([spheros[i]])
 
     # Main loop
