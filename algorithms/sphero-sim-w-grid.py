@@ -301,12 +301,13 @@ if __name__ == "__main__":
 
                 # TODO fix code for collisions (when two spheros map to the same target_x and target_y)
 
-                # My assumption is there has to always exist at least one valid directon where no spheros will collide
                 # IDEA:
                 #   check all other previous bonding group's spheros target_x and target_y with our own sphero's target_x and target_y
                 #   if there is a potential collision that means the direction we had previously chosen is invalid, thus remove it from
                 #   the list of available directions. Once we have gone through all spheros and checked if they will collide with a previous
                 #   sphero we simply choose a direction from the remaining list and reupdate the all of the sphero's directions in the bonding group
+                
+                #   If absolutely no available direction exists then just stay in place for this cycle
 
 
                 # CODE:
@@ -340,7 +341,12 @@ if __name__ == "__main__":
                 # if (collision == True):
                 #     for j in range(len(bonds[i])):
                 #         sphero = bonds[i][j]
-                #         sphero.update_direction(available_directions[current_direction])
+                
+                #         if (len(available_direction) != 0):
+                #           sphero.update_direction(available_directions[current_direction])
+                #         else:
+                #             sphero.speed_x = 0
+                #             sphero.speed_y = 0  
                 #         sphero.target_x = sphero.x + sphero.speed_x * (TRIANGLE_SIZE) / 2
                 #         sphero.target_y = sphero.y + sphero.speed_y * (TRIANGLE_SIZE) / 2
 
