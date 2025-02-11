@@ -8,7 +8,7 @@ pygame.init()
 clock = pygame.time.Clock()
 
 # Screen dimensions
-WIDTH, HEIGHT = 600, 600
+WIDTH, HEIGHT = 800, 800
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Sphero Sparm Sim")
 
@@ -183,20 +183,35 @@ if __name__ == "__main__":
     # Initially all spheros are bonded to "themselves", so each sphero has their own 1D array
 
     bonds = []
+    coords = set()
 
 
     #instatianting all spheros
-    for i in range(N):
+    # for i in range(N):
 
+    #     # randomly generate X coordinate by generating a random triangle on the grid 
+    #     # and multiplying it by the size of a triangle to recieve it's exact pixel value
+    #     x = random.randint(2, WIDTH // (TRIANGLE_SIZE*2) * 2 - 2) * (TRIANGLE_SIZE)
+
+    #     # repeat process for y except with height of traingle rather than width
+    #     y = random.randint(2, int(HEIGHT // TRIANGLE_HEIGHT - 1)) * TRIANGLE_HEIGHT
+
+    #     spheros.append(Sphero(x, y, x, y, 0, 0, colors[i % len(colors)]))        
+    #     bonds.append([spheros[i]])
+    index = 0
+    while len(spheros) < N:
         # randomly generate X coordinate by generating a random triangle on the grid 
         # and multiplying it by the size of a triangle to recieve it's exact pixel value
         x = random.randint(2, WIDTH // (TRIANGLE_SIZE*2) * 2 - 2) * (TRIANGLE_SIZE)
 
         # repeat process for y except with height of traingle rather than width
         y = random.randint(2, int(HEIGHT // TRIANGLE_HEIGHT - 1)) * TRIANGLE_HEIGHT
+        if (x, y) not in coords:
+            spheros.append(Sphero(x, y, x, y, 0, 0, colors[index % len(colors)]))        
+            bonds.append([spheros[index]])
+            coords.add((x, y))
+            index+=1
 
-        spheros.append(Sphero(x, y, x, y, 0, 0, colors[i % len(colors)]))        
-        bonds.append([spheros[i]])
 
     # Main loop
     running = True
