@@ -3,6 +3,8 @@ import socket
 from controls.Instruction import Instruction
 from spherov2.types import Color
 
+from determine_bind import Field
+
 s = socket.socket()
 port = 1234
 
@@ -26,6 +28,8 @@ class Sphero:
 
 
 spheros = []
+
+# instantiate 3 spheros
 
 while (True):
     instructions = []
