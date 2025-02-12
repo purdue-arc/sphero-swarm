@@ -5,12 +5,12 @@ from Instruction import Instruction
 from spherov2.types import Color
 
 s = socket.socket()
-port = 1234
+port = 12345
 
 s.connect(('localhost', port))
 
 while (True):
-    nunIns = int(input("How many instructions would you like to send?\n"))
+    nunIns = int(input("How many instructions would you like to send?"))
     instructions = []
     for i in range(nunIns):
         spheroID = int(input("What sphero would you like to send the instruction to? "))
@@ -29,7 +29,7 @@ while (True):
             degrees = int(input("Degrees: "))
             duration = float(input("Duration: "))
             instruction = Instruction(spheroID, type, degrees, duration)
-        elif (type == 3):
+        elif (type == 3 or type == 4):
             instruction = Instruction(spheroID, type)
         else:
             print("Enter a valid instruction type")
@@ -39,5 +39,8 @@ while (True):
         # end if
 
     s.send(pickle.dumps(instructions))
+
+    buffer = s.recv(1024).decode()
+    print("Instructions Finished")
 
 # end while

@@ -8,7 +8,7 @@ pygame.init()
 clock = pygame.time.Clock()
 
 # Screen dimensions
-WIDTH, HEIGHT = 800, 800 
+WIDTH, HEIGHT = 800, 800
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Sphero Sparm Sim")
 
@@ -69,7 +69,7 @@ def draw_triangular_grid(surface, triangle_size, color):
                 pygame.draw.polygon(surface, color, [p2, p4, p3], 1)
 
 # Sphero new class definition
-class Sphero_2:
+class Sphero:
     def __init__(self, x, y, target_x, target_y, speed_x, speed_y, color):
         self.x = x
         self.y = y
@@ -94,17 +94,10 @@ class Sphero_2:
         # finds the distance to the target
         dx = abs(self.target_x - self.x)
         dy = abs(self.target_y - self.y)
-        # distance = abs(dx) + abs(dy)
-        #distance = math.sqrt(dx**2 + dy**2)
 
-        # if we are far from the target, then go towards it. 
-        # if dx >= self.speed_x and dy >= self.speed_y:
-        #     self.x += self.speed_x
-        #     self.y += self.speed_y
-        #
+
         # # if we get close enough of the target, we lock the ball's position
-        NODE_DIST_THRESHOLD = 6
-        if dx + dy < NODE_DIST_THRESHOLD:
+        if dx + dy < EPSILON:
 
             # lock to the target position. This will help avoid movement 
             # errors accumulating up over time.
@@ -125,33 +118,32 @@ class Sphero_2:
 
     def update_direction(self, direction):
 
-        #mvoe right
+        # move right
         if (direction == 1):
             self.speed_x = 2
             self.speed_y = 0
 
-        #move up right
+        # move up right
         elif (direction == 2):
             self.speed_x = 1
             self.speed_y = (math.sqrt(3))
 
-            # move up left
+        # move up left
         elif (direction == 3):
-
             self.speed_x = -1
             self.speed_y = (math.sqrt(3))
 
-            # move left
+        # move left
         elif (direction == 4):
             self.speed_x = -2
             self.speed_y = 0
 
-            # move down left
+        # move down left
         elif (direction == 5):
             self.speed_x = -1
             self.speed_y = -(math.sqrt(3)) 
 
-            # move down right
+        # move down right
         elif (direction == 6):
             self.speed_x = 1
             self.speed_y = -(math.sqrt(3)) 
@@ -166,55 +158,66 @@ class Sphero_2:
         return False
 
     # TODO some way to go from our coordinates to the actual ones
-
     def __str__(self):
         return (f"Ball(x={self.x}, y={self.y}, "
                 f"target_x={self.target_x}, target_y={self.target_y}, "
                 f"speed_x={self.speed_x}, speed_y={self.speed_y}, "
                 f"color={self.color})")
-
-def find(union_find, i):
-    if (union_find[i] != i):
-        union_find[i] = find(union_find, union_find[i])
-    return i
-
-def update_parent(union_find, new_parent, j):
-    if (union_find[j] != j):
-        update_parent(union_find, new_parent, union_find[j])
-    union_find[j] = new_parent
-        
-
+    
 
 if __name__ == "__main__":
 
     #instantiate spheros
     spheros = []
-    colors = []
-
-    # here are some hard coded ones. 
-    #sphero_1 = Sphero_2(4 * TRIANGLE_SIZE, 4*TRIANGLE_HEIGHT, 4 * TRIANGLE_SIZE, 4 * TRIANGLE_HEIGHT, 0, 0, RED)
-    #sphero_2 = Sphero_2(3 * TRIANGLE_SIZE, 3*TRIANGLE_HEIGHT, 3 * TRIANGLE_SIZE, 3 * TRIANGLE_HEIGHT, 0, 0, RED)
-    
-    
-    # spheros.append(sphero_1)
-    # spheros.append(sphero_2)
+    colors = [RED, GREEN, BLUE, YELLOW, ORANGE, PURPLE]
 
     # TODO make a function that generates N random spheros with valid coordinates.
+    
+    # number of spheros
     N = 6
+
+    # The bonds array is a 2D array that stores a set of individual 1D arrays which contain all spheros bonded that are bonded together
+    # EX: Sphero 1 and 2 are bonded together, whereas Sphero 3 is bonded with no one which would be stored as such:
+    # bonds = [[1, 2], [3]]
+
+    # Initially all spheros are bonded to "themselves", so each sphero has their own 1D array
+
     bonds = []
-    colors = [RED, GREEN, BLUE, YELLOW, ORANGE, PURPLE]
-    for i in range(N):
+    coords = set()
+
+
+    #instatianting all spheros
+    # for i in range(N):
+
+    #     # randomly generate X coordinate by generating a random triangle on the grid 
+    #     # and multiplying it by the size of a triangle to recieve it's exact pixel value
+    #     x = random.randint(2, WIDTH // (TRIANGLE_SIZE*2) * 2 - 2) * (TRIANGLE_SIZE)
+
+    #     # repeat process for y except with height of traingle rather than width
+    #     y = random.randint(2, int(HEIGHT // TRIANGLE_HEIGHT - 1)) * TRIANGLE_HEIGHT
+
+    #     spheros.append(Sphero(x, y, x, y, 0, 0, colors[i % len(colors)]))        
+    #     bonds.append([spheros[i]])
+    index = 0
+    while len(spheros) < N:
+        # randomly generate X coordinate by generating a random triangle on the grid 
+        # and multiplying it by the size of a triangle to recieve it's exact pixel value
         x = random.randint(2, WIDTH // (TRIANGLE_SIZE*2) * 2 - 2) * (TRIANGLE_SIZE)
-        print(x)
+
+        # repeat process for y except with height of traingle rather than width
         y = random.randint(2, int(HEIGHT // TRIANGLE_HEIGHT - 1)) * TRIANGLE_HEIGHT
-        spheros.append(Sphero_2(x, y, x, y, 0, 0, colors[i]))
-        bonds.append([spheros[i]])
+        if (x, y) not in coords:
+            spheros.append(Sphero(x, y, x, y, 0, 0, colors[index % len(colors)]))        
+            bonds.append([spheros[index]])
+            coords.add((x, y))
+            index+=1
+
 
     # Main loop
     running = True
     while running:
 
-        #waits until someone exits the game, then quits
+        # waits until someone exits the game, then quits
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -226,18 +229,21 @@ if __name__ == "__main__":
         draw_triangular_grid(screen, TRIANGLE_SIZE, LINE_COLOR)
 
 
-        # Update the spheros
+        # Update the position of all spheros to get closer to their target value
+        # If all Spheros have reached their target "updated" will be False
         updated = False
         for sphero in spheros:
             if sphero.update():
                 updated = True
 
-        # If none have been updated, then 
-        # choose new directions for them to travel in.
+        # If all of the Spheros have reached their target they have all stopped moving
+        # Now that they have stopped moving choose a new random direction for them to travel in and check bonding
+
         if not updated:
-            #update bonding
+
+            # update bonding
             i = 0           
-            while(i < len(bonds)):
+            while (i < len(bonds)):
                 j = 0
                 while (j < len(bonds[i])):
                     sphero = bonds[i][j]
@@ -246,6 +252,9 @@ if __name__ == "__main__":
                         l = 0
                         while (l < len(bonds[k])):
                             other = bonds[k][l]
+
+                            # if two spheros are a SET distance apart, bond them
+                            # When bonding we combine their two individual arrays into one
                             if (sphero.check_bonding(other)):
                                 bonds[i].extend(bonds[k])
                                 bonds.pop(k)
@@ -256,34 +265,112 @@ if __name__ == "__main__":
                     j += 1
                 i += 1
 
-            #update direction
+            # update direction
             for i in range(len(bonds)):
+
+                # generate new direction
                 direction = random.randint(1, 6)
+
+
+                # used to get initial speed x and y values
+                first_sphero = bonds[i][0]
+                first_sphero.update_direction(direction)
+
+
+                # check if they went out of bounds
+                hit_boundary = False
+
+                flipped_x = first_sphero.speed_x
+                flipped_y = first_sphero.speed_y
 
                 for j in range(len(bonds[i])):
                     sphero = bonds[i][j]
                     sphero.update_direction(direction)
                     sphero.target_x = sphero.x + sphero.speed_x * (TRIANGLE_SIZE) / 2
-                    sphero.target_y = (sphero.y + sphero.speed_y * (TRIANGLE_SIZE) / 2)
+                    sphero.target_y = sphero.y + sphero.speed_y * (TRIANGLE_SIZE) / 2
 
+
+                    # if their target_x and target_y are out of bounds flip their respective axis direction
+                    # i.e. if out of bounds in x, flip x direction 
                     if sphero.target_x  - SPHERO_RADIUS < 1 or sphero.target_x - SPHERO_RADIUS > WIDTH:
-                        for k in range(len(bonds[i])):
-                            sphero = bonds[i][k]
-                            sphero.update_direction(direction)
-                            sphero.speed_x = -sphero.speed_x
-                            sphero.target_x = sphero.x + sphero.speed_x * TRIANGLE_SIZE / 2
+                        hit_boundary = True
+                        flipped_x = first_sphero.speed_x * -1
                 
                     if sphero.target_y - SPHERO_RADIUS < 1 or sphero.target_y - SPHERO_RADIUS > HEIGHT:
-                        for k in range(len(bonds[i])):
-                            sphero = bonds[i][k]
-                            sphero.update_direction(direction)
-                            sphero.speed_y = -sphero.speed_y
-                            sphero.target_y = sphero.y + sphero.speed_y * TRIANGLE_SIZE / 2
+                        hit_boundary = True
+                        flipped_y = first_sphero.speed_y * -1
+                
+
+                # if the sphero hit a boundary update all other spheros in their bonding group
+                if (hit_boundary == True):
+                    for j in range(len(bonds[i])):
+                        sphero = bonds[i][j]
+                        sphero.speed_x = flipped_x
+                        sphero.speed_y = flipped_y
+
+                        sphero.target_x = sphero.x + sphero.speed_x * (TRIANGLE_SIZE) / 2
+                        sphero.target_y = sphero.y + sphero.speed_y * (TRIANGLE_SIZE) / 2
+
+
+
+                # TODO fix code for collisions (when two spheros map to the same target_x and target_y)
+
+                # IDEA:
+                #   check all other previous bonding group's spheros target_x and target_y with our own sphero's target_x and target_y
+                #   if there is a potential collision that means the direction we had previously chosen is invalid, thus remove it from
+                #   the list of available directions. Once we have gone through all spheros and checked if they will collide with a previous
+                #   sphero we simply choose a direction from the remaining list and reupdate the all of the sphero's directions in the bonding group
+                
+                #   If absolutely no available direction exists then just stay in place for this cycle
+
+
+                # CODE:
+
+
+
+                # available_directions = [1, 2, 3, 4, 5, 6]
+                # current_direction = direction - 1
+                # collision = False
+                # for j in range(len(bonds[i])):
+
+                #     sphero = bonds[i][j]
+
+                #     #check all previous bonding groups
+                #     for k in range(i):
+                #         for l in range(len(bonds[k])):
+                #             other = bonds[k][l]
+                #             if (other.target_x == sphero.target_x and other.target_y == sphero.target_y):
+                #                 collision = True
+                #                 available_directions.pop(current_direction)
+
+                #                 # current_direction += 1
+                #                 if (current_direction >= len(available_directions)):
+                #                     current_direction = 0
+                                
+                #                 sphero.update_direction(available_directions[current_direction])
+                #                 sphero.target_x = sphero.x + sphero.speed_x * (TRIANGLE_SIZE) / 2
+                #                 sphero.target_y = sphero.y + sphero.speed_y * (TRIANGLE_SIZE) / 2
+                
+                # # reupdate all spheros to make sure they are all moving the same direction
+                # if (collision == True):
+                #     for j in range(len(bonds[i])):
+                #         sphero = bonds[i][j]
+                
+                #         if (len(available_direction) != 0):
+                #           sphero.update_direction(available_directions[current_direction])
+                #         else:
+                #             sphero.speed_x = 0
+                #             sphero.speed_y = 0  
+                #         sphero.target_x = sphero.x + sphero.speed_x * (TRIANGLE_SIZE) / 2
+                #         sphero.target_y = sphero.y + sphero.speed_y * (TRIANGLE_SIZE) / 2
+
+                            
+
+                
 
         # Draw the spheros
         for sphero in spheros:
             sphero.draw()
-            #print(sphero)
 
         # Update the display
         pygame.display.flip()
