@@ -174,7 +174,7 @@ if __name__ == "__main__":
     # TODO make a function that generates N random spheros with valid coordinates.
     
     # number of spheros
-    N = 6
+    N = 12
 
     # The bonds array is a 2D array that stores a set of individual 1D arrays which contain all spheros bonded that are bonded together
     # EX: Sphero 1 and 2 are bonded together, whereas Sphero 3 is bonded with no one which would be stored as such:
@@ -325,48 +325,41 @@ if __name__ == "__main__":
 
 
                 # CODE:
+                available_directions = [1, 2, 3, 4, 5, 6]
+                current_direction = direction - 1
+                collision = False
+                for j in range(len(bonds[i])):
 
+                    sphero = bonds[i][j]
 
+                    #check all previous bonding groups
+                    for k in range(i):
+                        for l in range(len(bonds[k])):
+                            other = bonds[k][l]
+                            if (abs(other.target_x - sphero.target_x) <= EPSILON and abs(other.target_y - sphero.target_y) <= EPSILON):
+                                collision = True
+                                available_directions.pop(current_direction)
 
-                # available_directions = [1, 2, 3, 4, 5, 6]
-                # current_direction = direction - 1
-                # collision = False
-                # for j in range(len(bonds[i])):
-
-                #     sphero = bonds[i][j]
-
-                #     #check all previous bonding groups
-                #     for k in range(i):
-                #         for l in range(len(bonds[k])):
-                #             other = bonds[k][l]
-                #             if (other.target_x == sphero.target_x and other.target_y == sphero.target_y):
-                #                 collision = True
-                #                 available_directions.pop(current_direction)
-
-                #                 # current_direction += 1
-                #                 if (current_direction >= len(available_directions)):
-                #                     current_direction = 0
+                                # current_direction += 1
+                                if (current_direction >= len(available_directions)):
+                                    current_direction = 0
                                 
-                #                 sphero.update_direction(available_directions[current_direction])
-                #                 sphero.target_x = sphero.x + sphero.speed_x * (TRIANGLE_SIZE) / 2
-                #                 sphero.target_y = sphero.y + sphero.speed_y * (TRIANGLE_SIZE) / 2
+                                sphero.update_direction(available_directions[current_direction])
+                                sphero.target_x = sphero.x + sphero.speed_x * (TRIANGLE_SIZE) / 2
+                                sphero.target_y = sphero.y + sphero.speed_y * (TRIANGLE_SIZE) / 2
                 
-                # # reupdate all spheros to make sure they are all moving the same direction
-                # if (collision == True):
-                #     for j in range(len(bonds[i])):
-                #         sphero = bonds[i][j]
+                # reupdate all spheros to make sure they are all moving the same direction
+                if (collision == True):
+                    for j in range(len(bonds[i])):
+                        sphero = bonds[i][j]
                 
-                #         if (len(available_direction) != 0):
-                #           sphero.update_direction(available_directions[current_direction])
-                #         else:
-                #             sphero.speed_x = 0
-                #             sphero.speed_y = 0  
-                #         sphero.target_x = sphero.x + sphero.speed_x * (TRIANGLE_SIZE) / 2
-                #         sphero.target_y = sphero.y + sphero.speed_y * (TRIANGLE_SIZE) / 2
-
-                            
-
-                
+                        if (len(available_directions) != 0):
+                          sphero.update_direction(available_directions[current_direction])
+                        else:
+                            sphero.speed_x = 0
+                            sphero.speed_y = 0  
+                        sphero.target_x = sphero.x + sphero.speed_x * (TRIANGLE_SIZE) / 2
+                        sphero.target_y = sphero.y + sphero.speed_y * (TRIANGLE_SIZE) / 2
 
         # Draw the spheros
         for sphero in spheros:
@@ -376,7 +369,7 @@ if __name__ == "__main__":
         pygame.display.flip()
 
         # Control frame rate
-        clock.tick(60)
+        clock.tick(80)
 
     # Quit Pygame
     pygame.quit()
