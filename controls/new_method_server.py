@@ -17,6 +17,9 @@ def connect_ball(toy, sb_list):
     except Exception:
         print("Connection Failure")
 
+def terminate_ball(sb):
+    sb.__exit__(None, None, None)
+
 def run_command(instruction, sb):
     global on
     match (instruction.type):
@@ -39,7 +42,12 @@ def control():
     print("Waiting for connection")
     c, address = s.accept()
     while (on):
-        instructionList = pickle.loads(c.recv(1024))
+        try:
+            instructionList = pickle.loads(c.recv(1024))
+        except EOFError:
+            print("EOFError")
+            s.close()
+            on = False
         try:
             lock.acquire()
             for instruction in instructionList:
@@ -54,7 +62,8 @@ def control():
         finally:
             lock.release()
 
-toys = scanner.find_toys(toy_names=["SB-1840", "SB-76B3", "SB-B5A9"])
+toy_names = ["SB-B5A9", "SB-1840", "SB-76B3", "SB-CEB2", "SB-BD0A"]
+toys = scanner.find_toys(toy_names=toy_names)
 print(toys)
 sb_list = []
 
@@ -70,13 +79,14 @@ try:
     cmd_thread.start()
     threads = []
 
-    # attempt to quickly connect via multi-threading
+    # attempt to quickly connect via multi-threading, may need to sort things out to make sense
     for toy in toys:
         thread = threading.Thread(target=connect_ball, args=[toy, sb_list], daemon=True)
         threads.append(thread)
         thread.start()
     for thread in threads:
         thread.join()
+    print(sb_list)
 
     while (on):
         threads = []
@@ -90,6 +100,11 @@ try:
 
 finally:
     on = False
+    threads = []
     for sb in sb_list:
-        sb.__exit__(None, None, None)
+        thread = threading.Thread(target=terminate_ball, args=[sb], daemon=True)
+        threads.append(thread)
+        thread.start()
+    for thread in threads:
+        thread.join()
     cmd_thread.join()
