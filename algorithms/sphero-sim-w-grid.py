@@ -323,24 +323,28 @@ if __name__ == "__main__":
                 
                 #   If absolutely no available direction exists then just stay in place for this cycle
 
-
                 # CODE:
-                available_directions = [1, 2, 3, 4, 5, 6]
-                current_direction = direction - 1
-                collision = False
+                available_directions = [1, 2, 3, 4, 5, 6] # list of possible movement direction
+                current_direction = direction - 1 # index of the current direction
+                collision = False # collision flag
+
+                # Iterate through all spheros in the current bond group
                 for j in range(len(bonds[i])):
 
                     sphero = bonds[i][j]
 
-                    #check all previous bonding groups
+                    #check all previous bonding groups for potential collisions
                     for k in range(i):
                         for l in range(len(bonds[k])):
                             other = bonds[k][l]
+                            # if two spheros' x and y coordinates are close enough to each other (not exactly the same, but within a threshhold) 
+                            # then change the direction
                             if (abs(other.target_x - sphero.target_x) <= EPSILON and abs(other.target_y - sphero.target_y) <= EPSILON):
                                 collision = True
+                                # this direction doesn't work, so remove it
                                 available_directions.pop(current_direction)
 
-                                # current_direction += 1
+                                # since removing we are shifting the list, we need to adjust the current direction
                                 if (current_direction >= len(available_directions)):
                                     current_direction = 0
                                 
@@ -350,11 +354,13 @@ if __name__ == "__main__":
                 
                 # reupdate all spheros to make sure they are all moving the same direction
                 if (collision == True):
+                    # go through all the spheros in the bonding group and update their direction
                     for j in range(len(bonds[i])):
                         sphero = bonds[i][j]
                 
                         if (len(available_directions) != 0):
                           sphero.update_direction(available_directions[current_direction])
+                        # if no available directions exist, then just stop moving
                         else:
                             sphero.speed_x = 0
                             sphero.speed_y = 0  
