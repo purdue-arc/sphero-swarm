@@ -1,5 +1,9 @@
 import random
 
+INVALID = -1
+SPOT_TAKEN = -2
+OK = 0
+
 class Field:
 
     def __init__(self, width, height):
@@ -7,16 +11,16 @@ class Field:
         self.height = height
         self.field_arr = None
 
-    def create_field(self, width, height):
+    def create_field(self):
         '''
         Create field with dimensions given by parameters, fills in 
         invalid positions values with '-' and valid ones with 0
         '''
         field_arr = []
-        for i in range(0, height, 1):
-            field_arr.append([0] * width)
+        for i in range(0, self.height, 1):
+            field_arr.append([0] * self.width)
             
-            for j in range(0, width, 1):
+            for j in range(0, self.width, 1):
                 if (i % 2 == 0):
                     if (j % 2 != 0):
                         field_arr[i][j] = '-'
@@ -26,45 +30,87 @@ class Field:
 
         self.field_arr = field_arr
 
-    def print_array(self, field):
+    def print_array(self):
         '''
         Prints out array in more readable manner
         '''
-        for row in field:
+        for row in self.field_arr:
             row_vals = ""
             for val in row:
                 row_vals += str(val)+" "
             print(row_vals)
 
-    def gen_random_sphero_pos(self, field, n):
+    def gen_random_sphero_pos(self, n):
         '''
         Puts n Spheros in random positions on the field as number
         '''
         for i in range(1, n + 1, 1):
             while (True):
-                rand_row = random.randint(0, len(field) - 1)
-                rand_col = random.randint(0, len(field[0]) - 1)
+                rand_row = random.randint(0, len(self.field_arr) - 1)
+                rand_col = random.randint(0, len(self.field_arr[0]) - 1)
 
-                if (field[rand_row][rand_col] == 0):
-                    field[rand_row][rand_col] = i
+                if (self.field_arr[rand_row][rand_col] == 0):
+                    self.field_arr[rand_row][rand_col] = i
                     break
-        
-        self.field_arr = field
-    
-    def sphero_pos_init(self, spheros):
+            
+    def sphero_pos_init_arr(self, spheros):
         for sphero in spheros:
             if (sphero.x < 0):
                 # This should never happen
-                print(f"No, bad x: {sphero.id}, x = {sphero.x}")
+                # print(f"No, bad x: {sphero.id}, x = {sphero.x}")
+                return INVALID
             if (sphero.y < 0):
                 # This should never happen
-                print(f"No, bad y: {sphero.id}, y = {sphero.y}")
-            if (self.field_arr[sphero.x][sphero.y] != 0):
+                # print(f"No, bad y: {sphero.id}, y = {sphero.y}")
+                return INVALID
+            if (sphero.x > self.width):
+                # This should never happen
+                # print(f"No, bad x: {sphero.id}, x = {sphero.x}")
+                return INVALID
+            if (sphero.y > self.height):
+                # This should never happen
+                # print(f"No, bad y: {sphero.id}, y = {sphero.y}")
+                return INVALID
+            if (self.field_arr[sphero.x][sphero.y] == '-'):
+                # This should never happen
+                # print("Error")
+                return INVALID
+            if (self.field_arr[sphero.x][sphero.y] == 0):
                 # This should never happen, two spheroes being initialized to the same place
-                print("Error")
+                # print("Error")
+                return SPOT_TAKEN
             self.field_arr[sphero.x][sphero.y] = sphero.id
+            return OK
 
-    def determine_close(self, field, n):
+    def sphero_pos_init(self, sphero):
+        if (sphero.x < 0):
+            # This should never happen
+            # print(f"No, bad x: {sphero.id}, x = {sphero.x}")
+            return INVALID
+        if (sphero.y < 0):
+            # This should never happen
+            # print(f"No, bad y: {sphero.id}, y = {sphero.y}")
+            return INVALID
+        if (sphero.x > self.width):
+            # This should never happen
+            # print(f"No, bad x: {sphero.id}, x = {sphero.x}")
+            return INVALID
+        if (sphero.y > self.height):
+            # This should never happen
+            # print(f"No, bad y: {sphero.id}, y = {sphero.y}")
+            return INVALID
+        if (self.field_arr[sphero.x][sphero.y] == '-'):
+            # This should never happen
+            # print("Error")
+            return INVALID
+        if (self.field_arr[sphero.x][sphero.y] != 0):
+            # This should never happen, two spheroes being initialized to the same place
+            # print("Error")
+            return SPOT_TAKEN
+        self.field_arr[sphero.x][sphero.y] = sphero.id
+        return OK
+
+    def determine_close(self, n):
         '''
         Returns all ball pairings with distances less than n
         as list of lists
@@ -73,10 +119,10 @@ class Field:
         relevant_info_on_spheros = []
 
         # identifying position of spheros
-        for row in range(0, len(field), 1):
-            for col in range(0, len(field[row]), 1):
-                if (field[row][col] != 0 and field[row][col] != '-'):
-                    relevant_info_on_spheros.append((row, col, field[row][col]))
+        for row in range(0, len(self.field_arr), 1):
+            for col in range(0, len(self.field_arr[row]), 1):
+                if (self.field_arr[row][col] != 0 and self.field_arr[row][col] != '-'):
+                    relevant_info_on_spheros.append((row, col, self.field_arr[row][col]))
 
         bound_spheros = []
         for i in range(0, len(relevant_info_on_spheros) - 1, 1):
@@ -109,13 +155,33 @@ class Field:
         return groups_of_spheros
 
 
-# field_arr = create_field(10, 11)
-# field_arr = gen_random_sphero_pos(field_arr, 9)
-#
-# print_array(field_arr)
-#
-# pairs_of_spheros = determine_close(field_arr, 2)
+# ------------------------------------
+# EXAMPLE USAGE
+# class Sphero:
+#     def __init__(self, x, y, id):
+#         self.x = x
+#         self.y = y
+#         self.id = id
+
+# field_arr = Field(10, 11)
+# field_arr.create_field()
+
+# sphero = Sphero(2,0,8)
+# print(field_arr.sphero_pos_init(sphero)) # Will print 0 (OK)
+# sphero_taken = Sphero(2,0,7)
+# print(field_arr.sphero_pos_init(sphero_taken)) # Will print -2 (SPOT_TAKEN)
+# sphero_inv = Sphero(-3,0,6)
+# print(field_arr.sphero_pos_init(sphero_inv)) # Will print -1 (INVALID)
+# field_arr.print_array()
+
+# sphero_bond = Sphero(2,2,5)
+# field_arr.sphero_pos_init(sphero_bond)
+# field_arr.print_array()
+
+
+# pairs_of_spheros = field_arr.determine_close(2)
 # print(pairs_of_spheros)
-#
-# groups_of_spheros = group_spheros(pairs_of_spheros)
-# print(groups_of_spheros)
+
+# if (len(pairs_of_spheros) > 0):
+#     groups_of_spheros = field_arr.group_spheros(pairs_of_spheros)
+#     print(groups_of_spheros)
