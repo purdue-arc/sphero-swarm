@@ -2,6 +2,11 @@ import random
 
 class Field:
 
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
+        self.field_arr = None
+
     def create_field(self, width, height):
         '''
         Create field with dimensions given by parameters, fills in 
@@ -19,7 +24,7 @@ class Field:
                     if (j % 2 != 1):
                         field_arr[i][j] = '-'
 
-        return field_arr
+        self.field_arr = field_arr
 
     def print_array(self, field):
         '''
@@ -44,7 +49,20 @@ class Field:
                     field[rand_row][rand_col] = i
                     break
         
-        return field
+        self.field_arr = field
+    
+    def sphero_pos_init(self, spheros):
+        for sphero in spheros:
+            if (sphero.x < 0):
+                # This should never happen
+                print(f"No, bad x: {sphero.id}, x = {sphero.x}")
+            if (sphero.y < 0):
+                # This should never happen
+                print(f"No, bad y: {sphero.id}, y = {sphero.y}")
+            if (self.field_arr[sphero.x][sphero.y] != 0):
+                # This should never happen, two spheroes being initialized to the same place
+                print("Error")
+            self.field_arr[sphero.x][sphero.y] = sphero.id
 
     def determine_close(self, field, n):
         '''
