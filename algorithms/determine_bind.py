@@ -99,7 +99,8 @@ class Field:
     def sphero_pos_init_arr(self, spheros):
         '''
         Takes in list of spheros, adds to array.
-        Returns INVALID
+        Returns INVALID if invalid
+        return SPOT_TAKEN if the spot is taken
         '''
         for sphero in spheros:
             if (sphero.x < 0):
