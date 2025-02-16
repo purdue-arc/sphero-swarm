@@ -1,15 +1,18 @@
 import random
 
-INVALID = -1
-SPOT_TAKEN = -2
-OK = 0
 
 class Field:
+
+    INVALID = -1
+    SPOT_TAKEN = -2
+    OK = 0
+
+    sphero_from_id = {} # input an id (0, 1, 2, ...) and get the associated sphero object.
 
     def __init__(self, width, height):
         self.width = width
         self.height = height
-        self.field_arr = None
+        self.create_field()
 
     def create_field(self):
         '''
@@ -54,61 +57,65 @@ class Field:
                     break
             
     def sphero_pos_init_arr(self, spheros):
+        '''
+        Takes in list of spheros, adds to array.
+        Returns INVALID
+        '''
         for sphero in spheros:
             if (sphero.x < 0):
                 # This should never happen
                 # print(f"No, bad x: {sphero.id}, x = {sphero.x}")
-                return INVALID
+                return Field.INVALID
             if (sphero.y < 0):
                 # This should never happen
                 # print(f"No, bad y: {sphero.id}, y = {sphero.y}")
-                return INVALID
-            if (sphero.x > self.width):
+                return Field.INVALID
+            if (sphero.x >= self.width): 
                 # This should never happen
                 # print(f"No, bad x: {sphero.id}, x = {sphero.x}")
-                return INVALID
-            if (sphero.y > self.height):
+                return Field.INVALID
+            if (sphero.y >= self.height):
                 # This should never happen
                 # print(f"No, bad y: {sphero.id}, y = {sphero.y}")
-                return INVALID
-            if (self.field_arr[sphero.x][sphero.y] == '-'):
+                return Field.INVALID
+            if (self.field_arr[sphero.y][sphero.x] == '-'):
                 # This should never happen
                 # print("Error")
-                return INVALID
-            if (self.field_arr[sphero.x][sphero.y] == 0):
+                return Field.INVALID
+            if (self.field_arr[sphero.y][sphero.x] == 0):
                 # This should never happen, two spheroes being initialized to the same place
                 # print("Error")
-                return SPOT_TAKEN
-            self.field_arr[sphero.x][sphero.y] = sphero.id
-            return OK
+                return Field.SPOT_TAKEN
+            self.field_arr[sphero.y][sphero.x] = sphero.id
+            return Field.OK
 
     def sphero_pos_init(self, sphero):
         if (sphero.x < 0):
             # This should never happen
             # print(f"No, bad x: {sphero.id}, x = {sphero.x}")
-            return INVALID
+            return Field.INVALID
         if (sphero.y < 0):
             # This should never happen
             # print(f"No, bad y: {sphero.id}, y = {sphero.y}")
-            return INVALID
-        if (sphero.x > self.width):
+            return Field.INVALID
+        if (sphero.x >= self.width):
             # This should never happen
             # print(f"No, bad x: {sphero.id}, x = {sphero.x}")
-            return INVALID
-        if (sphero.y > self.height):
+            return Field.INVALID
+        if (sphero.y >= self.height):
             # This should never happen
             # print(f"No, bad y: {sphero.id}, y = {sphero.y}")
-            return INVALID
-        if (self.field_arr[sphero.x][sphero.y] == '-'):
+            return Field.INVALID
+        if (self.field_arr[sphero.y][sphero.x] == '-'):
             # This should never happen
             # print("Error")
-            return INVALID
-        if (self.field_arr[sphero.x][sphero.y] != 0):
+            return Field.INVALID
+        if (self.field_arr[sphero.y][sphero.x] != 0):
             # This should never happen, two spheroes being initialized to the same place
             # print("Error")
-            return SPOT_TAKEN
-        self.field_arr[sphero.x][sphero.y] = sphero.id
-        return OK
+            return Field.SPOT_TAKEN
+        self.field_arr[sphero.y][sphero.x] = sphero.id
+        return Field.OK
 
     def determine_close(self, n):
         '''

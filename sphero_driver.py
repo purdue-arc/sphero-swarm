@@ -3,12 +3,12 @@ import socket
 from controls.Instruction import Instruction
 from spherov2.types import Color
 
-from determine_bind import Field
+from algorithms.determine_bind import Field
 
 s = socket.socket()
-port = 1234
+port = 8080
 
-s.connect(('localhost', port))
+#s.connect(('localhost', port))
 
 # Example instruction:
 # change color of sphero 1 to (114, 186, 133)
@@ -62,6 +62,7 @@ if __name__ == "__main__":
     #TODO We are still working with controls to decide whether we use the actual 
     # sphero id (like "SB-B5A9") or just our own given ids [0, 1, 2, ...]
 
+    print("Width: ", WIDTH, "     Height: ", HEIGHT)
     for s_id in sphero_ids:
         # get user input for coordinates
         print(f"Input x and y coordinates for sphero {s_id}:")
