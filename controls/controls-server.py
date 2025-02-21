@@ -19,10 +19,8 @@ def toy_manager(toy, id, instructions):
     print("start", id)
     print(toy)
 
-    on = True
-
     with SpheroEduAPI(toy) as api:
-        while on:
+        while (not stop_event.is_set()):
             if (not instructions.empty()):
                 instruction = instructions.get()
                 print("new instruction")
@@ -37,14 +35,17 @@ def toy_manager(toy, id, instructions):
                     api.roll(api.get_heading(), instruction.speed, instruction.duration)
                 elif (instruction.type == 2): # turn
                     api.spin(instruction.degrees, instruction.duration)
+                elif (instruction.type == 3):
+                    print("wait")
                 elif (instruction.type == 4): # stop
-                    on = False
+                    stop_event.set()
                     break
 
                 barrier.wait()
             # end if
         # end while
     # end with
+
     print("end")
 # end toy_manager
 
@@ -61,9 +62,7 @@ def controls(instructions):
 
     c, address= s.accept()
 
-    on = True
-
-    while (on):
+    while (not stop_event.is_set()):
         instructionList = pickle.loads(c.recv(1024))
 
         try:
@@ -82,7 +81,10 @@ def controls(instructions):
                     print(instruction.degrees)
                     print(instruction.duration)
                 elif (instruction.type == 3):
-                    on = False
+                    print("wait")
+                elif (instruction.type == 4):
+                    stop_event.set()
+                    return
 
                 if (not (instruction.spheroID < len(instructions))):
                     print("index out of bounds")
@@ -119,7 +121,6 @@ def run_toy_threads(toys, instructions):
     thread.start()
 
     for thread in threads:
-
         thread.join()
 
     print("Ending function...")
@@ -127,7 +128,7 @@ def run_toy_threads(toys, instructions):
 
 # start main
 
-toys = scanner.find_toys(toy_names = ["SB-B5A9", "SB-E274"])
+toys = scanner.find_toys(toy_names = ["SB-B5A9", "SB-76B3"])
 """
 try:
     for toy in toys:  # fighting back against the bleak error exceptions
@@ -141,6 +142,7 @@ except:
 
 print(len(toys))
 barrier = Barrier(len(toys) + 1)
+stop_event = threading.Event()
 
 instructions = [multiprocessing.Queue() for i in range(len(toys))]
 
