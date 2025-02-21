@@ -95,6 +95,8 @@ if __name__ == "__main__":
 
         i += 1
 
+    field.initialize_spheros(spheros)
+
     s.send(pickle.dumps(instructions))
     # waits for a response from the API
     buffer = s.recv(1024).decode()
@@ -105,26 +107,24 @@ if __name__ == "__main__":
 
         # rotate each sphero some way
         for sphero_id in range(len(spheros)):
+            # TODO 
+            # TODO make sure to avoid collisions
             # pick a direction for each sphero
-
-
-            # pick a direction for each sphero
-
-
-
 
             instruction = Instruction(sphero_id, 2, 60 * random.randint(1, 6), TURN_DURATION)
             instructions.append(instruction)
             # for each of the three balls, randomly choose a new direction
-            # TODO make sure to avoid collisions
 
         # drive each sphero 
         for sphero_id in range(len(spheros)):
             instruction = Instruction(sphero_id, 1, SPHERO_SPEED, ROLL_DURATION) # Assume that this is one block
             instructions.append(instruction)
 
-        # send the instructions
+        # now the field's prev array needs to be reset
+        field.field_arr = field.next_field_arr 
+        field.next_field_arr = field.create_field()
 
+        # send the instructions
         s.send(pickle.dumps(instructions))
 
         # waits for a response from the API
