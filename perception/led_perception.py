@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-cap = cv2.VideoCapture('perception/TestVideos/SS_demo_callout25.mp4')
+cap = cv2.VideoCapture('perception/TestVideos/Vid5.mp4')
 
 if not cap.isOpened():
     print("Error: Failed to open the video file.")
@@ -13,6 +13,8 @@ while cap.isOpened():
         break
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    cv2.imshow("Processing Step", gray)
+    cv2.waitKey(2000)
 
     #Treshholding to detect LEDs
     _, thresh = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
