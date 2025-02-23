@@ -8,12 +8,14 @@ import time
 import pickle
 import socket
 
+TIME = 0.5
+
 def connect_ball(toy, sb_list):
     sb = 0
     try:
-        print("Connection Sucess")
         sb = SpheroEduAPI(toy).__enter__()
         sb_list.append(sb)
+        print(sb)
     except Exception:
         print("Connection Failure")
 
@@ -22,6 +24,7 @@ def terminate_ball(sb):
 
 def run_command(instruction, sb):
     global on
+    print("{}: {}".format(sb._SpheroEduAPI__toy, instruction.type))
     match (instruction.type):
         case 0:
             sb.set_main_led(instruction.color)
@@ -58,13 +61,18 @@ def control():
                     print("index out of bounds")
                 else:
                     command_arr[instruction.spheroID].append(instruction)
-                    print(instruction.type)
         finally:
             lock.release()
 
-toy_names = ["SB-B5A9", "SB-1840", "SB-76B3", "SB-CEB2", "SB-BD0A"]
-toys = scanner.find_toys(toy_names=toy_names)
+toy_names = ["SB-B5A9", "SB-1840", "SB-76B3", "SB-E274", "SB-BD0A"]
+toys = []
+attempts = 0
+while (len(toys) != len(toy_names) and attempts < 5):
+    toys = scanner.find_toys(toy_names=toy_names)
+    attempts += 1
 print(toys)
+if (len(toys) != len(toy_names) and attempts >= 5):
+    raise RuntimeError("Not all balls actually connected")
 sb_list = []
 
 global command_arr
@@ -87,6 +95,8 @@ try:
     for thread in threads:
         thread.join()
     print(sb_list)
+    if (len(sb_list) != len(toy_names)):
+        raise RuntimeError("Error: Not Actually Connected")
 
     while (on):
         threads = []
@@ -97,6 +107,7 @@ try:
                 thread.start()
         for thread in threads:
             thread.join()
+        time.sleep(TIME)
 
 finally:
     on = False
