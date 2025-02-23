@@ -21,6 +21,7 @@ class UF:
         if i == self.ids[i]:
             return i
         replace = self.find(self.ids[i])
+        self.ids[i] = replace
         return replace
     
     def union(self, one, two):
