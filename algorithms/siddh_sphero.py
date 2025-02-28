@@ -339,6 +339,36 @@ if __name__ == "__main__":
                     sphero.update_direction(available_directions[current_direction])
                     sphero.update_target()
 
+                    if (i == 0):
+                        found_direction = False
+                        while (found_direction == False):
+
+                            # if two spheros' x and y coordinates are close enough to each other (not exactly the same, but within a threshhold) 
+                            # then change the direction
+                            error = False
+                            # if (abs(other.target_x - sphero.target_x) <= EPSILON and abs(other.target_y - sphero.target_y) <= EPSILON):
+                            #     error = True
+                            if (sphero.target_x  - SPHERO_RADIUS < 1 or sphero.target_x - SPHERO_RADIUS > WIDTH):
+                                error = True
+                            if (sphero.target_y - SPHERO_RADIUS < 1 or sphero.target_y - SPHERO_RADIUS > HEIGHT):
+                                error = True
+                            
+                            if (error == True):
+                                collision = True
+                                # this direction doesn't work, so remove it
+                                available_directions.pop(current_direction)
+
+                                print(current_direction)
+                                # since removing we are shifting the list, we need to adjust the current direction
+                                if (current_direction >= len(available_directions)):
+                                    current_direction = 0
+                                
+                                sphero.update_direction(available_directions[current_direction])
+                                sphero.update_target()
+
+                            else:
+                                found_direction = True
+
                     #check all previous bonding groups for potential collisions
                     for k in range(i):
                         for l in range(len(bonds[k])):
