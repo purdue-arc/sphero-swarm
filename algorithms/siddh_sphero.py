@@ -348,9 +348,9 @@ if __name__ == "__main__":
                             error = False
                             # if (abs(other.target_x - sphero.target_x) <= EPSILON and abs(other.target_y - sphero.target_y) <= EPSILON):
                             #     error = True
-                            if (sphero.target_x  - SPHERO_RADIUS < 1 or sphero.target_x - SPHERO_RADIUS > WIDTH):
+                            if (sphero.target_x - SPHERO_RADIUS < EPSILON or sphero.target_x - SPHERO_RADIUS + EPSILON > WIDTH):
                                 error = True
-                            if (sphero.target_y - SPHERO_RADIUS < 1 or sphero.target_y - SPHERO_RADIUS > HEIGHT):
+                            if (sphero.target_y - SPHERO_RADIUS < EPSILON or sphero.target_y - SPHERO_RADIUS + EPSILON > HEIGHT):
                                 error = True
                             
                             if (error == True):
@@ -382,9 +382,9 @@ if __name__ == "__main__":
                                 error = False
                                 if (abs(other.target_x - sphero.target_x) <= EPSILON and abs(other.target_y - sphero.target_y) <= EPSILON):
                                     error = True
-                                if (sphero.target_x  - SPHERO_RADIUS < 1 or sphero.target_x - SPHERO_RADIUS > WIDTH):
+                                if (sphero.target_x - SPHERO_RADIUS < EPSILON or sphero.target_x - SPHERO_RADIUS + EPSILON > WIDTH):
                                     error = True
-                                if (sphero.target_y - SPHERO_RADIUS < 1 or sphero.target_y - SPHERO_RADIUS > HEIGHT):
+                                if (sphero.target_y - SPHERO_RADIUS < EPSILON or sphero.target_y - SPHERO_RADIUS + EPSILON > HEIGHT):
                                     error = True
                                 
                                 if (error == True):
