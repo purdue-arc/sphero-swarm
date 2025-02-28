@@ -5,7 +5,7 @@ from Instruction import Instruction
 from spherov2.types import Color
 
 s = socket.socket()
-port = 12345
+port = 1234
 
 s.connect(('localhost', port))
 
