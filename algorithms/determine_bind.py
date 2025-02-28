@@ -55,10 +55,12 @@ class Field:
         self.width = width
         self.height = height
         self.field_arr = self.create_field()
-        self.next_field_arr = self.field_arr;
+        self.next_field_arr = self.create_field();
 
     def initialize_spheros(self, spheros):
         self.spheros = spheros
+        self.sphero_pos_init_arr(spheros)
+
 
     def create_field(self):
         '''
@@ -165,6 +167,44 @@ class Field:
         self.field_arr[sphero.y][sphero.x] = sphero.id
         return Field.OK
 
+    def sphero_pos_init_next(self, sphero, target_x, target_y):
+        
+        if self.check_coords_next(target_x, target_y) == Field.OK:
+            self.next_field_arr[sphero.target_y][sphero.target_x] = sphero.id
+            return Field.OK
+        else:
+            return Field.INVALID
+
+    def check_coords_next(self, x, y):
+        if (x < 0):
+            # This should never happen
+            # print(f"No, bad x: {sphero.id}, x = {sphero.x}")
+            return Field.INVALID
+        if (y < 0):
+            # This should never happen
+            # print(f"No, bad y: {sphero.id}, y = {sphero.y}")
+            return Field.INVALID
+        if (x >= self.width):
+            # This should never happen
+            # print(f"No, bad x: {sphero.id}, x = {sphero.x}")
+            return Field.INVALID
+        if (y >= self.height):
+            # This should never happen
+            # print(f"No, bad y: {sphero.id}, y = {sphero.y}")
+            return Field.INVALID
+        if (self.next_field_arr[y][x] == '-'):
+            # This should never happen
+            # print("Error")
+            return Field.INVALID
+        if (self.next_field_arr[y][x] != 0):
+            # This should never happen, two spheroes being initialized to the same place
+            # print("Error")
+            return Field.SPOT_TAKEN
+        return Field.OK
+
+    def reset_next_field(self):
+        self.next_field_arr = self.create_field()
+
     def determine_close(self, n):
         '''
         Returns all ball pairings with distances less than n
@@ -214,6 +254,7 @@ class Field:
         '''
         returns the degrees of rotations 
         '''
+
 
 
 # ------------------------------------

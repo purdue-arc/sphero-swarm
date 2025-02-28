@@ -1,5 +1,6 @@
 import pickle
 import socket
+import random
 from controls.Instruction import Instruction
 from spherov2.types import Color
 
@@ -49,9 +50,48 @@ class Sphero:
         self.direction = direction
         self.color = None
 
+    def update_self_direction(self, direction_change):
+        '''
+        direction_change = 0: don't change direction
+        direction_change = 1: turn left 60 degrees
+        direction_change = -1: turn right 60 degrees
+        '''
+        self.prev_direction = self.direction
+        self.direction = (self.direction + direction_change) % 6
+        if self.direction == 0:
+            self.direction = 6
+
+    def get_target(self):
+        '''
+        returns a new target_x, target_y based on direction
+        '''
+        if (self.direction == 1):
+            return (self.target_x + 2, self.target_y)
+
+        # move up right
+        elif (self.direction == 2):
+            return (self.target_x + 1, self.target_y + 1)
+
+        # move up left
+        elif (self.direction == 3):
+            return (self.target_x - 1, self.target_y + 1)
+
+        # move left
+        elif (self.direction == 4):
+            return (self.target_x - 2, self.target_y)
+
+        # move down left
+        elif (self.direction == 5):
+            return (self.target_x - 1, self.target_y - 1)
+
+        # move down right
+        elif (self.direction == 6):
+            return (self.target_x + 1, self.target_y - 1)
+
+
 
 if __name__ == "__main__":
-    sphero_ids = ["SB-B5A9", "SB-E274", "SB-B11D"]
+    #sphero_ids = ["SB-B5A9", "SB-E274", "SB-B11D"]
 
     # Field object from determine_bind.py. TODO complete initialization after Madhav push
     field = Field(WIDTH, HEIGHT)
@@ -62,14 +102,19 @@ if __name__ == "__main__":
     #TODO We are still working with controls to decide whether we use the actual 
     # sphero id (like "SB-B5A9") or just our own given ids [0, 1, 2, ...]
 
-    for s_id in sphero_ids:
+    spheros = []
+
+    N = 3
+    for s_id in range(N):
         # get user input for coordinates
         print(f"Input x and y coordinates for sphero {s_id}:")
         x = int(input('x: '))
         y = int(input('y: '))
 
-        # TODO Should we also initialize their direction and target coords here?
-        new_sphero = Sphero(s_id, x, y, x, y, -1, -1)
+        # initialize their direction to 0 degrees (direction 1)
+        new_sphero = Sphero(i, x, y, x, y, 1, 1)
+
+        spheros.append(new_sphero)
 
         # give object a color as well as tell the API to give it a color
         new_sphero.color = colors[i % len(colors)]
@@ -84,32 +129,57 @@ if __name__ == "__main__":
 
         i += 1
 
+    field.initialize_spheros(spheros)
+
     s.send(pickle.dumps(instructions))
     # waits for a response from the API
     buffer = s.recv(1024).decode()
 
     # move the ballz
-    # while (True):
-    #     instructions = [] # empty out instructions every iteration
-    #
-    #
-    #     for sphero_id in range(len(spheros)):
-    #         # turn the ball some way
-    #         instruction = Instruction(sphero_id, 2, 60 * random.randint(1, 6), TURN_DURATION)
-    #         instructions.append(instruction)
-    #         # for each of the three balls, randomly choose a new direction
-    #
-    #     for sphero_id in range(len(spheros)):
-    #         instruction = Instruction(sphero_id, 1, SPHERO_SPEED, ROLL_DURATION)
-    #         # TODO make sure to avoid collisions
-    #         instructions.append(instruction)
-    #
-    #     # send the instructions
-    #
-    #     s.send(pickle.dumps(instructions))
-    #
-    #     # waits for a response from the API
-    #     buffer = s.recv(1024).decode()
+    while (True):
+        instructions = [] # empty out instructions every iteration
+
+        #reset the next_field array
+        field.reset_next_field()
+
+        for sphero in spheros:
+            # turn the ball some way
+            invalid = True
+            new_x, new_y, direction_change = 0, 0, 0
+            while invalid:
+                # pick a valid direction change from [-1, 0, 1]
+                direction_change = random.randint(-1, 1)
+
+                #update the direction in the sphero
+                sphero.update_self_direction(direction_change)
+                
+                # check if valid
+                new_x, new_y = sphero.get_target()
+
+                #if it's valid break out of the loop
+                if field.sphero_pos_init_next(sphero, new_x, new_y) == Field.OK:
+                    invalid = False
+
+            # now we broke out of the validity checking loop
+            # so let's update the sphero target!
+            sphero.target_x = new_x
+            sphero.target_y = new_y
+            # so let's send the instruction :)
+            instruction = Instruction(sphero.id, 2, 60 * direction_change, TURN_DURATION)
+            instructions.append(instruction)
+
+
+        # tell the sphero to roll forward
+        for sphero in spheros:
+            instruction = Instruction(sphero.id, 1, SPHERO_SPEED, ROLL_DURATION)
+            instructions.append(instruction)
+
+
+        # send the instructions
+        s.send(pickle.dumps(instructions))
+
+        # waits for a response from the API
+        buffer = s.recv(1024).decode()
 
 
 
