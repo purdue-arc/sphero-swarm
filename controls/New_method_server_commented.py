@@ -84,23 +84,25 @@ global on
 on = True
 
 try:
-    cmd_thread = threading.Thread(target=control, daemon=True)
+     # Start a separate thread for the control function, running as a daemon
+    cmd_thread = threading.Thread(target=control, daemon=True) 
     cmd_thread.start()
     threads = []
 
     # attempt to quickly connect via multi-threading, may need to sort things out to make sense
     for toy in toys:
-        thread = threading.Thread(target=connect_ball, args=[toy, sb_list], daemon=True)
-        threads.append(thread)
-        thread.start()
+        thread = threading.Thread(target=connect_ball, args=[toy, sb_list], daemon=True) 
+        threads.append(thread) #appends thread object to the threads array
+        thread.start() #starts the threads
     for thread in threads:
-        thread.join()
+        thread.join() # joins, waits for all threads to finish before continuing
     print(sb_list)
-    if (len(sb_list) != len(toy_names)):
+    if (len(sb_list) != len(toy_names)): #check list to amke sure the size mathces and all spheros are connected
         raise RuntimeError("Error: Not Actually Connected")
 
     while (on):
         threads = []
+        # Process available commands in the command_arr in a multi-threaded way
         for i in range(0, len(command_arr), 1):
             if (len(command_arr[i]) != 0):
                 thread = threading.Thread(target=run_command, args=[command_arr[i].pop(0), sb_list[i]], daemon = True)
