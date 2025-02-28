@@ -3,13 +3,14 @@ import cv2
 
 model = YOLO("yolo11n.pt")
 
-results = model.track('./TestVideos/Vid1.mp4', show = True)
-"""
+results = model.track('TestVideos/Vid1.mp4', show = True)
+
+'''
 # Load the YOLO11 model
 model = YOLO("yolo11n.pt")
 
 # Open the video file
-video_path = './TestVideos/Vid1.mp4'
+video_path = 'Vid1.mp4'
 cap = cv2.VideoCapture(video_path)
 
 # Loop through the video frames
@@ -37,4 +38,4 @@ while cap.isOpened():
 # Release the video capture object and close the display window
 cap.release()
 cv2.destroyAllWindows()
-"""
+'''
