@@ -3,18 +3,16 @@ from spherov2.sphero_edu import SpheroEduAPI
 from spherov2.types import Color
 import threading
 from threading import Lock
-from threading import Barrier
 import Instruction
 import time
-import pickle
+import pickle #send instructions over a network
 import socket
 
-TIME = 0.5
+TIME = 0.5 #Constant for time
 
-def connect_ball(toy, sb_list):
+def connect_ball(toy, sb_list): # attepts to connect to a sphero 
     sb = 0
     try:
-        print("Connection Success")
         sb = SpheroEduAPI(toy).__enter__()
         sb_list.append(sb)
         print(sb)
@@ -31,20 +29,11 @@ def run_command(instruction, sb):
         case 0:
             sb.set_main_led(instruction.color)
         case 1:
-            if (instruction.speed < 0):
-                toy.drive_with_heading(abs(instruction.speed), sb.get_heading(), DriveFlags.BACKWARD)
-                time.sleep(instruction.duration)
-                sb.stop_roll()
-            else:
-                sb.roll(sb.get_heading(), instruction.speed, instruction.duration)
+            sb.roll(sb.get_heading(), instruction.speed, instruction.duration)
         case 2:
             sb.spin(instruction.degrees, instruction.duration)
         case 3:
             on = False
-
-    barrier.wait()
-
-
 
 def control():
     global on
@@ -72,10 +61,6 @@ def control():
                     print("index out of bounds")
                 else:
                     command_arr[instruction.spheroID].append(instruction)
-                    print(instruction.type)
-
-            barrier.wait()
-            c.send("Done".encode())
         finally:
             lock.release()
 
@@ -89,7 +74,6 @@ print(toys)
 if (len(toys) != len(toy_names) and attempts >= 5):
     raise RuntimeError("Not all balls actually connected")
 sb_list = []
-barrier = Barrier(len(toys) + 1)
 
 global command_arr
 command_arr = []

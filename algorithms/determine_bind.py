@@ -11,6 +11,7 @@ class UF:
         self.ids = list(range(n)) # initialize ids arr of size n to i : {0,1,2,3,.etc}
         self.weights = [1] * n # initialize size arr of size n to 1
 
+
     def find(self, i):
         '''
         Finds the bonded group that a sphero is a part of
@@ -20,6 +21,7 @@ class UF:
         if i == self.ids[i]:
             return i
         replace = self.find(self.ids[i])
+        self.ids[i] = replace
         return replace
     
     def union(self, one, two):
@@ -52,7 +54,11 @@ class Field:
     def __init__(self, width, height):
         self.width = width
         self.height = height
-        self.create_field()
+        self.field_arr = self.create_field()
+        self.next_field_arr = self.field_arr;
+
+    def initialize_spheros(self, spheros):
+        self.spheros = spheros
 
     def create_field(self):
         '''
@@ -71,7 +77,8 @@ class Field:
                     if (j % 2 != 1):
                         field_arr[i][j] = '-'
 
-        self.field_arr = field_arr
+        return field_arr
+        #self.field_arr = field_arr
 
     def print_array(self):
         '''
@@ -201,6 +208,12 @@ class Field:
                 groups_of_spheros.append(set(bound_spheros[i]))
         
         return groups_of_spheros
+
+    #TODO function that picks a direction for each sphero, avoiding collisions.
+    def choose_direction():
+        '''
+        returns the degrees of rotations 
+        '''
 
 
 # ------------------------------------
