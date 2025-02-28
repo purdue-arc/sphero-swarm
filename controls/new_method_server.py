@@ -33,7 +33,7 @@ def run_command(instruction, sb):
             sb.set_main_led(instruction.color)
         case 1:
             if (instruction.speed < 0):
-                toy.drive_with_heading(abs(instruction.speed), sb.get_heading(), DriveFlags.BACKWARD)
+                sb._SpheroEduAPI__toy.drive_with_heading(abs(instruction.speed), sb.get_heading(), DriveFlags.BACKWARD)
                 time.sleep(instruction.duration)
                 sb.stop_roll()
             else:
@@ -80,7 +80,7 @@ def control():
         finally:
             lock.release()
 
-toy_names = ["SB-B5A9", "SB-1840", "SB-76B3", "SB-E274", "SB-BD0A"]
+toy_names = ["SB-B5A9", "SB-1840"]
 toys = []
 attempts = 0
 while (len(toys) != len(toy_names) and attempts < 5):
