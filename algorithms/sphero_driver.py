@@ -38,7 +38,7 @@ WHITE = (255, 255, 255)
 GRAY = (150, 150, 150)
 #initialize our 3 spheros' positions and directions
 # TODO We need to figure out initialization will work.
-# But for now, we can just assume that Sphero 0 is at position 0,0 facing direction 5
+# But for now, we can just assume that each Sphero is at position 0,0 facing direction 1
 class Sphero:
     def __init__(self, sphero_id, x, y, target_x, target_y, direction, prev_direction):
         self.id = sphero_id
@@ -97,37 +97,31 @@ if __name__ == "__main__":
     field = Field(WIDTH, HEIGHT)
 
     instructions = []
-
-    i = 0 # gives the id that is used in the API 
-    #TODO We are still working with controls to decide whether we use the actual 
-    # sphero id (like "SB-B5A9") or just our own given ids [0, 1, 2, ...]
-
     spheros = []
 
     N = 3
-    for s_id in range(N):
+    for sphero_id in range(N):
         # get user input for coordinates
-        print(f"Input x and y coordinates for sphero {s_id}:")
+        print(f"Input x and y coordinates for sphero {sphero_id}:")
         x = int(input('x: '))
         y = int(input('y: '))
 
         # initialize their direction to 0 degrees (direction 1)
-        new_sphero = Sphero(i, x, y, x, y, 1, 1)
+        new_sphero = Sphero(sphero_id, x, y, x, y, 1, 1)
 
         spheros.append(new_sphero)
 
         # give object a color as well as tell the API to give it a color
-        new_sphero.color = colors[i % len(colors)]
-        instructions.append(Instruction(i, 0, new_sphero.color)) # 0 is change color command
+        new_sphero.color = colors[sphero_id % len(colors)]
+        instructions.append(Instruction(sphero_id, 0, new_sphero.color)) # 0 is change color command
 
         #TODO use Madhav's method to add this new sphero to the field after he pushes
         status = field.sphero_pos_init(new_sphero)
         if status == Field.INVALID:
-            raise SystemExit(f'invalid coordinates {x},{y} for sphero {s_id}, field initialization failed')
+            raise SystemExit(f'invalid coordinates {x},{y} for sphero {sphero_id}, field initialization failed')
         if status == Field.SPOT_TAKEN:
-            raise SystemExit(f'Spot {x},{y} already taken. field initialization failed for sphero {s_id}')
+            raise SystemExit(f'Spot {x},{y} already taken. field initialization failed for sphero {sphero_id}')
 
-        i += 1
 
     field.initialize_spheros(spheros)
 
@@ -143,14 +137,17 @@ if __name__ == "__main__":
         field.reset_next_field()
 
         for sphero in spheros:
-            # turn the ball some way
+
+            # turn the ball some direction
             invalid = True
             new_x, new_y, direction_change = 0, 0, 0
+            # valid next move check
             while invalid:
                 # pick a valid direction change from [-1, 0, 1]
                 direction_change = random.randint(-1, 1)
 
                 #update the direction in the sphero
+                # FIXME I don't think we should be updating this until the end
                 sphero.update_self_direction(direction_change)
                 
                 # check if valid

@@ -1,48 +1,5 @@
 import random
 
-class UF:
-    INVALID = -1
-    SPOT_TAKEN = -2
-    OK = 0
-    
-
-    def __init__(self, n):
-        self.n = n
-        self.ids = list(range(n)) # initialize ids arr of size n to i : {0,1,2,3,.etc}
-        self.weights = [1] * n # initialize size arr of size n to 1
-
-
-    def find(self, i):
-        '''
-        Finds the bonded group that a sphero is a part of
-        '''
-        if i > self.n - 1:
-            return self.INVALID
-        if i == self.ids[i]:
-            return i
-        replace = self.find(self.ids[i])
-        self.ids[i] = replace
-        return replace
-    
-    def union(self, one, two):
-        '''
-        Unions one sphero group with another sphero group
-        '''
-        one = self.find(one)
-        two = self.find(two)
-
-        if one == two:
-            return self.OK
-        
-        if self.weights[one] > self.weights[two]:
-            self.weights[one] += self.weights[two]
-            self.ids[two] = one
-            return self.OK
-
-        self.weights[two] += self.weights[one]
-        self.ids[one] = two
-        return self.OK
-
 class Field:
 
     INVALID = -1
@@ -250,10 +207,56 @@ class Field:
         return groups_of_spheros
 
     #TODO function that picks a direction for each sphero, avoiding collisions.
-    def choose_direction():
+    def choose_direction(self):
         '''
         returns the degrees of rotations 
+        i think we forgot to write this one
         '''
+        pass
+
+
+class UF:
+    INVALID = -1
+    SPOT_TAKEN = -2
+    OK = 0
+    
+
+    def __init__(self, n):
+        self.n = n
+        self.ids = list(range(n)) # initialize ids arr of size n to i : {0,1,2,3,.etc}
+        self.weights = [1] * n # initialize size arr of size n to 1
+
+
+    def find(self, i):
+        '''
+        Finds the bonded group that a sphero is a part of
+        '''
+        if i > self.n - 1:
+            return self.INVALID
+        if i == self.ids[i]:
+            return i
+        replace = self.find(self.ids[i])
+        self.ids[i] = replace
+        return replace
+    
+    def union(self, one, two):
+        '''
+        Unions one sphero group with another sphero group
+        '''
+        one = self.find(one)
+        two = self.find(two)
+
+        if one == two:
+            return self.OK
+        
+        if self.weights[one] > self.weights[two]:
+            self.weights[one] += self.weights[two]
+            self.ids[two] = one
+            return self.OK
+
+        self.weights[two] += self.weights[one]
+        self.ids[one] = two
+        return self.OK
 
 
 
