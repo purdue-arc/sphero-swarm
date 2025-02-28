@@ -5,12 +5,12 @@ import threading
 from threading import Lock
 import Instruction
 import time
-import pickle
+import pickle #send instructions over a network
 import socket
 
-TIME = 0.5
+TIME = 0.5 #Constant for time
 
-def connect_ball(toy, sb_list):
+def connect_ball(toy, sb_list): # attepts to connect to a sphero 
     sb = 0
     try:
         sb = SpheroEduAPI(toy).__enter__()

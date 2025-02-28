@@ -1,3 +1,4 @@
+import signal
 import socket
 
 from spherov2.toy.sphero import Sphero
@@ -13,9 +14,10 @@ import time
 import sys
 import pickle
 import queue
+import atexit
 
 lock = Lock()
-active = True
+
 
 def toy_manager(toy, id, instructions):
     """
@@ -25,7 +27,6 @@ def toy_manager(toy, id, instructions):
     :param id: associated id
     :param instructions: associated instructions array
     """
-    global active
 
     print("start", id)
     print(toy)
@@ -33,7 +34,7 @@ def toy_manager(toy, id, instructions):
     on = True
 
     with SpheroEduAPI(toy) as api:
-        while active:
+        while not stop_event.is_set():
             if (not instructions.empty()):
                 #try:
                     #lock.acquire()
@@ -48,7 +49,7 @@ def toy_manager(toy, id, instructions):
                     elif (instruction.type == 2): # turn
                         api.spin(instruction.degrees, instruction.duration)
                     elif (instruction.type == 3): # stop
-                        active = False
+                        stop_event.set()
                 #finally:
                     #lock.release()
                 # end try
@@ -93,39 +94,42 @@ def controls(instructions):
 
     :param instructions: global 2d instructions array
     """
-    global active
 
     # get instructions from terminal
-    while (active):
-        nunIns = int(input("How many instructions would you like to send?"))
-        instructionList = []
-        for i in range(nunIns):
-            spheroID = int(input("What sphero would you like to send the instruction to? "))
-            type = int(input("What type of instruction would you like to send? "))
-            if (type == 0):
-                red = int(input("R: "))
-                green = int(input("G: "))
-                blue = int(input("B: "))
-                color = Color(red, green, blue)
-                instruction = Instruction(spheroID, type, color)
-                instructionList.append(instruction)
-            elif (type == 1):
-                speed = int(input("Speed: "))
-                duration = float(input("Duration: "))
-                instruction = Instruction(spheroID, type, speed, duration)
-                instructionList.append(instruction)
-            elif (type == 2):
-                degrees = int(input("Degrees: "))
-                duration = float(input("Duration: "))
-                instruction = Instruction(spheroID, type, degrees, duration)
-                instructionList.append(instruction)
-            elif (type == 3):
-                active = False
-                return
-            else:
-                print("Enter a valid instruction type")
-                continue
-                # end if
+    while not stop_event.is_set():
+        try:
+            numIns = int(input("How many instructions would you like to send?"))
+            instructionList = []
+            for i in range(numIns):
+                spheroID = int(input("What sphero would you like to send the instruction to? "))
+                type = int(input("What type of instruction would you like to send? "))
+                if (type == 0):
+                    red = int(input("R: "))
+                    green = int(input("G: "))
+                    blue = int(input("B: "))
+                    color = Color(red, green, blue)
+                    instruction = Instruction(spheroID, type, color)
+                    instructionList.append(instruction)
+                elif (type == 1):
+                    speed = int(input("Speed: "))
+                    duration = float(input("Duration: "))
+                    instruction = Instruction(spheroID, type, speed, duration)
+                    instructionList.append(instruction)
+                elif (type == 2):
+                    degrees = int(input("Degrees: "))
+                    duration = float(input("Duration: "))
+                    instruction = Instruction(spheroID, type, degrees, duration)
+                    instructionList.append(instruction)
+                elif (type == 3):
+                    stop_event.set()
+                    return
+                else:
+                    print("Enter a valid instruction type")
+                    continue
+                    # end if
+        except EOFError:
+            stop_event.set()
+            break
 
         # add given instructions to global 2d instructions array
         try:
@@ -144,7 +148,7 @@ def controls(instructions):
                     print(instruction.degrees)
                     print(instruction.duration)
                 elif (instruction.type == 3):
-                    on = False
+                    stop_event.set()
 
                 if (not (instruction.spheroID < len(instructions))):
                     print("index out of bounds")
@@ -153,23 +157,16 @@ def controls(instructions):
         finally:
             lock.release()
 
-
+def exit_toys(signum, frame):
+    stop_event.set()
 # start main
 
+stop_event = threading.Event()
+
 # find toys
+toys = scanner.find_toys(toy_names = ["SB-B5A9"])
 
-toys = scanner.find_toys()
-"""
-try:
-    for toy in toys:  # fighting back against the bleak error exceptions
-        with SpheroEduAPI(toy) as api:5
-            # api.calibrate_compass()
-            api.reset_aim()
-except:
-    print("Error!")
-    sys.exit()
-"""
-
+signal.signal(signal.SIGINT, exit_toys)
 print(len(toys))
 try:
     # create 2d instructions array
