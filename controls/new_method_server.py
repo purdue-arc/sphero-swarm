@@ -1,5 +1,6 @@
 from spherov2 import scanner 
 from spherov2.sphero_edu import SpheroEduAPI
+from spherov2.commands.drive import DriveFlags
 from spherov2.types import Color
 import threading
 from threading import Lock
