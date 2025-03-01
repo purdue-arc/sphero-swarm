@@ -30,7 +30,8 @@ for instruction_num in range(0, len(instruction_read[0]), 1): #iterate through i
                 green = current_instruction[2]
                 blue = current_instruction[3]
                 color = Color(red, green, blue)
-                instruction = Instruction(spheroID, instruction_type, color)
+                #use the Instruction class to populate the objects color
+                instruction = Instruction(spheroID, instruction_type, color) 
             case 1:
                 speed = current_instruction[1]
                 duration = current_instruction[2]

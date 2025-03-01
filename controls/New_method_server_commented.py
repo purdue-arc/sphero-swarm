@@ -19,10 +19,10 @@ def connect_ball(toy, sb_list): # attepts to connect to a sphero
     except Exception:
         print("Connection Failure")
 
-def terminate_ball(sb):
+def terminate_ball(sb): #used to terminate and disconnect the balls
     sb.__exit__(None, None, None)
 
-def run_command(instruction, sb): #robot and Intruction which is an object of commands
+def run_command(instruction, sb): #Robot and Intruction which is an object of commands
     global on #Varible to signify the start and end of program, used to shut down when turned off
               #Only tunred on at begining of program 
     print("{}: {}".format(sb._SpheroEduAPI__toy, instruction.type))
@@ -84,10 +84,10 @@ global on
 on = True
 
 try:
-     # Start a separate thread for the control function, running as a daemon
+     # Start a separate thread for the control function, running as a daemon (auto terminate when program ends)
     cmd_thread = threading.Thread(target=control, daemon=True) 
     cmd_thread.start()
-    threads = []
+    threads = [] #array of thread objects
 
     # attempt to quickly connect via multi-threading, may need to sort things out to make sense
     for toy in toys:
@@ -97,28 +97,30 @@ try:
     for thread in threads:
         thread.join() # joins, waits for all threads to finish before continuing
     print(sb_list)
-    if (len(sb_list) != len(toy_names)): #check list to amke sure the size mathces and all spheros are connected
+    if (len(sb_list) != len(toy_names)): #check list to make sure the size matches and all spheros are connected
         raise RuntimeError("Error: Not Actually Connected")
 
     while (on):
         threads = []
-        # Process available commands in the command_arr in a multi-threaded way
+        # Process available commands in the command_arr looping through 
         for i in range(0, len(command_arr), 1):
             if (len(command_arr[i]) != 0):
+                # each thread runs the run_command, the arguments for this run command come from the command array and sb_list 
+                #(which takes an intruction and sphero)
                 thread = threading.Thread(target=run_command, args=[command_arr[i].pop(0), sb_list[i]], daemon = True)
-                threads.append(thread)
+                threads.append(thread) #appends thread object to the threads array
                 thread.start()
-        for thread in threads:
+        for thread in threads: #again waits for all threads to finsh, keeping track of the running threads
             thread.join()
-        time.sleep(TIME)
+        time.sleep(TIME) # pause the program for the alotted time
 
-finally:
+finally: #ensures propor cleanup of the program
     on = False
     threads = []
     for sb in sb_list:
-        thread = threading.Thread(target=terminate_ball, args=[sb], daemon=True)
-        threads.append(thread)
+        thread = threading.Thread(target=terminate_ball, args=[sb], daemon=True) #looping through all the sphero objects and terminating each one
+        threads.append(thread) #keeping track of threads
         thread.start()
     for thread in threads:
         thread.join()
-    cmd_thread.join()
+    cmd_thread.join() #ending the command thread
