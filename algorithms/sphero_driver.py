@@ -162,6 +162,8 @@ if __name__ == "__main__":
 
             # now we broke out of the validity checking loop
             # so let's update the sphero target!
+            sphero.x = sphero.target_x
+            sphero.y = sphero.target_y
             sphero.target_x = new_x
             sphero.target_y = new_y
             # so let's send the instruction :)
