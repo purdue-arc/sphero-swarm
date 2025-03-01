@@ -207,12 +207,42 @@ class Field:
         return groups_of_spheros
 
     def group_sphero_objects(self, spheros):
+        '''
+        returns list of sphero lists.
+        each list's spheros represents a group and its spheros.
+
+        logic taken from siddh-sphero.py (Thanks Siddh)
+        '''
 
         bonds = []
-        coords = set()
 
-        index = 0
-        bonds.append([spheros[index]])
+        for sphero in spheros:
+            bonds.append([sphero])
+
+            i = 0           
+            while (i < len(bonds)):
+                j = 0
+                while (j < len(bonds[i])):
+                    sphero = bonds[i][j]
+                    k = i + 1
+                    while(k < len(bonds)):
+                        l = 0
+                        while (l < len(bonds[k])):
+                            other = bonds[k][l]
+
+                            # if two spheros are a SET distance apart, bond them
+                            # When bonding we combine their two individual arrays into one
+                            if (sphero.check_bonding(other)):
+                                bonds[i].extend(bonds[k])
+                                bonds.pop(k)
+                                k -= 1
+                                break
+                            l += 1
+                        k += 1
+                    j += 1
+                i += 1
+
+        return bonds
 
 
 
