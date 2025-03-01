@@ -1,4 +1,3 @@
-
 import pygame
 import math
 import random 
@@ -177,8 +176,6 @@ if __name__ == "__main__":
     spheros = []
     colors = [RED, GREEN, BLUE, YELLOW, ORANGE, PURPLE]
 
-    # TODO make a function that generates N random spheros with valid coordinates.
-    
     # number of spheros
     N = 32
 
@@ -191,8 +188,7 @@ if __name__ == "__main__":
     bonds = []
     coords = set()
 
-
-    #instatianting all spheros
+    #instantiating all spheros
     index = 0
     while len(spheros) < N:
         # randomly generate X coordinate by generating a random triangle on the grid 

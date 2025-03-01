@@ -11,18 +11,18 @@ port = 1234
 
 s.connect(('localhost', port))
 
-# Example instruction:
-# change color of sphero 1 to (114, 186, 133)
-Instruction(1, 0, Color(114, 186, 133)) 
-
+# Color constants
 BLUE = (0, 0, 255)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 YELLOW = (255, 255, 0)
 PURPLE = (128, 0, 128)
 ORANGE = (255, 165, 0)
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+GRAY = (150, 150, 150)
 
-# CONSTANTS TODO make em right
+# Instruction Constants TODO Tune these based on actual sphero testing.
 SPHERO_SPEED = 1
 ROLL_DURATION = 1
 TURN_DURATION = 1
@@ -33,9 +33,6 @@ HEIGHT = 10
 
 colors = [RED, GREEN, BLUE, YELLOW, ORANGE, PURPLE]
 
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)
-GRAY = (150, 150, 150)
 #initialize our 3 spheros' positions and directions
 # TODO We need to figure out initialization will work.
 # But for now, we can just assume that each Sphero is at position 0,0 facing direction 1
@@ -105,13 +102,13 @@ class Sphero:
 if __name__ == "__main__":
     #sphero_ids = ["SB-B5A9", "SB-E274", "SB-B11D"]
 
-    # Field object from determine_bind.py. TODO complete initialization after Madhav push
     field = Field(WIDTH, HEIGHT)
 
     instructions = []
     spheros = []
 
-    N = 3
+    N = 3 # number of spheros
+
     for sphero_id in range(N):
         # get user input for coordinates
         print(f"Input x and y coordinates for sphero {sphero_id}:")
@@ -140,19 +137,22 @@ if __name__ == "__main__":
     # waits for a response from the API
     buffer = s.recv(1024).decode()
 
-    # move the ballz
+
+
+
+    # move the spheros
     while (True):
         instructions = [] # empty out instructions every iteration
 
-        #reset the next_field array
+        # reset the next_field array before
         field.reset_next_field()
 
+        # create bonds
         bonds = field.group_sphero_objects(spheros)
 
-        # taken from sphero-sim-w-grid.py 
-        # picks a valid direction
+        # The below code to update direction was taken from 
+        # Siddh Saxena of the Sphero Swarm Algorithms Team Hall of Fame
 
-        # update direction
         # i goes through each bonding group
         for i in range(len(bonds)):
 
@@ -268,46 +268,15 @@ if __name__ == "__main__":
                                 
                             # if no available directions exist, then just stop moving
                             else:
-                                print('no available directions exist!!!!!')
+                                print('no available directions exist!')
                                 sphero.target_x, sphero.target_y = sphero.x, sphero.y
       
-        # for sphero in spheros:
-        #
-        #     # turn the ball some direction
-        #     invalid = True
-        #     new_x, new_y, direction_change = 0, 0, 0
-        #     # valid next move check
-        #     while invalid:
-        #         # pick a valid direction change from [-1, 0, 1]
-        #         direction_change = random.randint(-1, 1)
-        #
-        #         #update the direction in the sphero
-        #         # FIXME I don't think we should be updating this until the end
-        #         sphero.update_self_direction(direction_change)
-        #
-        #         # check if valid
-        #         new_x, new_y = sphero.get_target()
-        #
-        #         #if it's valid break out of the loop
-        #         if field.sphero_pos_init_next(sphero, new_x, new_y) == Field.OK:
-        #             invalid = False
-        #
-        #     # now we broke out of the validity checking loop
-        #     # so let's update the sphero target!
-        #     sphero.x = sphero.target_x
-        #     sphero.y = sphero.target_y
-        #     sphero.target_x = new_x
-        #     sphero.target_y = new_y
-        #     # so let's send the instruction :)
-        #     instruction = Instruction(sphero.id, 2, 60 * direction_change, TURN_DURATION)
-        #     instructions.append(instruction)
-        #
-        #
-        # tell the sphero to roll forward
+
+        # All bonding & turning is finished by this point.
+        # Now tell spheros to roll forward one unit.
         for sphero in spheros:
             instruction = Instruction(sphero.id, 1, SPHERO_SPEED, ROLL_DURATION)
             instructions.append(instruction)
-
 
         # send the instructions
         s.send(pickle.dumps(instructions))
