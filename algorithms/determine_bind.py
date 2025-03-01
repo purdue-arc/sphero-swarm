@@ -206,6 +206,19 @@ class Field:
         
         return groups_of_spheros
 
+    def group_sphero_objects(self, spheros):
+
+        bonds = []
+        coords = set()
+
+        index = 0
+        bonds.append([spheros[index]])
+
+
+
+
+
+
     #TODO function that picks a direction for each sphero, avoiding collisions.
     def choose_direction(self):
         '''

@@ -136,6 +136,9 @@ if __name__ == "__main__":
         #reset the next_field array
         field.reset_next_field()
 
+        #groups = field.group_spheros(field.determine_close(2))
+        #for group in groups:
+
         for sphero in spheros:
 
             # turn the ball some direction
