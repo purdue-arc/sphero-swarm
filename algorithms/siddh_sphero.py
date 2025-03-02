@@ -1,4 +1,3 @@
-
 import pygame
 import math
 import random 
@@ -154,7 +153,6 @@ class Sphero:
         self.target_y = self.y + self.speed_y * (TRIANGLE_SIZE) / 2
 
 
-    # TODO disjoint set implementation
     def check_bonding(self, other):
         distance = math.sqrt((self.x - other.x) ** 2 +
                              (self.y - other.y) ** 2)
@@ -162,7 +160,6 @@ class Sphero:
             return True
         return False
 
-    # TODO some way to go from our coordinates to the actual ones
     def __str__(self):
         return (f"Ball(x={self.x}, y={self.y}, "
                 f"target_x={self.target_x}, target_y={self.target_y}, "
@@ -176,8 +173,6 @@ if __name__ == "__main__":
     spheros = []
     colors = [RED, GREEN, BLUE, YELLOW, ORANGE, PURPLE]
 
-    # TODO make a function that generates N random spheros with valid coordinates.
-    
     # number of spheros
     N = 12
 
@@ -191,18 +186,6 @@ if __name__ == "__main__":
     coords = set()
 
 
-    #instatianting all spheros
-    # for i in range(N):
-
-    #     # randomly generate X coordinate by generating a random triangle on the grid 
-    #     # and multiplying it by the size of a triangle to recieve it's exact pixel value
-    #     x = random.randint(2, WIDTH // (TRIANGLE_SIZE*2) * 2 - 2) * (TRIANGLE_SIZE)
-
-    #     # repeat process for y except with height of traingle rather than width
-    #     y = random.randint(2, int(HEIGHT // TRIANGLE_HEIGHT - 1)) * TRIANGLE_HEIGHT
-
-    #     spheros.append(Sphero(x, y, x, y, 0, 0, colors[i % len(colors)]))        
-    #     bonds.append([spheros[i]])
     index = 0
     while len(spheros) < N:
         # randomly generate X coordinate by generating a random triangle on the grid 
@@ -243,7 +226,6 @@ if __name__ == "__main__":
 
         # If all of the Spheros have reached their target they have all stopped moving
         # Now that they have stopped moving choose a new random direction for them to travel in and check bonding
-
         if not updated:
 
             # update bonding
@@ -275,7 +257,6 @@ if __name__ == "__main__":
 
                 # generate new direction
                 direction = random.randint(1, 6)
-
 
                 # used to get initial speed x and y values
                 first_sphero = bonds[i][0]

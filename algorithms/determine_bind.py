@@ -15,6 +15,10 @@ class Field:
         self.next_field_arr = self.create_field();
 
     def initialize_spheros(self, spheros):
+        '''
+        instantiates list of spheros
+        populates field_arr
+        '''
         self.spheros = spheros
         self.sphero_pos_init_arr(spheros)
 
@@ -41,7 +45,7 @@ class Field:
 
     def print_array(self):
         '''
-        Prints out array in more readable manner
+        Prints out array for debugging
         '''
         for row in self.field_arr:
             row_vals = ""
@@ -64,39 +68,26 @@ class Field:
             
     def sphero_pos_init_arr(self, spheros):
         '''
-        Takes in list of spheros, adds to array.
-        Returns INVALID if invalid
-        return SPOT_TAKEN if the spot is taken
+        Takes in list of sphero objects, adds all to field_arr.
+
+        Returns Field.INVALID if a sphero position is invalid
+        Returns Field.SPOT_TAKEN if the spot is taken
+        Returns Field.OK on success of all spheros
         '''
         for sphero in spheros:
-            if (sphero.x < 0):
-                # This should never happen
-                # print(f"No, bad x: {sphero.id}, x = {sphero.x}")
-                return Field.INVALID
-            if (sphero.y < 0):
-                # This should never happen
-                # print(f"No, bad y: {sphero.id}, y = {sphero.y}")
-                return Field.INVALID
-            if (sphero.x >= self.width): 
-                # This should never happen
-                # print(f"No, bad x: {sphero.id}, x = {sphero.x}")
-                return Field.INVALID
-            if (sphero.y >= self.height):
-                # This should never happen
-                # print(f"No, bad y: {sphero.id}, y = {sphero.y}")
-                return Field.INVALID
-            if (self.field_arr[sphero.y][sphero.x] == '-'):
-                # This should never happen
-                # print("Error")
-                return Field.INVALID
-            if (self.field_arr[sphero.y][sphero.x] == 0):
-                # This should never happen, two spheroes being initialized to the same place
-                # print("Error")
-                return Field.SPOT_TAKEN
-            self.field_arr[sphero.y][sphero.x] = sphero.id
-            return Field.OK
+            status = self.sphero_pos_init(sphero)
+            if status != Field.OK:
+                return status
+        return Field.OK
 
     def sphero_pos_init(self, sphero):
+        '''
+        Takes in a singular sphero object (defined in sphero_driver.py), adds to field_arr
+
+        Returns Field.INVALID if a sphero position is invalid
+        Returns Field.SPOT_TAKEN if the spot is taken
+        Returns Field.OK on success of all spheros
+        '''
         if (sphero.x < 0):
             # This should never happen
             # print(f"No, bad x: {sphero.id}, x = {sphero.x}")
@@ -125,7 +116,6 @@ class Field:
         return Field.OK
 
     def sphero_pos_init_next(self, sphero, target_x, target_y):
-        
         if self.check_coords_next(target_x, target_y) == Field.OK:
             self.next_field_arr[sphero.target_y][sphero.target_x] = sphero.id
             return Field.OK
@@ -133,6 +123,14 @@ class Field:
             return Field.INVALID
 
     def check_coords_next(self, x, y):
+        '''
+        checks if x and y are valid coordinates inside the next_field_arr.
+
+        **does not update next_field_arr**
+
+        returns Field.INVALID or Field.SPOT_TAKEN on error, else
+        returns Field.OK on success.
+        '''
         if (x < 0):
             # This should never happen
             # print(f"No, bad x: {sphero.id}, x = {sphero.x}")
@@ -160,6 +158,9 @@ class Field:
         return Field.OK
 
     def reset_next_field(self):
+        '''
+        used to wipe the next_field_arr each iteration of the driver loop.
+        '''
         self.next_field_arr = self.create_field()
 
     def determine_close(self, n):
@@ -207,70 +208,42 @@ class Field:
         return groups_of_spheros
 
     def group_sphero_objects(self, spheros):
+        '''
+        returns list of sphero lists.
+        each list's spheros represents a group and its spheros.
+
+        logic taken from siddh-sphero.py (Thanks Siddh)
+        '''
 
         bonds = []
-        coords = set()
 
-        index = 0
-        bonds.append([spheros[index]])
+        for sphero in spheros:
+            bonds.append([sphero])
 
+            i = 0           
+            while (i < len(bonds)):
+                j = 0
+                while (j < len(bonds[i])):
+                    sphero = bonds[i][j]
+                    k = i + 1
+                    while(k < len(bonds)):
+                        l = 0
+                        while (l < len(bonds[k])):
+                            other = bonds[k][l]
 
+                            # if two spheros are a SET distance apart, bond them
+                            # When bonding we combine their two individual arrays into one
+                            if (sphero.check_bonding(other)):
+                                bonds[i].extend(bonds[k])
+                                bonds.pop(k)
+                                k -= 1
+                                break
+                            l += 1
+                        k += 1
+                    j += 1
+                i += 1
 
-
-
-
-    #TODO function that picks a direction for each sphero, avoiding collisions.
-    def choose_direction(self):
-        '''
-        returns the degrees of rotations 
-        i think we forgot to write this one
-        '''
-        pass
-
-
-class UF:
-    INVALID = -1
-    SPOT_TAKEN = -2
-    OK = 0
-    
-
-    def __init__(self, n):
-        self.n = n
-        self.ids = list(range(n)) # initialize ids arr of size n to i : {0,1,2,3,.etc}
-        self.weights = [1] * n # initialize size arr of size n to 1
-
-
-    def find(self, i):
-        '''
-        Finds the bonded group that a sphero is a part of
-        '''
-        if i > self.n - 1:
-            return self.INVALID
-        if i == self.ids[i]:
-            return i
-        replace = self.find(self.ids[i])
-        self.ids[i] = replace
-        return replace
-    
-    def union(self, one, two):
-        '''
-        Unions one sphero group with another sphero group
-        '''
-        one = self.find(one)
-        two = self.find(two)
-
-        if one == two:
-            return self.OK
-        
-        if self.weights[one] > self.weights[two]:
-            self.weights[one] += self.weights[two]
-            self.ids[two] = one
-            return self.OK
-
-        self.weights[two] += self.weights[one]
-        self.ids[one] = two
-        return self.OK
-
+        return bonds
 
 
 # ------------------------------------

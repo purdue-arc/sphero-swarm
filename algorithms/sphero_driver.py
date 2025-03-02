@@ -11,18 +11,18 @@ port = 1234
 
 s.connect(('localhost', port))
 
-# Example instruction:
-# change color of sphero 1 to (114, 186, 133)
-Instruction(1, 0, Color(114, 186, 133)) 
-
+# Color constants
 BLUE = (0, 0, 255)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 YELLOW = (255, 255, 0)
 PURPLE = (128, 0, 128)
 ORANGE = (255, 165, 0)
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+GRAY = (150, 150, 150)
 
-# CONSTANTS TODO make em right
+# Instruction Constants TODO Tune these based on actual sphero testing.
 SPHERO_SPEED = 1
 ROLL_DURATION = 1
 TURN_DURATION = 1
@@ -33,9 +33,6 @@ HEIGHT = 10
 
 colors = [RED, GREEN, BLUE, YELLOW, ORANGE, PURPLE]
 
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)
-GRAY = (150, 150, 150)
 #initialize our 3 spheros' positions and directions
 # TODO We need to figure out initialization will work.
 # But for now, we can just assume that each Sphero is at position 0,0 facing direction 1
@@ -60,6 +57,18 @@ class Sphero:
         self.direction = (self.direction + direction_change) % 6
         if self.direction == 0:
             self.direction = 6
+
+    def get_direction_change(prev_direction, next_direction):
+        '''
+        given the prev and next direction, returns the direction change.
+
+        used for the API calls, which take an amount of rotation in degrees
+        '''
+        #TODO make direction change the most optimal direction
+        # for example going from direction 1 to direction 6 should be a turn of -1
+        direction_change = next_direction - prev_direction;
+        return direction_change
+
 
     def get_target(self):
         '''
@@ -93,13 +102,13 @@ class Sphero:
 if __name__ == "__main__":
     #sphero_ids = ["SB-B5A9", "SB-E274", "SB-B11D"]
 
-    # Field object from determine_bind.py. TODO complete initialization after Madhav push
     field = Field(WIDTH, HEIGHT)
 
     instructions = []
     spheros = []
 
-    N = 3
+    N = 3 # number of spheros
+
     for sphero_id in range(N):
         # get user input for coordinates
         print(f"Input x and y coordinates for sphero {sphero_id}:")
@@ -115,7 +124,6 @@ if __name__ == "__main__":
         new_sphero.color = colors[sphero_id % len(colors)]
         instructions.append(Instruction(sphero_id, 0, new_sphero.color)) # 0 is change color command
 
-        #TODO use Madhav's method to add this new sphero to the field after he pushes
         status = field.sphero_pos_init(new_sphero)
         if status == Field.INVALID:
             raise SystemExit(f'invalid coordinates {x},{y} for sphero {sphero_id}, field initialization failed')
@@ -129,53 +137,146 @@ if __name__ == "__main__":
     # waits for a response from the API
     buffer = s.recv(1024).decode()
 
-    # move the ballz
+
+
+
+    # move the spheros
     while (True):
         instructions = [] # empty out instructions every iteration
 
-        #reset the next_field array
+        # reset the next_field array before
         field.reset_next_field()
 
-        #groups = field.group_spheros(field.determine_close(2))
-        #for group in groups:
+        # create bonds
+        bonds = field.group_sphero_objects(spheros)
 
-        for sphero in spheros:
+        # The below code to update direction was taken from 
+        # Siddh Saxena of the Sphero Swarm Algorithms Team Hall of Fame
 
-            # turn the ball some direction
-            invalid = True
-            new_x, new_y, direction_change = 0, 0, 0
-            # valid next move check
-            while invalid:
-                # pick a valid direction change from [-1, 0, 1]
-                direction_change = random.randint(-1, 1)
+        # i goes through each bonding group
+        for i in range(len(bonds)):
 
-                #update the direction in the sphero
-                # FIXME I don't think we should be updating this until the end
-                sphero.update_self_direction(direction_change)
+            # generate new direction
+            direction = random.randint(1, 6)
+
+            # update the spheros in the bonding groups direction and target
+            # j goes through each sphero in the selected bonding group
+            for j in range(len(bonds[i])):
+                sphero = bonds[i][j]
+                sphero.direction = direction
+                sphero.target_x, sphero.target_y = sphero.get_target();
+                #sphero.update_direction(direction)
+                #sphero.update_target()
+
+            # IDEA:
+            #   check all other previous bonding group's spheros target_x and target_y with our own sphero's target_x and target_y
+            #   if there is a potential collision that means the direction we had previously chosen is invalid, thus remove it from
+            #   the list of available directions. Once we have gone through all spheros and checked if they will collide with a previous
+            #   sphero we simply choose a direction from the remaining list and reupdate the all of the sphero's directions in the bonding group
+            
+            #   If absolutely no available direction exists then just stay in place for this cycle
+
+            # CODE:
+            available_directions = [1, 2, 3, 4, 5, 6] # list of possible movement direction
+            current_direction = direction - 1 # index of the current direction
+            collision = False # collision flag
+
+            # Iterate through all spheros in the current bond group
+            for j in range(len(bonds[i])):
+
+                sphero = bonds[i][j]
+                #sphero.update_direction(available_directions[current_direction])
+                #Jsphero.update_target()
+                sphero.direction = available_directions[current_direction]
+                sphero.target_x, sphero.target_y = sphero.get_target();
+                #sphero.update_direction(direction)
+
+                # check out of bounds for first bonding group
+                if (i == 0):
+                    found_direction = False
+                    while (found_direction == False):
+
+                        # if any sphero is out of bounds find a new direction
+                        error = False
+                        if (sphero.target_x < 0 or sphero.target_x > WIDTH):
+                            error = True
+                        if (sphero.target_y < 0 or sphero.target_y > HEIGHT):
+                            error = True
+                        
+                        if (error == True):
+                            collision = True
+                            # this direction doesn't work, so remove it
+                            available_directions.pop(current_direction)
+
+                            # since removing we are shifting the list, we need to adjust the current direction
+                            if (current_direction >= len(available_directions)):
+                                current_direction = 0
+                            
+                            sphero.direction = available_directions[current_direction]
+                            sphero.target_x, sphero.target_y = sphero.get_target();
+                            #sphero.update_direction(available_directions[current_direction])
+                            #sphero.update_target()
+
+                        else:
+                            found_direction = True
+
+                #check all previous bonding groups for potential collisions
+                for k in range(i):
+                    for l in range(len(bonds[k])):
+                        other = bonds[k][l]
+
+                        found_direction = False
+                        while (found_direction == False):
+
+                            # if two spheros' x and y coordinates are close enough to each other (not exactly the same, but within a threshhold) 
+                            # or if they are out of bounds then change the direction
+                            error = False
+                            if (abs(other.target_x - sphero.target_x) == 0 and abs(other.target_y - sphero.target_y) == 0):
+                                error = True
+                            if (sphero.target_x < 0 or sphero.target_x > WIDTH):
+                                error = True
+                            if (sphero.target_y < 0 or sphero.target_y > HEIGHT):
+                                error = True
+                            
+                            if (error == True):
+                                collision = True
+                                # this direction doesn't work, so remove it
+                                available_directions.pop(current_direction)
+
+                                # since removing we are shifting the list, we need to adjust the current direction
+                                if (current_direction >= len(available_directions)):
+                                    current_direction = 0
+                                
+                                sphero.direction = available_directions[current_direction]
+                                sphero.target_x, sphero.target_y = sphero.get_target();
+                                #sphero.update_direction(available_directions[current_direction])
+                                #sphero.update_target()
+                            else:
+                                found_direction = True
                 
-                # check if valid
-                new_x, new_y = sphero.get_target()
+                    # reupdate all spheros to make sure they are all moving the same direction
+                    if (collision == True):
+                        # go through all the spheros in the bonding group and update their direction
+                        for j in range(len(bonds[i])):
+                            sphero = bonds[i][j]
+                    
+                            if (len(available_directions) != 0):
+                                #sphero.update_direction(available_directions[current_direction])
+                                sphero.direction = available_directions[current_direction]
+                                sphero.target_x, sphero.target_y = sphero.get_target();
+                                #sphero.update_target()
+                                
+                            # if no available directions exist, then just stop moving
+                            else:
+                                print('no available directions exist!')
+                                sphero.target_x, sphero.target_y = sphero.x, sphero.y
+      
 
-                #if it's valid break out of the loop
-                if field.sphero_pos_init_next(sphero, new_x, new_y) == Field.OK:
-                    invalid = False
-
-            # now we broke out of the validity checking loop
-            # so let's update the sphero target!
-            sphero.x = sphero.target_x
-            sphero.y = sphero.target_y
-            sphero.target_x = new_x
-            sphero.target_y = new_y
-            # so let's send the instruction :)
-            instruction = Instruction(sphero.id, 2, 60 * direction_change, TURN_DURATION)
-            instructions.append(instruction)
-
-
-        # tell the sphero to roll forward
+        # All bonding & turning is finished by this point.
+        # Now tell spheros to roll forward one unit.
         for sphero in spheros:
             instruction = Instruction(sphero.id, 1, SPHERO_SPEED, ROLL_DURATION)
             instructions.append(instruction)
-
 
         # send the instructions
         s.send(pickle.dumps(instructions))
