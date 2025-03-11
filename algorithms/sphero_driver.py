@@ -12,20 +12,17 @@ port = 1234
 s.connect(('localhost', port))
 
 # Color constants
-BLUE = (0, 0, 255)
-RED = (255, 0, 0)
-GREEN = (0, 255, 0)
-YELLOW = (255, 255, 0)
-PURPLE = (128, 0, 128)
-ORANGE = (255, 165, 0)
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)
-GRAY = (150, 150, 150)
+BLUE = Color(0, 0, 255)
+RED = Color(255, 0, 0)
+GREEN = Color(0, 255, 0)
+YELLOW = Color(255, 255, 0)
+PURPLE = Color(128, 0, 128)
+ORANGE = Color(255, 165, 0)
 
-# Instruction Constants TODO Tune these based on actual sphero testing.
-SPHERO_SPEED = 1
-ROLL_DURATION = 1
-TURN_DURATION = 1
+# CONSTANTS 
+SPHERO_SPEED = 90
+ROLL_DURATION = 0.5 # in seconds
+TURN_DURATION = 1 # in seconds
     
 # Field Constants TODO make these accurate to the actual field
 WIDTH = 10
@@ -272,6 +269,10 @@ if __name__ == "__main__":
                                 sphero.target_x, sphero.target_y = sphero.x, sphero.y
       
 
+        for sphero in spheros:
+            direction_change = Sphero.get_direction_change(sphero.prev_direction, sphero.direction), 
+            instruction = Instruction(sphero.id, 2, direction_change, TURN_DURATION)
+            instructions.append(instruction)
         # All bonding & turning is finished by this point.
         # Now tell spheros to roll forward one unit.
         for sphero in spheros:
