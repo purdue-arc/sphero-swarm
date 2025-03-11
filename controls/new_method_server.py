@@ -51,7 +51,7 @@ def control():
     global on
     lock = Lock()
     s = socket.socket()
-    port = 1234
+    port = 1235
     s.bind(('localhost', port))
     s.listen(5)
     print("Waiting for connection")
@@ -80,7 +80,7 @@ def control():
         finally:
             lock.release()
 
-toy_names = ["SB-B5A9", "SB-1840"]
+toy_names = ["SB-E274", "SB-76B3", "SB-B11D"]
 toys = []
 attempts = 0
 while (len(toys) != len(toy_names) and attempts < 5):
