@@ -1,6 +1,8 @@
 # 3/2/2025
 # USING COMMIT ce27ee3123b701e1b444b6fabd180785266d3469
 # used for testing, version without bonding implemented.
+# TODO DON'T USE
+
 import pickle
 import socket
 import random
