@@ -80,7 +80,7 @@ def control():
         finally:
             lock.release()
 
-toy_names = ["SB-E274", "SB-76B3", "SB-B11D"]
+toy_names = ["SB-B5A9", "SB-B11D", "SB-1840"]
 toys = []
 attempts = 0
 while (len(toys) != len(toy_names) and attempts < 5):
