@@ -175,16 +175,18 @@ def draw_pause_button(surface, color, rect, paused):
     surface.blit(text, text_rect)
 
 # our pause button
-def draw_rotate_button(surface, color, rect, paused):
+def draw_rotate_button(surface, color):
+    rect = pygame.Rect(10, 10, 100, 40)  # Positioned near the top-left corner
     pygame.draw.rect(surface, color, rect)
+    
     font = pygame.font.Font(None, 36)
     button_name = 'Rotate'
-    # if (paused == True):
-    #     button_name = 'Resume'
+    
     text = font.render(button_name, True, BLACK)
     text_rect = text.get_rect(center=rect.center)
     surface.blit(text, text_rect)
-
+    
+    return rect  # Returning rect for event handling
     '''
     So we need to implement rotation on a group
     find the mid point - and if the mid point is not an actual sphero coord then get the closest one.
@@ -406,7 +408,7 @@ if __name__ == "__main__":
         
         # Draw the pause button
         draw_pause_button(screen, WHITE, pause_button_rect, paused)
-        draw_rotate_button(screen, WHITE, pause_button_rect, paused)
+        draw_rotate_button(screen, WHITE)
 
         # Draw the spheros
         for sphero in spheros:
