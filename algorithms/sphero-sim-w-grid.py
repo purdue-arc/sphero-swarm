@@ -8,7 +8,7 @@ pygame.init()
 clock = pygame.time.Clock()
 
 # Screen dimensions
-WIDTH, HEIGHT = 400, 400
+WIDTH, HEIGHT = 800, 800
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Sphero Sparm Sim")
 
@@ -211,7 +211,7 @@ if __name__ == "__main__":
     colors = [RED, GREEN, BLUE, YELLOW, ORANGE, PURPLE]
 
     # number of spheros
-    N = 2
+    N_SPHEROS = 20
 
     # The bonds array is a 2D array that stores a set of individual 1D arrays which contain all spheros bonded that are bonded together
     # EX: Sphero 1 and 2 are bonded together, whereas Sphero 3 is bonded with no one which would be stored as such:
@@ -224,7 +224,7 @@ if __name__ == "__main__":
 
     #instantiating all spheros
     index = 0
-    while len(spheros) < N:
+    while len(spheros) < N_SPHEROS:
         # randomly generate X coordinate by generating a random triangle on the grid 
         # and multiplying it by the size of a triangle to recieve it's exact pixel value
         x = random.randint(2, WIDTH // (TRIANGLE_SIZE*2) * 2 - 2) * (TRIANGLE_SIZE)
