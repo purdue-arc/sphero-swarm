@@ -41,8 +41,8 @@ TRIANGLE_HEIGHT = 50 * math.sqrt(3)  # Height of a triangle
 def print_bonds(bonds):
     print()
     for i, bond in enumerate(bonds):  # Use enumerate to get the index and bond
-        bond_ids = ', '.join(str(sphero.id) for sphero in bond)  # Join sphero IDs with commas
-        print(f'{i}: [{bond_ids}]')  # Print the bond index and its IDs in the desired format
+        sphero_ids = ', '.join(str(sphero.id) for sphero in bond)  # Join sphero IDs with commas
+        print(f'{i}: [{sphero_ids}]')  # Print the bond index and its IDs in the desired format
 
 # Function to draw a triangular grid
 def draw_triangular_grid(surface, triangle_size, color):
