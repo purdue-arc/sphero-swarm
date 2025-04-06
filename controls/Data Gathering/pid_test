@@ -2,12 +2,14 @@ from spherov2 import scanner
 from spherov2.sphero_edu import SpheroEduAPI
 import time
 
+'''
 def getIntegral(data, time, dist):
     a = 0
     for point in data:
         a += (dist - point) * time
     return a
-
+'''
+    
 def getDerivative(data, time, dist):
     if len(data) < 2:
         return 0
@@ -25,6 +27,7 @@ distance = float(input("Enter distance: "))
 location_data = []
 time_data = []
 timeStep = 0.1
+intError = 0
 
 # PID gains
 pGain = 0.5
@@ -42,7 +45,9 @@ with SpheroEduAPI(toy_name) as bolt:
         location_data.append(loc)
         print(loc)
         proportional = pGain * (distance - loc)
-        integral = iGain * getIntegral(location_data, timeStep, distance)
+        intError += timeStep * (distance - loc)
+        # integral = iGain * getIntegral(location_data, timeStep, distance)
+        integral = iGain * intError
         derivative = dGain * getDerivative(location_data, time_data, distance)
         bolt.set_speed(proportional + integral + derivative)
         time.sleep(timeStep)
