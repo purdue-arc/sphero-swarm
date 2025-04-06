@@ -38,6 +38,12 @@ GRAY = (150, 150, 150)
 TRIANGLE_SIZE = 50  # Length of a side of each triangle
 TRIANGLE_HEIGHT = 50 * math.sqrt(3)  # Height of a triangle
 
+def print_bonds(bonds):
+    print()
+    for i, bond in enumerate(bonds):  # Use enumerate to get the index and bond
+        bond_ids = ', '.join(str(sphero.id) for sphero in bond)  # Join sphero IDs with commas
+        print(f'{i}: [{bond_ids}]')  # Print the bond index and its IDs in the desired format
+
 # Function to draw a triangular grid
 def draw_triangular_grid(surface, triangle_size, color):
     triangle_size *= 2
@@ -68,7 +74,8 @@ def draw_triangular_grid(surface, triangle_size, color):
 
 # Sphero new class definition
 class Sphero:
-    def __init__(self, x, y, target_x, target_y, velocity_x, velocity_y, color):
+    def __init__(self, id, x, y, target_x, target_y, velocity_x, velocity_y, color):
+        self.id = id
         self.x = x
         self.y = y
         self.target_x = target_x
@@ -158,10 +165,11 @@ class Sphero:
         return False
 
     def __str__(self):
-        return (f"Ball(x={self.x}, y={self.y}, "
-                f"target_x={self.target_x}, target_y={self.target_y}, "
-                f"velocity_x={self.velocity_x}, velocity_y={self.velocity_y}, "
-                f"color={self.color})")
+        return f"{self.id}"
+        # return (f"Ball(x={self.x}, y={self.y}, "
+        #         f"target_x={self.target_x}, target_y={self.target_y}, "
+        #         f"velocity_x={self.velocity_x}, velocity_y={self.velocity_y}, "
+        #         f"color={self.color})")
     
 # our pause button
 def draw_pause_button(surface, color, rect, paused):
@@ -232,7 +240,7 @@ if __name__ == "__main__":
         # repeat process for y except with height of traingle rather than width
         y = random.randint(2, int(HEIGHT // TRIANGLE_HEIGHT - 1)) * TRIANGLE_HEIGHT
         if (x, y) not in coords:
-            spheros.append(Sphero(x, y, x, y, 0, 0, colors[index % len(colors)]))        
+            spheros.append(Sphero(index, x, y, x, y, 0, 0, colors[index % len(colors)]))        
             bonds.append([spheros[index]])
             coords.add((x, y))
             index+=1
@@ -245,7 +253,7 @@ if __name__ == "__main__":
     # Main loop
     running = True
     while running:
-
+        rotate_button_rect = draw_rotate_button(screen, WHITE)
         # waits until someone exits the game, then quits
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -253,6 +261,9 @@ if __name__ == "__main__":
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if pause_button_rect.collidepoint(event.pos):
                     paused = not paused
+                elif rotate_button_rect.collidepoint(event.pos):  # Check if the "Rotate" button is clicked
+                    # print("rotate", bonds)
+                    print_bonds(bonds)
 
         if not paused:
             # Fill the screen with the background color
