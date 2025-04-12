@@ -3,6 +3,7 @@ import socket
 import random
 from Instruction import Instruction
 from spherov2.types import Color
+import math
 
 from determine_bind import Field
 
@@ -45,8 +46,12 @@ class Sphero:
         self.color = None
 
     def check_bonding(self, other):
-        distance = (self.x - other.x) + (self.y - other.y) ** 2
-        if (distance <= 2):
+        x_distance = abs(self.x - other.x)
+        y_distance = abs(self.y - other.y)
+
+        # squished the grid, do not want a vertical bond
+        # x_distance must be with 0 to 2, y_distance must be within 0 to 1
+        if (x_distance < 3 and y_distance < 2):
             return True
         return False
 
@@ -57,8 +62,13 @@ class Sphero:
         direction_change = -1: turn right 60 degrees
         '''
         self.prev_direction = self.direction
-        self.direction = (self.direction + direction_change) % 6
-        if self.direction == 0:
+        self.direction = (self.direction + direction_change)
+
+        #direction values should be 1 through 6, make sure it doesnt go over or under range
+        if (self.direction > 6):
+            self.direction = 1
+
+        if self.direction < 1:
             self.direction = 6
 
     def get_direction_change(prev_direction, next_direction):
@@ -69,7 +79,7 @@ class Sphero:
         '''
         #TODO make direction change the most optimal direction
         # for example going from direction 1 to direction 6 should be a turn of -1
-        direction_change = next_direction - prev_direction;
+        direction_change = next_direction - prev_direction
         return direction_change
 
 
@@ -162,12 +172,14 @@ if __name__ == "__main__":
             # generate new direction (patent pending)
             direction = random.randint(1, 6)
 
+            print("initial chosen direction, line 175:",direction)
+
             # update the spheros in the bonding groups direction and target
             # j goes through each sphero in the selected bonding group
             for j in range(len(bonds[i])):
                 sphero = bonds[i][j]
                 sphero.direction = direction
-                sphero.target_x, sphero.target_y = sphero.get_target();
+                sphero.target_x, sphero.target_y = sphero.get_target()
                 #sphero.update_direction(direction)
                 #sphero.update_target()
 
@@ -192,7 +204,7 @@ if __name__ == "__main__":
                 #Jsphero.update_target()
                 if len(available_directions) != 0:
                     sphero.direction = available_directions[current_direction]
-                    sphero.target_x, sphero.target_y = sphero.get_target();
+                    sphero.target_x, sphero.target_y = sphero.get_target()
                 else:
                     sphero.target_x, sphero.target_y = sphero.x, sphero.y
 
@@ -217,15 +229,17 @@ if __name__ == "__main__":
                                 # since removing we are shifting the list, we need to adjust the current direction
                                 if (current_direction >= len(available_directions)):
                                     current_direction = 0
-                                print(f'j = {j}, current_direction = {current_direction}')
+                                
                                 if (len(available_directions) != 0):
                                     sphero.direction = available_directions[current_direction]
-                                    sphero.target_x, sphero.target_y = sphero.get_target();
+                                    print(f'j = {j}, current_direction while finding avaialble direction line 235 = {available_directions[current_direction]}')
+                                    sphero.target_x, sphero.target_y = sphero.get_target()
                                 else:
+                                    print("no more available directions, line 238")
                                     sphero.target_x, sphero.target_y = sphero.x, sphero.y
                             else:    
                                 #don't move
-                                sphero.target_x, sphero.target_y = sphero.x, sphero.y;
+                                sphero.target_x, sphero.target_y = sphero.x, sphero.y
                             #sphero.update_direction(available_directions[current_direction])
                             #sphero.update_target()
 
@@ -259,11 +273,14 @@ if __name__ == "__main__":
                                     # since removing we are shifting the list, we need to adjust the current direction
                                     if (current_direction >= len(available_directions)):
                                         current_direction = 0
+
                                     if (len(available_directions) != 0):
+                                        print(f'j = {j}, current_direction while finding avaialble direction line 279 = {available_directions[current_direction]}')
                                         sphero.direction = available_directions[current_direction]
-                                        sphero.target_x, sphero.target_y = sphero.get_target();
+                                        sphero.target_x, sphero.target_y = sphero.get_target()
                                     else:
-                                        sphero.target_x, sphero.target_y = sphero.x, sphero.y;
+                                        print("no available directions line 282")
+                                        sphero.target_x, sphero.target_y = sphero.x, sphero.y
                                 else:
                                     sphero.target_x, sphero.target_y = sphero.x, sphero.y
                                 #sphero.update_direction(available_directions[current_direction])
@@ -278,9 +295,11 @@ if __name__ == "__main__":
                             sphero = bonds[i][j]
                     
                             if (len(available_directions) != 0):
+
+                                print(f'j = {j}, current_direction while finding avaialble direction line 299 = {available_directions[current_direction]}')
                                 #sphero.update_direction(available_directions[current_direction])
                                 sphero.direction = available_directions[current_direction]
-                                sphero.target_x, sphero.target_y = sphero.get_target();
+                                sphero.target_x, sphero.target_y = sphero.get_target()
                                 #sphero.update_target()
                                 
                             # if no available directions exist, then just stop moving
@@ -290,7 +309,8 @@ if __name__ == "__main__":
       
 
         for sphero in spheros:
-            direction_change = Sphero.get_direction_change(sphero.prev_direction, sphero.direction), 
+            direction_change = Sphero.get_direction_change(sphero.prev_direction, sphero.direction)
+            print("direction change line 313", direction_change) 
             sphero.prev_direction = sphero.direction
             instruction = Instruction(sphero.id, 2, direction_change, TURN_DURATION)
             instructions.append(instruction)
