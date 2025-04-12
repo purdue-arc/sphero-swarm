@@ -318,6 +318,9 @@ if __name__ == "__main__":
             sphero.prev_direction = sphero.direction
             instruction = Instruction(sphero.id, 2, direction_change, TURN_DURATION)
             instructions.append(instruction)
+
+            sphero.x, sphero.y = sphero.target_x, sphero.target_y
+            
         # All bonding & turning is finished by this point.
         # Now tell spheros to roll forward one unit.
         for sphero in spheros:
