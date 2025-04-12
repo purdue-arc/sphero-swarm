@@ -180,6 +180,8 @@ if __name__ == "__main__":
                 sphero = bonds[i][j]
                 sphero.direction = direction
                 sphero.target_x, sphero.target_y = sphero.get_target()
+
+                print(f"current position {sphero.x} {sphero.y}, updated target, line 184, {sphero.target_x} {sphero.target_y}")
                 #sphero.update_direction(direction)
                 #sphero.update_target()
 
@@ -221,6 +223,7 @@ if __name__ == "__main__":
                             error = True
                         
                         if (error == True):
+                            print(f"out of bounds error is detected, line 226 {sphero.target_x} {sphero.target_y}, out of bounds is 0 and {WIDTH} & {HEIGHT}")
                             if (len(available_directions) != 0):
                                 collision = True
                                 # this direction doesn't work, so remove it
@@ -234,6 +237,7 @@ if __name__ == "__main__":
                                     sphero.direction = available_directions[current_direction]
                                     print(f'j = {j}, current_direction while finding avaialble direction line 235 = {available_directions[current_direction]}')
                                     sphero.target_x, sphero.target_y = sphero.get_target()
+                                    print(f"line 240 new target {sphero.target_x} {sphero.target_y}")
                                 else:
                                     print("no more available directions, line 238")
                                     sphero.target_x, sphero.target_y = sphero.x, sphero.y
