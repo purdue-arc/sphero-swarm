@@ -88,27 +88,27 @@ class Sphero:
         returns a new target_x, target_y based on direction
         '''
         if (self.direction == 1):
-            return (self.target_x + 2, self.target_y)
+            return (self.x + 2, self.y)
 
         # move up right
         elif (self.direction == 2):
-            return (self.target_x + 1, self.target_y + 1)
+            return (self.x + 1, self.y + 1)
 
         # move up left
         elif (self.direction == 3):
-            return (self.target_x - 1, self.target_y + 1)
+            return (self.x - 1, self.y + 1)
 
         # move left
         elif (self.direction == 4):
-            return (self.target_x - 2, self.target_y)
+            return (self.x - 2, self.y)
 
         # move down left
         elif (self.direction == 5):
-            return (self.target_x - 1, self.target_y - 1)
+            return (self.x - 1, self.y - 1)
 
         # move down right
         elif (self.direction == 6):
-            return (self.target_x + 1, self.target_y - 1)
+            return (self.x + 1, self.y - 1)
 
 
 
