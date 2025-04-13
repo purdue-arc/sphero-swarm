@@ -92,11 +92,11 @@ class Sphero:
 
         # move up right
         elif (self.direction == 2):
-            return (self.x + 1, self.y + 1)
+            return (self.x + 1, self.y - 1)
 
         # move up left
         elif (self.direction == 3):
-            return (self.x - 1, self.y + 1)
+            return (self.x - 1, self.y - 1)
 
         # move left
         elif (self.direction == 4):
@@ -104,11 +104,11 @@ class Sphero:
 
         # move down left
         elif (self.direction == 5):
-            return (self.x - 1, self.y - 1)
+            return (self.x - 1, self.y + 1)
 
         # move down right
         elif (self.direction == 6):
-            return (self.x + 1, self.y - 1)
+            return (self.x + 1, self.y + 1)
 
 
 
@@ -120,10 +120,12 @@ if __name__ == "__main__":
     instructions = []
     spheros = []
 
-    N = 3 # number of spheros
+    N = 1 # number of spheros
 
     for sphero_id in range(N):
         # get user input for coordinates
+        field.print_array()
+        print()
         print(f"Input x and y coordinates for sphero {sphero_id}:")
         x = int(input('x: '))
         y = int(input('y: '))
