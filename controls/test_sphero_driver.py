@@ -105,7 +105,7 @@ if __name__ == "__main__":
     instructions = []
     spheros = []
 
-    N = 3
+    N = 1
     for sphero_id in range(N):
         # get user input for coordinates
         print(f"Input x and y coordinates for sphero {sphero_id}:")
