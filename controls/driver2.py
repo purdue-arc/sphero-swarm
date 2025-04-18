@@ -123,6 +123,8 @@ if __name__ == "__main__":
     N = 3 # number of spheros
 
     for sphero_id in range(N):
+        #field.print_array()
+        #print(field.group_sphero_objects(field.spheros))
         # get user input for coordinates
         print(f"Input x and y coordinates for sphero {sphero_id}:")
         x = int(input('x: '))
@@ -152,6 +154,7 @@ if __name__ == "__main__":
 
     # move the spheros
     while (True):
+        field.print_array()
         instructions = [] # empty out instructions every iteration
 
         # reset the next_field array before
@@ -315,6 +318,7 @@ if __name__ == "__main__":
       
 
         for sphero in spheros:
+            field.field_arr[int(sphero.target_y)][int(sphero.target_x)] = sphero.id
             direction_change = Sphero.get_direction_change(sphero.prev_direction, sphero.direction)
             #print("direction change line 313", direction_change) 
             sphero.prev_direction = sphero.direction

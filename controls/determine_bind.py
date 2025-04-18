@@ -30,7 +30,7 @@ class Field:
         '''
         field_arr = []
         for i in range(0, self.height, 1):
-            field_arr.append([0] * self.width)
+            field_arr.append(['x'] * self.width)
             
             for j in range(0, self.width, 1):
                 if (i % 2 == 0):
@@ -62,7 +62,8 @@ class Field:
                 rand_row = random.randint(0, len(self.field_arr) - 1)
                 rand_col = random.randint(0, len(self.field_arr[0]) - 1)
 
-                if (self.field_arr[rand_row][rand_col] == 0):
+                #if (self.field_arr[rand_row][rand_col] == 0):
+                if (self.field_arr[rand_row][rand_col] == 'x'):
                     self.field_arr[rand_row][rand_col] = i
                     break
             
@@ -108,7 +109,8 @@ class Field:
             # This should never happen
             # print("Error")
             return Field.INVALID
-        if (self.field_arr[sphero.y][sphero.x] != 0):
+        #if (self.field_arr[sphero.y][sphero.x] != 0):
+        if (self.field_arr[sphero.y][sphero.x] != 'x'):#0):
             # This should never happen, two spheroes being initialized to the same place
             # print("Error")
             return Field.SPOT_TAKEN
@@ -151,7 +153,7 @@ class Field:
             # This should never happen
             # print("Error")
             return Field.INVALID
-        if (self.next_field_arr[y][x] != 0):
+        if (self.next_field_arr[y][x] != 'x'):#0):
             # This should never happen, two spheroes being initialized to the same place
             # print("Error")
             return Field.SPOT_TAKEN
