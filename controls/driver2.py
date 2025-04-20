@@ -295,8 +295,8 @@ if __name__ == "__main__":
                 # reupdate all spheros to make sure they are all moving the same direction
                 if (collision == True):
                     # go through all the spheros in the bonding group and update their direction
-                    for j in range(len(bonds[i])):
-                        sphero = bonds[i][j]
+                    for k in range(len(bonds[i])):
+                        sphero = bonds[i][k]
                 
                         if (len(available_directions) != 0):
 
