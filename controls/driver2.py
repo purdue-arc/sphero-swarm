@@ -162,9 +162,7 @@ if __name__ == "__main__":
 
         print(f"line 163 number of bonding groups {len(bonds)}")
 
-        # if (x == 3):
-        #     break
-        
+    
         # The below code to update direction was taken from 
         # Siddh Saxena of the Sphero Swarm Algorithms Team Hall of Fame
 
@@ -294,24 +292,24 @@ if __name__ == "__main__":
                             else:
                                 found_direction = True
                 
-                    # reupdate all spheros to make sure they are all moving the same direction
-                    if (collision == True):
-                        # go through all the spheros in the bonding group and update their direction
-                        for j in range(len(bonds[i])):
-                            sphero = bonds[i][j]
-                    
-                            if (len(available_directions) != 0):
+                # reupdate all spheros to make sure they are all moving the same direction
+                if (collision == True):
+                    # go through all the spheros in the bonding group and update their direction
+                    for j in range(len(bonds[i])):
+                        sphero = bonds[i][j]
+                
+                        if (len(available_directions) != 0):
 
-                                #print(f'j = {j}, current_direction while finding avaialble direction line 299 = {available_directions[current_direction]}')
-                                #sphero.update_direction(available_directions[current_direction])
-                                sphero.direction = available_directions[current_direction]
-                                sphero.target_x, sphero.target_y = sphero.get_target()
-                                #sphero.update_target()
-                                
-                            # if no available directions exist, then just stop moving
-                            else:
-                                #print('no available directions exist!')
-                                sphero.target_x, sphero.target_y = sphero.x, sphero.y
+                            #print(f'j = {j}, current_direction while finding avaialble direction line 299 = {available_directions[current_direction]}')
+                            #sphero.update_direction(available_directions[current_direction])
+                            sphero.direction = available_directions[current_direction]
+                            sphero.target_x, sphero.target_y = sphero.get_target()
+                            #sphero.update_target()
+                            
+                        # if no available directions exist, then just stop moving
+                        else:
+                            #print('no available directions exist!')
+                            sphero.target_x, sphero.target_y = sphero.x, sphero.y
                     
             print(f"Line 314 found available direction: {bonds[i][0].direction}, previous direction {bonds[i][0].prev_direction}, w direction change {Sphero.get_direction_change(bonds[i][0].prev_direction, bonds[i][0].direction)}")
       
