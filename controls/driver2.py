@@ -7,6 +7,7 @@ import math
 import time
 
 from determine_bind import Field
+from simulation import SpheroSim
 
 s = socket.socket()
 port = 1235
@@ -150,6 +151,9 @@ if __name__ == "__main__":
     s.send(pickle.dumps(instructions))
     # waits for a response from the API
     buffer = s.recv(1024).decode()
+
+    #initialize the simulation
+    sim = SpheroSim()
 
     # move the spheros
     while (True):
@@ -325,6 +329,9 @@ if __name__ == "__main__":
             instructions.append(instruction)
 
             sphero.x, sphero.y = sphero.target_x, sphero.target_y
+
+        sim.draw_triangular_grid()
+        sim.draw_spheros(spheros)
             
         # All bonding & turning is finished by this point.
         # Now tell spheros to roll forward one unit.
