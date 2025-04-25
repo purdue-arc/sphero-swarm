@@ -5,6 +5,7 @@ from Instruction import Instruction
 from spherov2.types import Color
 import math
 import time
+import atexit
 
 from determine_bind import Field
 from simulation import SpheroSim
@@ -156,7 +157,10 @@ if __name__ == "__main__":
     sim = SpheroSim()
 
     # move the spheros
+    atexit.register(sim.quit)
     while (True):
+
+
         instructions = [] # empty out instructions every iteration
 
         # reset the next_field array before
@@ -332,6 +336,7 @@ if __name__ == "__main__":
 
         sim.draw_triangular_grid()
         sim.draw_spheros(spheros)
+        sim.flip()
             
         # All bonding & turning is finished by this point.
         # Now tell spheros to roll forward one unit.

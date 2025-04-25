@@ -16,10 +16,14 @@ color = (200, 200, 200)
 # CONSTS
 SPHERO_RADIUS = 10
 
+
+pygame.init()
+
 class SpheroSim:
     def __init__(self):
-        pygame.init()
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
+        pygame.display.set_caption("Sphero Sparm Sim")
+        print('initted')
     # Function to draw a triangular grid
     def draw_triangular_grid(self):
         # Fill the screen with the background color
@@ -55,6 +59,15 @@ class SpheroSim:
                     pygame.draw.polygon(self.screen, color, [p2, p4, p3], 1)
     def draw_spheros(self, spheros):
         for sphero in spheros:
-            pygame.draw.circle(self.screen, sphero.color, (int(sphero.x), int(sphero.y)), SPHERO_RADIUS)
+            pygame.draw.circle(self.screen, color, (int(sphero.x), int(sphero.y)), SPHERO_RADIUS)
 
+    def flip(self):
+        # Update the display
+        pygame.display.flip()
+
+    def quit(self):
+        pygame.quit()
+
+if __name__ == '__main__':
+    simmy = SpheroSim()
 

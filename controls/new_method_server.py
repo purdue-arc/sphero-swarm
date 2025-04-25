@@ -80,7 +80,7 @@ def control():
         finally:
             lock.release()
 
-toy_names = ["SB-B5A9", "SB-E274", "SB-CEB2"]
+toy_names = ["SB-B5A9", "SB-B11D", "SB-BD0A"]
 #toy_names = ["SB-B5A9"]
 toys = []
 attempts = 0
