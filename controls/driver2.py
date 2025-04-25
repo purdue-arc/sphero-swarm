@@ -169,7 +169,7 @@ if __name__ == "__main__":
         # create bonds
         bonds = field.group_sphero_objects(spheros)
 
-        #print(f"line 163 number of bonding groups {len(bonds)}")
+        print(f"\n\nNEW INSTRUCTION\nnumber of bonding groups {len(bonds)}")
 
     
         # The below code to update direction was taken from 
@@ -190,7 +190,7 @@ if __name__ == "__main__":
                 sphero.direction = direction
                 sphero.target_x, sphero.target_y = sphero.get_target()
 
-                print(f"current position {sphero.x} {sphero.y}, updated target, {sphero.target_x} {sphero.target_y}")
+                print(f"j={j}, sphero id={sphero.id}, current position {sphero.x} {sphero.y}")
                 #sphero.update_direction(direction)
                 #sphero.update_target()
 
@@ -324,7 +324,7 @@ if __name__ == "__main__":
       
 
         for sphero in spheros:
-            print(f"Sphero coords: {sphero.x}, {sphero.y} Sphero target coords: {sphero.target_x}, {sphero.target_y}")
+            print(f"sphero_id={sphero.id}:\nSphero direction = {sphero.direction}\nSphero coords: {sphero.x}, {sphero.y} Sphero target coords: {sphero.target_x}, {sphero.target_y}\n")
             direction_change = Sphero.get_direction_change(sphero.prev_direction, sphero.direction)
             #print("direction change line 313", direction_change) 
             sphero.prev_direction = sphero.direction
