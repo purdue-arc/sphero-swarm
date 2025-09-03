@@ -24,7 +24,7 @@ PURPLE = Color(128, 0, 128)
 ORANGE = Color(255, 165, 0)
 
 # CONSTANTS 
-SPHERO_SPEED = 60
+SPHERO_SPEED = 50
 ROLL_DURATION = 1 # in seconds
 TURN_DURATION = 1 # in seconds
     
