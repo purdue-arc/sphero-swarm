@@ -8,7 +8,7 @@ pygame.init()
 clock = pygame.time.Clock()
 
 # Screen dimensions
-WIDTH, HEIGHT = 600, 600
+WIDTH, HEIGHT = 800, 800
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Sphero Sparm Sim")
 
@@ -37,6 +37,12 @@ GRAY = (150, 150, 150)
 # Triangle settings
 TRIANGLE_SIZE = 50  # Length of a side of each triangle
 TRIANGLE_HEIGHT = 50 * math.sqrt(3)  # Height of a triangle
+
+def print_bonds(bonds):
+    print()
+    for i, bond in enumerate(bonds):  # Use enumerate to get the index and bond
+        sphero_ids = ', '.join(str(sphero.id) for sphero in bond)  # Join sphero IDs with commas
+        print(f'{i}: [{sphero_ids}]')  # Print the bond index and its IDs in the desired format
 
 # Function to draw a triangular grid
 def draw_triangular_grid(surface, triangle_size, color):
@@ -68,19 +74,20 @@ def draw_triangular_grid(surface, triangle_size, color):
 
 # Sphero new class definition
 class Sphero:
-    def __init__(self, x, y, target_x, target_y, speed_x, speed_y, color):
+    def __init__(self, id, x, y, target_x, target_y, velocity_x, velocity_y, color):
+        self.id = id
         self.x = x
         self.y = y
         self.target_x = target_x
         self.target_y = target_y
-        self.speed_x = speed_x
-        self.speed_y = speed_y
+        self.velocity_x = velocity_x
+        self.velocity_y = velocity_y
         self.color = color
 
     def update(self):
 
         # if the speed is 0, then we have stopped and no updating needs to happen
-        if self.speed_x == self.speed_y == 0:
+        if self.velocity_x == self.velocity_y == 0:
             return False
 
         # finds the distance to the target
@@ -97,11 +104,11 @@ class Sphero:
             self.y = self.target_y
 
             # also set the speed to 0 to show that the ball has stopped.
-            self.speed_x = 0
-            self.speed_y = 0
+            self.velocity_x = 0
+            self.velocity_y = 0
         else:
-            self.x += self.speed_x
-            self.y += self.speed_y
+            self.x += self.velocity_x
+            self.y += self.velocity_y
 
         return True
 
@@ -112,37 +119,41 @@ class Sphero:
 
         # move right
         if (direction == 1):
-            self.speed_x = 2
-            self.speed_y = 0
+            self.velocity_x = 2
+            self.velocity_y = 0
 
         # move up right
         elif (direction == 2):
-            self.speed_x = 1
-            self.speed_y = (math.sqrt(3))
+            self.velocity_x = 1
+            self.velocity_y = (math.sqrt(3))
 
         # move up left
         elif (direction == 3):
-            self.speed_x = -1
-            self.speed_y = (math.sqrt(3))
+            self.velocity_x = -1
+            self.velocity_y = (math.sqrt(3))
 
         # move left
         elif (direction == 4):
-            self.speed_x = -2
-            self.speed_y = 0
+            self.velocity_x = -2
+            self.velocity_y = 0
 
         # move down left
         elif (direction == 5):
-            self.speed_x = -1
-            self.speed_y = -(math.sqrt(3)) 
+            self.velocity_x = -1
+            self.velocity_y = -(math.sqrt(3)) 
 
         # move down right
         elif (direction == 6):
-            self.speed_x = 1
-            self.speed_y = -(math.sqrt(3)) 
+            self.velocity_x = 1
+            self.velocity_y = -(math.sqrt(3)) 
     
+    def rotate(self, angle):
+        # do sum
+        print("rotate")
+
     def update_target(self):
-        self.target_x = self.x + self.speed_x * (TRIANGLE_SIZE) / 2
-        self.target_y = self.y + self.speed_y * (TRIANGLE_SIZE) / 2
+        self.target_x = self.x + self.velocity_x * (TRIANGLE_SIZE) / 2
+        self.target_y = self.y + self.velocity_y * (TRIANGLE_SIZE) / 2
 
 
     # checks whether spheros are one grid space apart
@@ -154,10 +165,11 @@ class Sphero:
         return False
 
     def __str__(self):
-        return (f"Ball(x={self.x}, y={self.y}, "
-                f"target_x={self.target_x}, target_y={self.target_y}, "
-                f"speed_x={self.speed_x}, speed_y={self.speed_y}, "
-                f"color={self.color})")
+        return f"{self.id}"
+        # return (f"Ball(x={self.x}, y={self.y}, "
+        #         f"target_x={self.target_x}, target_y={self.target_y}, "
+        #         f"velocity_x={self.velocity_x}, velocity_y={self.velocity_y}, "
+        #         f"color={self.color})")
     
 # our pause button
 def draw_pause_button(surface, color, rect, paused):
@@ -170,6 +182,36 @@ def draw_pause_button(surface, color, rect, paused):
     text_rect = text.get_rect(center=rect.center)
     surface.blit(text, text_rect)
 
+# our pause button
+def draw_rotate_button(surface, color):
+    rect = pygame.Rect(10, 10, 100, 40)  # Positioned near the top-left corner
+    pygame.draw.rect(surface, color, rect)
+    
+    font = pygame.font.Font(None, 36)
+    button_name = 'Rotate'
+    
+    text = font.render(button_name, True, BLACK)
+    text_rect = text.get_rect(center=rect.center)
+    surface.blit(text, text_rect)
+    
+    return rect  # Returning rect for event handling
+    '''
+    So we need to implement rotation on a group
+    find the mid point - and if the mid point is not an actual sphero coord then get the closest one.
+    Choose this as the pivot everything else needs to rotate.
+    The bond can rotate either clockwise or counterclockwise
+    The further away a node is from the pivot, the faster it has to move to its desired spot
+
+    add a speed parameter to modify the speed to which it goes.
+
+    we need to pick a direction
+    then calc if the destination of rotation is within bounds.
+    if its not then DONT ROTATE IT
+
+    
+    '''
+
+
 if __name__ == "__main__":
 
     #instantiate spheros
@@ -177,7 +219,7 @@ if __name__ == "__main__":
     colors = [RED, GREEN, BLUE, YELLOW, ORANGE, PURPLE]
 
     # number of spheros
-    N = 32
+    N_SPHEROS = 20
 
     # The bonds array is a 2D array that stores a set of individual 1D arrays which contain all spheros bonded that are bonded together
     # EX: Sphero 1 and 2 are bonded together, whereas Sphero 3 is bonded with no one which would be stored as such:
@@ -190,7 +232,7 @@ if __name__ == "__main__":
 
     #instantiating all spheros
     index = 0
-    while len(spheros) < N:
+    while len(spheros) < N_SPHEROS:
         # randomly generate X coordinate by generating a random triangle on the grid 
         # and multiplying it by the size of a triangle to recieve it's exact pixel value
         x = random.randint(2, WIDTH // (TRIANGLE_SIZE*2) * 2 - 2) * (TRIANGLE_SIZE)
@@ -198,7 +240,7 @@ if __name__ == "__main__":
         # repeat process for y except with height of traingle rather than width
         y = random.randint(2, int(HEIGHT // TRIANGLE_HEIGHT - 1)) * TRIANGLE_HEIGHT
         if (x, y) not in coords:
-            spheros.append(Sphero(x, y, x, y, 0, 0, colors[index % len(colors)]))        
+            spheros.append(Sphero(index, x, y, x, y, 0, 0, colors[index % len(colors)]))        
             bonds.append([spheros[index]])
             coords.add((x, y))
             index+=1
@@ -211,7 +253,7 @@ if __name__ == "__main__":
     # Main loop
     running = True
     while running:
-
+        rotate_button_rect = draw_rotate_button(screen, WHITE)
         # waits until someone exits the game, then quits
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -219,6 +261,9 @@ if __name__ == "__main__":
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if pause_button_rect.collidepoint(event.pos):
                     paused = not paused
+                elif rotate_button_rect.collidepoint(event.pos):  # Check if the "Rotate" button is clicked
+                    # print("rotate", bonds)
+                    print_bonds(bonds)
 
         if not paused:
             # Fill the screen with the background color
@@ -251,7 +296,6 @@ if __name__ == "__main__":
                             l = 0
                             while (l < len(bonds[k])):
                                 other = bonds[k][l]
-
                                 # if two spheros are a SET distance apart, bond them
                                 # When bonding we combine their two individual arrays into one
                                 if (sphero.check_bonding(other)):
@@ -369,12 +413,13 @@ if __name__ == "__main__":
                                 
                             # if no available directions exist, then just stop moving
                             else:
-                                sphero.speed_x = 0
-                                sphero.speed_y = 0  
+                                sphero.velocity_x = 0
+                                sphero.velocity_y = 0  
                             sphero.update_target()
         
         # Draw the pause button
         draw_pause_button(screen, WHITE, pause_button_rect, paused)
+        draw_rotate_button(screen, WHITE)
 
         # Draw the spheros
         for sphero in spheros:
@@ -384,7 +429,7 @@ if __name__ == "__main__":
         pygame.display.flip()
 
         # Control frame rate
-        clock.tick(200)
+        clock.tick(60)
 
     # Quit Pygame
     pygame.quit()
