@@ -5,7 +5,7 @@ from spherov2.types import Color
 import threading
 from threading import Lock
 from threading import Barrier
-import controls.Instruction as Instruction
+import Instruction as Instruction
 import time
 import pickle
 import socket
