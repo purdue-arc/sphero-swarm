@@ -1,7 +1,7 @@
 import pickle
 import socket
 import random
-from Instruction import Instruction
+from controls.Instruction import Instruction
 from spherov2.types import Color
 import math
 import time
