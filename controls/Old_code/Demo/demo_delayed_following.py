@@ -4,7 +4,7 @@ from Instruction import Instruction
 from spherov2.types import Color
 import time
 import keyboard
-from dictionary_creator import create_dict
+from controls.Old_code.dictionary_creator import create_dict
 
 def run():
     # first -> last to run

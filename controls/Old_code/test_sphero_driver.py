@@ -9,7 +9,7 @@ import random
 from Instruction import Instruction
 from spherov2.types import Color
 
-from determine_bind import Field
+from controls.Old_code.determine_bind import Field
 
 s = socket.socket()
 port = 1235
