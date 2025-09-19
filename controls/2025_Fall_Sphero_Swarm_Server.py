@@ -8,6 +8,22 @@ from spherov2.types import Color
 import threading
 import time
 
+def generate_dict_map():
+    try:
+        ret_dict = dict([])
+        with open("name_to_location_dict.csv", "r") as file:
+            # purposefully purge first line
+            line = file.readline()
+            while (True):
+                line = file.readline()
+                if (not line):
+                    break
+                cleaned_line = line.strip().split(", ")
+                ret_dict.update({cleaned_line[0] : int(cleaned_line[1])})
+        return ret_dict
+    except:
+        raise RuntimeError("Dictionary method failed! Exiting code.")
+
 # find avaliable toys in an area, and then if not all balls connected
 # after a set number of attempts, this raises an error
 def find_balls(names, max_attempts):
@@ -25,73 +41,80 @@ def find_balls(names, max_attempts):
     raise RuntimeError("Not all balls actually connected")
 
 # connect a ball and then return the object created to the list
-def connect_ball(toy_name, ret_list, location):
-    sb = SpheroEduAPI(toy_name).__enter__()
+def connect_ball(toy_address, ret_list, location):
+    sb = SpheroEduAPI(toy_address).__enter__()
     ret_list[location] = sb
 
-def connect_multi_ball(toy_names, ret_list):
-    pass
+def connect_multi_ball(toy_addresses, ret_list, locations):
+    # hopefully fast enough that control c'ing in this time should not be humanly reactable
+    print("Connecting to Spheros...")
+    # active thread tracker
+    threads = []    
+
+    # connecting to sb section
+    for index in range(0, len(toy_addresses), 1):
+        thread = threading.Thread(target=connect_ball, args=[toy_addresses[index], ret_list, locations[index]])
+        threads.append(thread)
+        thread.start()
+    
+    while True:
+        # reconnect the system now
+        try:
+            for thread in threads:
+                thread.join()
+            break
+        except KeyboardInterrupt:
+            print("Connection ongoning... please don't interupt.") 
+            continue
+
+    # verify function
+    print("Balls Connected: {}".format(ret_list))
+    # brainstorming: the idea is wait for a set amount time, and then 
+    # we check if they're all done - not futures, if still futures - then 
 
 # terminate ball to free it for future use
 def terminate_ball(sb):
     sb.__exit__(None, None, None)
 
 # terminate balls to allow it to be connected to in the future
-# note: current method is unsafe - because ctrl c repeatedly generates more threads,
-# which can end in an error that tries to exit nothing, due to targeting the sb ball more than once
+# possibly unsafe - testing needed
 def terminate_mutli_ball(sb_list):
-    while True:
-        # brainstorming: outside of loop, but within try except, create threads, but don't start
-        # contains while, then create threads in while loop, exceptions close threads, then reopen 
-        # then on the next cycle, should be safer because speed of closing threads should be fast enough
-        # to be unreactable 
-        try:
-            print("DO NOT TERMINATE - ENDING PROCESSES RUNNING")
+    # should be fast enough to avoid anything silly
+    print("DO NOT TERMINATE - ENDING PROCESSES RUNNING")
+    # use multi-threading to speed up close out process
+    threads = []
+    for sb in sb_list:
+        if (type(sb) == SpheroEduAPI):    
+            thread = threading.Thread(target=terminate_ball, args=[sb])
+            threads.append(thread)
+            thread.start()
 
-            # use multi-threading to speed up close out process
-            threads = []
-            for sb in sb_list:
-                if (type(sb) == SpheroEduAPI):    
-                    thread = threading.Thread(target=terminate_ball, args=[sb])
-                    threads.append(thread)
-                    thread.start()
-            
-            # reconnect the system now
+    while True:
+        try:            
+            # reconnect the system now, should be safe???
             for thread in threads:
                 thread.join()
             break
 
         except KeyboardInterrupt:
             print("KeyboardInterrupt caught, please do not terminate prematurely")
-            # include command to kill all threads???
             continue
 
 def main():
     ball_names = ["SB-B5A9", "SB-B11D", "SB-E274"]
-    toys = find_balls(ball_names, 5)
+    name_to_location_dict = generate_dict_map()
+    locations = []
+
+    for ball_name in ball_names:
+        locations.append(name_to_location_dict[ball_name])
+
+    toys_addresses = find_balls(ball_names, 5)
 
     # sb list and locations for coordinating it
-    sb_list = [None] * len(toys)
-    location = 0
+    sb_list = [None] * len(name_to_location_dict)
 
-    # active thread tracker
-    threads = []
-
-    # now into the mass of code
-    try:
-        # connecting to sb section
-        for toy in toys:
-            thread = threading.Thread(target=connect_ball, args=[toy, sb_list, location])
-            threads.append(thread)
-            thread.start()
-            location += 1
-        # reconnect the system now
-        for thread in threads:
-            thread.join()
-
-        print(sb_list)
-        # brainstorming: the idea is wait for a set amount time, and then 
-        # we check if they're all done - not futures, if still futures - then 
+    try: 
+        connect_multi_ball(toys_addresses, sb_list, locations)
 
     finally:
         # always attempt to disconnect after connecting to avoid manual resets
