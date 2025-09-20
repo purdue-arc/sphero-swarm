@@ -6,6 +6,7 @@ from spherov2 import scanner
 from spherov2.sphero_edu import SpheroEduAPI
 from spherov2.types import Color
 import threading
+from Instruction import Instruction
 import time
 
 def generate_dict_map():
@@ -24,6 +25,8 @@ def generate_dict_map():
     except:
         raise RuntimeError("Dictionary method failed! Exiting code.")
 
+# NEEDS METHOD TO SORT INTO CORRECT ORDERING PAIRS
+
 # find avaliable toys in an area, and then if not all balls connected
 # after a set number of attempts, this raises an error
 def find_balls(names, max_attempts):
@@ -41,11 +44,22 @@ def find_balls(names, max_attempts):
     raise RuntimeError("Not all balls actually connected")
 
 # connect a ball and then return the object created to the list
-def connect_ball(toy_address, ret_list, location):
-    sb = SpheroEduAPI(toy_address).__enter__()
-    ret_list[location] = sb
+def connect_ball(toy_address, ret_list, location, max_attempts):
+    attempts = 0
+    while (attempts < max_attempts):
+        try:
+            sb = SpheroEduAPI(toy_address).__enter__()
+            ret_list[location] = sb
+            break
+        except KeyboardInterrupt:
+            print("Please do not terminate... issues will arise if terminated during connection")
+            continue
+        except:
+            print("Error occuring with: {}, reattempting".format(toy_address))
+            attempts += 1
+            continue
 
-def connect_multi_ball(toy_addresses, ret_list, locations):
+def connect_multi_ball(toy_addresses, ret_list, locations, max_attempts):
     # hopefully fast enough that control c'ing in this time should not be humanly reactable
     print("Connecting to Spheros...")
     # active thread tracker
@@ -53,15 +67,15 @@ def connect_multi_ball(toy_addresses, ret_list, locations):
 
     # connecting to sb section
     for index in range(0, len(toy_addresses), 1):
-        thread = threading.Thread(target=connect_ball, args=[toy_addresses[index], ret_list, locations[index]])
+        thread = threading.Thread(target=connect_ball, args=[toy_addresses[index], ret_list, locations[index], max_attempts])
         threads.append(thread)
         thread.start()
     
     while True:
-        # reconnect the system now
+        # resync the system now
         try:
             for thread in threads:
-                thread.join()
+                thread.join(timeout=None)
             break
         except KeyboardInterrupt:
             print("Connection ongoning... please don't interupt.") 
@@ -70,7 +84,10 @@ def connect_multi_ball(toy_addresses, ret_list, locations):
     # verify function
     print("Balls Connected: {}".format(ret_list))
     # brainstorming: the idea is wait for a set amount time, and then 
-    # we check if they're all done - not futures, if still futures - then 
+    # we check if they're all done - not futures, if still futures -  wait??? 
+
+def run_command(sb, command):
+    pass
 
 # terminate ball to free it for future use
 def terminate_ball(sb):
@@ -93,7 +110,7 @@ def terminate_mutli_ball(sb_list):
         try:            
             # reconnect the system now, should be safe???
             for thread in threads:
-                thread.join()
+                thread.join(timeout=None)
             break
 
         except KeyboardInterrupt:
@@ -101,20 +118,22 @@ def terminate_mutli_ball(sb_list):
             continue
 
 def main():
-    ball_names = ["SB-B5A9", "SB-B11D", "SB-E274"]
+    # note: still need to test that ordering isn't broken via sb address finding
+    ball_names = ["SB-CEB2", "SB-B11D", "SB-76B3", "SB-1840", "SB-B5A9", "SB-BD0A", "SB-E274"]
+    
     name_to_location_dict = generate_dict_map()
     locations = []
-
     for ball_name in ball_names:
         locations.append(name_to_location_dict[ball_name])
 
+    # find the addresses to connect with
     toys_addresses = find_balls(ball_names, 5)
 
     # sb list and locations for coordinating it
     sb_list = [None] * len(name_to_location_dict)
 
     try: 
-        connect_multi_ball(toys_addresses, sb_list, locations)
+        connect_multi_ball(toys_addresses, sb_list, locations, 10)
 
     finally:
         # always attempt to disconnect after connecting to avoid manual resets
