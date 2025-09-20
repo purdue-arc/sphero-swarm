@@ -1,15 +1,12 @@
 import pygame
-import math
-import random 
+import constants
 
 # Initialize Pygame
 pygame.init()
 # clock 
 clock = pygame.time.Clock()
 
-# Screen dimensions
-WIDTH, HEIGHT = 800, 800
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
+screen = pygame.display.set_mode((constants.WIDTH, constants.HEIGHT))
 pygame.display.set_caption("Sphero Sparm Sim")
 
 # Constants 
