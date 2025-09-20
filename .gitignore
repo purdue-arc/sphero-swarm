@@ -160,4 +160,8 @@ cython_debug/
 #.idea/
 
 # some weird perception files that none of us know the purpose of 
-perception/runs
+perception/runs/
+perception/annotated_test_frames/
+
+# weird mac thing
+*.DS_Store
