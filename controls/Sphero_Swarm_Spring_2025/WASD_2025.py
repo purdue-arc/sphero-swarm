@@ -15,7 +15,6 @@ def connect_ball(toy_name, ret_list, location):
     ret_list[location] = sb
 
 def exec_command(sb, cur_instruction, prev_instruction):
-    print(cur_instruction)
     if (cur_instruction == 1):
         sb.set_heading(0)
         sb.set_speed(100)
@@ -27,6 +26,18 @@ def exec_command(sb, cur_instruction, prev_instruction):
         sb.set_speed(100)
     elif (cur_instruction == 4):
         sb.set_heading(90)
+        sb.set_speed(100)
+    elif (cur_instruction == 6):
+        sb.set_heading(315)
+        sb.set_speed(100)
+    elif (cur_instruction == 7):
+        sb.set_heading(225)
+        sb.set_speed(100)
+    elif (cur_instruction == 8):
+        sb.set_heading(135)
+        sb.set_speed(100)
+    elif (cur_instruction == 9):
+        sb.set_heading(45)
         sb.set_speed(100)
     elif (cur_instruction == 5):
         global CUR_COLOR
@@ -41,14 +52,15 @@ def terminate_ball(sb):
     sb.__exit__(None, None, None)
 
 # find the toys and print what is found
-toys = scanner.find_toys(toy_names = ["SB-76B3", "SB-E274", "SB-1840"])
-print(len(toys))
+toys = scanner.find_toys(toy_names = ["SB-E274", "SB-B5A9", "SB-BD0A"])
+print(toys)
+time.sleep(5)
 
 # sb list and locations for coordinating it
 sb_list = [0] * len(toys)
 location = 0
 
-# active thread tracker
+# active thread trackerw
 threads = []
 
 try: 
@@ -77,6 +89,14 @@ try:
             instruction = 4
         elif (keyboard.is_pressed("c")):
             instruction = 5
+        elif (keyboard.is_pressed("w") and keyboard.is_pressed("a")):
+            instruction = 6
+        elif (keyboard.is_pressed("a") and keyboard.is_pressed("s")):
+            instruction = 7
+        elif (keyboard.is_pressed("s") and keyboard.is_pressed("d")):
+            instruction = 8
+        elif (keyboard.is_pressed("d") and keyboard.is_pressed("w")):
+            instruction = 9
         else:
             instruction = 0        
         
