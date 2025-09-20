@@ -7,9 +7,12 @@
 
     `python -m venv venv`
 
+
     Now your virtual environment is set up. To activate it, do
 
     `venv/Scripts/activate`
+    for mac:
+    `source venv/bin/activate`
 
     and then install the requirements.
 
@@ -27,3 +30,5 @@
     instead of opencv.
 
     I'm moving older code to the 'old' folder.
+
+    We are mainly working out of the yolo_test_v2.py file.
