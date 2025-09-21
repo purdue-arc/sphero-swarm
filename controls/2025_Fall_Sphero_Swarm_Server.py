@@ -25,8 +25,6 @@ def generate_dict_map():
     except:
         raise RuntimeError("Dictionary method failed! Exiting code.")
 
-# NEEDS METHOD TO SORT INTO CORRECT ORDERING PAIRS
-
 # find avaliable toys in an area, and then if not all balls connected
 # after a set number of attempts, this raises an error
 def find_balls(names, max_attempts):
@@ -43,6 +41,13 @@ def find_balls(names, max_attempts):
     # ran out of attempts
     raise RuntimeError("Not all balls actually connected")
 
+# now to sort the addresses
+def address_sort(addresses, map_to_location):
+    # this will sort from lowest to highest location in the csv,
+    # this converts address to string then maps it using dictionary
+    addresses.sort(key = lambda address : map_to_location[address.__str__().split()[0]])
+    print("Sorted Addresses: {}".format(addresses))
+
 # connect a ball and then return the object created to the list
 def connect_ball(toy_address, ret_list, location, max_attempts):
     attempts = 0
@@ -55,8 +60,8 @@ def connect_ball(toy_address, ret_list, location, max_attempts):
             print("Please do not terminate... issues will arise if terminated during connection")
             continue
         except:
-            print("Error occuring with: {}, reattempting".format(toy_address))
             attempts += 1
+            print("Trying to connect with: {}, attempt {}".format(toy_address, attempts))
             continue
 
 def connect_multi_ball(toy_addresses, ret_list, locations, max_attempts):
@@ -118,7 +123,6 @@ def terminate_mutli_ball(sb_list):
             continue
 
 def main():
-    # note: still need to test that ordering isn't broken via sb address finding
     ball_names = ["SB-CEB2", "SB-B11D", "SB-76B3", "SB-1840", "SB-B5A9", "SB-BD0A", "SB-E274"]
     
     name_to_location_dict = generate_dict_map()
@@ -129,6 +133,9 @@ def main():
     # find the addresses to connect with
     toys_addresses = find_balls(ball_names, 5)
 
+    # then sort the addresses to match csv ordering
+    address_sort(toys_addresses, name_to_location_dict)
+
     # sb list and locations for coordinating it
     sb_list = [None] * len(name_to_location_dict)
 
@@ -138,6 +145,6 @@ def main():
     finally:
         # always attempt to disconnect after connecting to avoid manual resets
         terminate_mutli_ball(sb_list)
-
+        
 if __name__ == "__main__":
     main()
