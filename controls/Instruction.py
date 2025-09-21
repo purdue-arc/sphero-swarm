@@ -4,15 +4,15 @@ from spherov2.types import Color
 class Instruction:
     """
     type:
+     -1 = kill all spheros
       0 = reset LED color
       1 = roll
       2 = turn
       3 = wait
-      4 = stop thread
     """
 
     spheroID = 0
-    type = -1
+    type = -2
     color = 0
     degrees = 0
     speed = 0
@@ -39,6 +39,5 @@ class Instruction:
         elif (args[1] == 3):
             self.type = 3
 
-        elif (args[1] == 4):
-            self.type = 4
-
+        elif (args[1] == -1):
+            self.type = -1
