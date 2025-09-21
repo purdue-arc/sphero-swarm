@@ -50,11 +50,13 @@ class Sphero:
         self.target_y = self.y + self.velocity_y * (TRIANGLE_SIZE) / 2
 
 
-    # checks whether spheros are one grid space apart
-    def check_bonding(self, x, y):
-        if (distance <= TRIANGLE_SIZE + EPSILON):
+    # checks whether spheros are one node apart
+    def can_bond(self, adj_sphero):
+        if (math.abs(self.x - adj_sphero.x) <= 1 and
+            math.abs(self.y - adj_sphero.y) <= 1):
             return True
         return False
+
 
     def __str__(self):
         return f"{self.id}"

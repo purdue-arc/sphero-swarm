@@ -1,1 +1,2 @@
 MARGIN = 1
+DIRECTIONS = 8

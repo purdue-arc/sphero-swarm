@@ -1,6 +1,6 @@
 import random
-from constants import MARGIN
-from bonded_groups import BondNetwork
+from constants import MARGIN, DIRECTIONS
+from algorithms.swarm import Swarm
 from sphero import Sphero
 
 class Algorithm:
@@ -25,7 +25,7 @@ class Algorithm:
             self.spheros.append(Sphero(id=id, x=x, y=y, direction=0))
             self.nodes[x][y] = id
             id += 1
-        self.bond_network = BondNetwork(n=len(self.spheros))
+        self.swarm = Swarm(n=len(self.spheros))
 
     def find_sphero(self, id): # -> Sphero
         return self.spheros[id]
@@ -40,8 +40,9 @@ class Algorithm:
         if target_y < MARGIN or target_y >= self.height - MARGIN:
             return False
         return (not self.nodes[target_x][target_y] or
-                self.bond_network.is_bonded(id1=id, id2=self.nodes[target_x][target_y]))
+                self.swarm.is_bonded(id1=id, id2=self.nodes[target_x][target_y]))
 
+    # direction or movement or move?
     def find_valid_move(self, sphero, possible_directions): # -> (int, array[int])
         direction = random.choice(possible_directions)
         while not self.is_valid_move(direction=direction, sphero=sphero) and possible_directions:
@@ -49,9 +50,10 @@ class Algorithm:
             direction = random.choice(possible_directions)
         return (direction, possible_directions) if possible_directions else (0, [])
     
-    def find_bonded_group_move(self): # -> (int, array[int])
+
+    # movement?
+    def find_bonded_group_move(self, bonded_group): # -> (int, array[int])
         possible_directions = [1, 2, 3, 4, 5, 6, 7, 8]
-        bonded_group = self.bond_network.groups
         direction = None
         for id in bonded_group:
             sphero = self.find_sphero(id)
@@ -64,13 +66,27 @@ class Algorithm:
         target_x, target_y = self.compute_target_position(sphero=sphero, direction=direction)
         self.nodes[target_x][target_y] = sphero.id
     
+
+    # movement?
     def update_bonded_group_move(self, bonded_group):
         direction, possible_directions = self.find_bonded_group_move(bonded_group=bonded_group)
         for id in bonded_group:
             sphero = self.find_sphero(id)
             sphero.update_direction(direction=direction)
             self.update_nodes(sphero=sphero, direction=direction)
-    
+
+    # update_grid_movement instead ??    
     def update_grid_move(self):
-        for bonded_group in self.bonded_groups:
+        for bonded_group in self.swarm.bonded_groups:
             self.update_bonded_group_move(bonded_group=bonded_group)
+    
+
+    # find a better function name
+    def check_bonding(self, sphero):
+        # think about making directions constant or not
+        for direction in range(1, DIRECTIONS + 1):
+            adj_x, adj_y = self.compute_target_position(sphero=sphero, direction=direction)
+            adj_id = self.nodes[adj_x][adj_y]
+            adj_sphero = self.find_sphero(id=adj_id)
+            if sphero.can_bond(adj_sphero=adj_sphero):
+                self.swarm.combine(id1=sphero.id, id2=adj_id)
