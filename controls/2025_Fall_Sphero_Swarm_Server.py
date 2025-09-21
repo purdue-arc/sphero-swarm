@@ -4,6 +4,7 @@
 
 from spherov2 import scanner
 from spherov2.sphero_edu import SpheroEduAPI
+from spherov2.commands.drive import DriveFlags
 from spherov2.types import Color
 import threading
 from Instruction import Instruction
@@ -92,6 +93,24 @@ def connect_multi_ball(toy_addresses, ret_list, locations, max_attempts):
     # we check if they're all done - not futures, if still futures -  wait??? 
 
 def run_command(sb, command):
+    print("{}: {}".format(sb._SpheroEduAPI__toy, command.type))
+    match (command.type):
+        case 0:
+            sb.set_main_led(command.color)
+        case 1:
+            if (command.speed < 0):
+                sb._SpheroEduAPI__toy.drive_with_heading(abs(command.speed), sb.get_heading(), DriveFlags.BACKWARD)
+                time.sleep(command.duration)
+                sb.stop_roll()
+            else:
+                sb.roll(sb.get_heading(), command.speed, command.duration)
+        case 2:
+            sb.spin(command.degrees, command.duration)
+        case 3:
+            # this is a wait command
+            pass
+
+def run_multi_command():
     pass
 
 # terminate ball to free it for future use
@@ -99,7 +118,6 @@ def terminate_ball(sb):
     sb.__exit__(None, None, None)
 
 # terminate balls to allow it to be connected to in the future
-# possibly unsafe - testing needed
 def terminate_mutli_ball(sb_list):
     # should be fast enough to avoid anything silly
     print("DO NOT TERMINATE - ENDING PROCESSES RUNNING")
@@ -123,12 +141,15 @@ def terminate_mutli_ball(sb_list):
             continue
 
 def main():
-    ball_names = ["SB-CEB2", "SB-B11D", "SB-76B3", "SB-1840", "SB-B5A9", "SB-BD0A", "SB-E274"]
+    # "SB-CEB2", "SB-B11D", "SB-76B3", "SB-1840", "SB-B5A9", "SB-BD0A", "SB-E274"
+    ball_names = ["SB-CEB2", "SB-B11D", "SB-76B3", "SB-B5A9"]
     
     name_to_location_dict = generate_dict_map()
     locations = []
     for ball_name in ball_names:
         locations.append(name_to_location_dict[ball_name])
+    locations.sort(key = lambda ball_id : ball_id)
+    print("ID's linked to initial ball names provided {}".format(locations))
 
     # find the addresses to connect with
     toys_addresses = find_balls(ball_names, 5)
