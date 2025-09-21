@@ -30,6 +30,15 @@ BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 GRAY = (150, 150, 150)
 
+def generate_initial_position(self, id): # -> (int, int)
+    x = random.randint(0, self.width - 1)
+    y = random.randint(0, self.height - 1)
+    while self.nodes[x][y]:
+        x = random.randint(0, self.width - 1)
+        y = random.randint(0, self.height - 1)
+    self.nodes[x][y] = id
+    return x, y
+
 
 # Triangle settings
 TRIANGLE_SIZE = 50  # Length of a side of each triangle
