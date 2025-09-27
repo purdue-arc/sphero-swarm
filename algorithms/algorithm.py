@@ -20,29 +20,42 @@ class Algorithm:
         self.node_height = node_height
         self.nodes = [ [0 for _ in range(node_width)] for _ in range(node_height)]
         self.n_spheros = n_spheros
-        self.spheros = [None] * n_spheros
-        id = 1
+        self.spheros = [None] * (n_spheros + 1) # add one such that its 1 indexed -> directly map ID to Index # 0index will be empty...
 
+        # If no initial positions provided, generate random unique positions
+        # and sort them by x then y so sphero IDs map from near (0,0) to far corner.
         if not initial_positions:
-            self.generate_random_grid()
+            initial_positions = self.generate_random_grid()
 
+        id = 1
+        # Sort by x then y (non-decreasing) so IDs map from near (0,0) outward
+        initial_positions.sort(key=lambda pos: (pos[0], pos[1]))
         for x, y in initial_positions:
-            self.spheros.append(Sphero(id=id, x=x, y=y, direction=0))
+            self.spheros[id] = Sphero(id=id, x=x, y=y, direction=0)
             self.nodes[x][y] = id
             id += 1
         self.swarm = Swarm(n=n_spheros)
 
     def generate_random_grid(self):
-        for id in (1, self.n_spheros + 1):
-            self.random_initial_position(id=id)
+        """
+            Generate `n_spheros` unique random positions, return the list of (x, y) tuples.
+        """
+        positions = []
+        for _ in range(self.n_spheros):
+            x, y = self.random_initial_position()
+            positions.append((x, y))
+        return positions
 
-    def random_initial_position(self, id): # -> (int, int)
+    def random_initial_position(self): # -> (int, int)
         x = random.randint(0, self.node_width - 1)
         y = random.randint(0, self.node_height - 1)
         while self.nodes[x][y]:
             x = random.randint(0, self.node_width - 1)
             y = random.randint(0, self.node_height - 1)
-        self.nodes[x][y] = id
+
+        # Reserve the node with a sentinel (e.g., -1) so subsequent picks
+        # know it's taken; real IDs will be written in __init__ assignment.
+        self.nodes[x][y] = -1
         return x, y
 
     def find_sphero(self, id): # -> Sphero

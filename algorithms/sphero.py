@@ -1,10 +1,11 @@
 import math
 
 class Sphero:
-    def __init__(self, id, x, y, previous_direction, direction):
+    def __init__(self, id, x, y, previous_direction, direction, speed=1):
         self.id = id
         self.x = x
         self.y = y
+        self.speed = speed
         self.previous_direction = previous_direction
         self.direction = direction
 
@@ -16,7 +17,7 @@ class Sphero:
         return self.previous_direction - self.direction
 
     # checks whether spheros are one node apart
-    # TODO: TALK TO SID - if sphero diagnoal, this wont pick it up
+
     def can_bond(self, adj_sphero):
         if (math.abs(self.x - adj_sphero.x) <= 1 and
             math.abs(self.y - adj_sphero.y) <= 1):
