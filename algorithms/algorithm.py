@@ -15,17 +15,36 @@ class Algorithm:
         8: (-1, 1)
     }
 
-    def __init__(self, width, height, initial_positions):
-        self.width = width
-        self.height = height
-        self.nodes = [ [0] * width] * height
-        self.spheros = []
+    def __init__(self, node_width, node_height,
+                 n_spheros, initial_positions=None):
+        self.node_width = node_width
+        self.node_height = node_height
+        self.nodes = [ [0] * node_width] * node_height
+        self.n_spheros = n_spheros
+        self.spheros = [None] * n_spheros
         id = 0
+
+        if not initial_positions:
+            self.generate_random_grid()
+
         for x, y in initial_positions:
             self.spheros.append(Sphero(id=id, x=x, y=y, direction=0))
             self.nodes[x][y] = id
             id += 1
-        self.swarm = Swarm(n=len(self.spheros))
+        self.swarm = Swarm(n=n_spheros)
+
+    def generate_random_grid(self):
+        for id in (1, self.n_spheros + 1):
+            self.random_initial_position(id=id)
+
+    def random_initial_position(self, id): # -> (int, int)
+        x = random.randint(0, self.node_width - 1)
+        y = random.randint(0, self.node_height - 1)
+        while self.nodes[x][y]:
+            x = random.randint(0, self.node_width - 1)
+            y = random.randint(0, self.node_height - 1)
+        self.nodes[x][y] = id
+        return x, y
 
     def find_sphero(self, id): # -> Sphero
         return self.spheros[id]
@@ -35,9 +54,9 @@ class Algorithm:
     
     def is_valid_move(self, direction, sphero, id): # -> bool
         target_x, target_y = self.compute_target_position(direction=direction, sphero=sphero)
-        if target_x < MARGIN or target_x >= self.width - MARGIN:
+        if target_x < MARGIN or target_x >= self.node_width - MARGIN:
             return False
-        if target_y < MARGIN or target_y >= self.height - MARGIN:
+        if target_y < MARGIN or target_y >= self.node_height - MARGIN:
             return False
         return (not self.nodes[target_x][target_y] or
                 self.swarm.is_bonded(id1=id, id2=self.nodes[target_x][target_y]))
