@@ -15,14 +15,13 @@ class Algorithm:
         8: (-1, 1)
     }
 
-    def __init__(self, node_width, node_height,
-                 n_spheros, initial_positions=None):
+    def __init__(self, node_width, node_height, n_spheros, initial_positions=None):
         self.node_width = node_width
         self.node_height = node_height
-        self.nodes = [ [0] * node_width] * node_height
+        self.nodes = [ [0 for _ in range(node_width)] for _ in range(node_height)]
         self.n_spheros = n_spheros
         self.spheros = [None] * n_spheros
-        id = 0
+        id = 1
 
         if not initial_positions:
             self.generate_random_grid()
