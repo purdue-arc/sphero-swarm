@@ -1,34 +1,29 @@
 from ultralytics import YOLO
 import cv2
 
-# Load model with verbose off
-model = YOLO("runs/detect/train2/weights/best.pt", verbose=False)
+# Load YOLOv8 model
+model = YOLO("runs/detect/train3/weights/best.pt")
 
-cap = cv2.VideoCapture(0)
+vid_source = input("Video Source: ")
 
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        break
+if vid_source == "0":
+    vid_source = int(vid_source)
+    
+# Run detection with tracking
+for result in model.track(source=vid_source, tracker="botsort.yaml", show=True, stream=True):
+    for box in result.boxes:
+        # Get bounding box coordinates
+        x1, y1, x2, y2 = map(int, box.xyxy[0])
+        cx = int((x1 + x2) / 2)
+        cy = int((y1 + y2) / 2)
 
-    results = model(frame, verbose=False)  # also set here to be safe
+        cls_id = int(box.cls[0])
+        class_name = model.names[cls_id]
+       
+        if box.id is not None:
+            track_id = int(box.id.item())
+        else:
+            track_id = -1  # or skip ID
 
-    for result in results:
-        for box in result.boxes:
-            x1, y1, x2, y2 =  map(int, box.xyxy[0])
-            cx = int((x1 + x2) / 2)
-            cy = int((y1 + y2) / 2)
-            print(f"Center: ({cx:.1f}, {cy:.1f})")
-            # Draw rectangle
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-
-            # Draw center point
-            cv2.circle(frame, (cx, cy), 4, (0, 0, 255), -1)
-            
-    cv2.imshow("YOLO", frame)
-    print()
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-cap.release()
-cv2.destroyAllWindows()
+        # Print center in terminal
+        print(f"ID {track_id} | {class_name} | Center: ({cx}, {cy})")
