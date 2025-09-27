@@ -41,30 +41,17 @@ from algorithm import Algorithm
         self.target_y = self.y + self.velocity_y * (TRIANGLE_SIZE) / 2
 '''
 
-
-# should prolly move to constants file
-BLUE = (0, 0, 255)
-RED = (255, 0, 0)
-GREEN = (0, 255, 0)
-YELLOW = (255, 255, 0)
-PURPLE = (128, 0, 128)
-ORANGE = (255, 165, 0)
-
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)
-GRAY = (150, 150, 150)
-
 def draw_grid(surface):
     for x in range(0, constants.WIDTH, constants.NODES_DISTANCE):
-        pygame.draw.line(surface=surface, color=BLACK, start_pos=(x, 0), end_pos=(x, constants.HEIGHT))
+        pygame.draw.line(surface=surface, color=constants.BLACK, start_pos=(x, 0), end_pos=(x, constants.HEIGHT))
   
     for y in range(0, constants.HEIGHT, constants.NODES_DISTANCE):
-        pygame.draw.line(surface=surface, color=BLACK, start_pos=(0, y), end_pos=(constants.WIDTH, y))
+        pygame.draw.line(surface=surface, color=constants.BLACK, start_pos=(0, y), end_pos=(constants.WIDTH, y))
     
     for x in range (0, constants.WIDTH, constants.NODES_DISTANCE):
         for y in range(0, constants.HEIGHT, constants.NODES_DISTANCE):
-            pygame.draw.line(surface=surface, color=BLACK, start_pos=(x, y), end_pos=(x + constants.DISTANCE, y + constants.DISTANCE))
-            pygame.draw.line(surface=surface, color=BLACK, start_pos=(x + constants.DISTANCE, y), end_pos=(x, y + constants.DISTANCE))
+            pygame.draw.line(surface=surface, color=constants.BLACK, start_pos=(x, y), end_pos=(x + constants.NODES_DISTANCE, y + constants.NODES_DISTANCE))
+            pygame.draw.line(surface=surface, color=constants.BLACK, start_pos=(x + constants.NODES_DISTANCE, y), end_pos=(x, y + constants.NODES_DISTANCE))
 
 
 def print_bonds(swarm):
@@ -78,7 +65,7 @@ def draw_pause_button(surface, color, rect, paused):
     button_name = 'Pause'
     if (paused == True):
         button_name = 'Resume'
-    text = font.render(button_name, True, BLACK)
+    text = font.render(button_name, True, constants.BLACK)
     text_rect = text.get_rect(center=rect.center)
     surface.blit(text, text_rect)
 
@@ -89,7 +76,7 @@ def draw_rotate_button(surface, color):
     font = pygame.font.Font(None, 36)
     button_name = 'Rotate'
     
-    text = font.render(button_name, True, BLACK)
+    text = font.render(button_name, True, constants.BLACK)
     text_rect = text.get_rect(center=rect.center)
     surface.blit(text, text_rect)
     
@@ -130,7 +117,7 @@ if __name__ == "__main__":
                 running = False
 
         # set to constant Background Color
-        surface.fill(WHITE)
+        surface.fill(constants.WHITE)
         draw_grid(surface=surface)
 
         sphero_movement.update_grid_bonds()
