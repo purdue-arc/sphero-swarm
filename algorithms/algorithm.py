@@ -113,7 +113,7 @@ class Algorithm:
     
 
     # find a better function name
-    def check_bonding(self, sphero):
+    def update_sphero_bonds(self, sphero):
         # think about making directions constant or not
         for direction in range(1, DIRECTIONS + 1):
             adj_x, adj_y = self.compute_target_position(sphero=sphero, direction=direction)
@@ -121,3 +121,7 @@ class Algorithm:
             adj_sphero = self.find_sphero(id=adj_id)
             if sphero.can_bond(adj_sphero=adj_sphero):
                 self.swarm.combine(id1=sphero.id, id2=adj_id)
+    
+    def update_grid_bonds(self):
+        for sphero in self.spheros:
+            self.update_sphero_bonds(sphero=sphero)

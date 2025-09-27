@@ -69,7 +69,7 @@ def draw_grid(surface):
 
 def print_bonds(swarm):
     for bonded_group in swarm.bonded_groups:
-        print(f'bonded group {i}: {bonded_group}') 
+        print(bonded_group) 
     
     
 def draw_pause_button(surface, color, rect, paused):
@@ -109,6 +109,7 @@ def draw_rotate_button(surface, color):
 
     
     '''
+    
 
 if __name__ == "__main__":
     pygame.init()
@@ -132,11 +133,8 @@ if __name__ == "__main__":
         surface.fill(WHITE)
         draw_grid(surface=surface)
 
-        
-        
-    
-    
-
+        sphero_movement.update_grid_bonds()
+        sphero_movement.update_grid_move()
 
 '''
 
