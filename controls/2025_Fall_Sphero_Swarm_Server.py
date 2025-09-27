@@ -4,9 +4,15 @@
 
 from spherov2 import scanner
 from spherov2.sphero_edu import SpheroEduAPI
+from spherov2.commands.drive import DriveFlags
 from spherov2.types import Color
 import threading
+from Instruction import Instruction
 import time
+
+# these for interfile communication, pickle turns objects into byte streams
+import pickle
+import socket
 
 def generate_dict_map():
     try:
@@ -40,12 +46,30 @@ def find_balls(names, max_attempts):
     # ran out of attempts
     raise RuntimeError("Not all balls actually connected")
 
-# connect a ball and then return the object created to the list
-def connect_ball(toy_address, ret_list, location):
-    sb = SpheroEduAPI(toy_address).__enter__()
-    ret_list[location] = sb
+# now to sort the addresses
+def address_sort(addresses, map_to_location):
+    # this will sort from lowest to highest location in the csv,
+    # this converts address to string then maps it using dictionary
+    addresses.sort(key = lambda address : map_to_location[address.__str__().split()[0]])
+    print("Sorted Addresses: {}".format(addresses))
 
-def connect_multi_ball(toy_addresses, ret_list, locations):
+# connect a ball and then return the object created to the list
+def connect_ball(toy_address, ret_list, location, max_attempts):
+    attempts = 0
+    while (attempts < max_attempts):
+        try:
+            sb = SpheroEduAPI(toy_address).__enter__()
+            ret_list[location] = sb
+            break
+        except KeyboardInterrupt:
+            print("Please do not terminate... issues will arise if terminated during connection")
+            continue
+        except:
+            attempts += 1
+            print("Trying to connect with: {}, attempt {}".format(toy_address, attempts))
+            continue
+
+def connect_multi_ball(toy_addresses, ret_list, locations, max_attempts):
     # hopefully fast enough that control c'ing in this time should not be humanly reactable
     print("Connecting to Spheros...")
     # active thread tracker
@@ -53,15 +77,15 @@ def connect_multi_ball(toy_addresses, ret_list, locations):
 
     # connecting to sb section
     for index in range(0, len(toy_addresses), 1):
-        thread = threading.Thread(target=connect_ball, args=[toy_addresses[index], ret_list, locations[index]])
+        thread = threading.Thread(target=connect_ball, args=[toy_addresses[index], ret_list, locations[index], max_attempts])
         threads.append(thread)
         thread.start()
     
     while True:
-        # reconnect the system now
+        # resync the system now
         try:
             for thread in threads:
-                thread.join()
+                thread.join(timeout=None)
             break
         except KeyboardInterrupt:
             print("Connection ongoning... please don't interupt.") 
@@ -70,14 +94,59 @@ def connect_multi_ball(toy_addresses, ret_list, locations):
     # verify function
     print("Balls Connected: {}".format(ret_list))
     # brainstorming: the idea is wait for a set amount time, and then 
-    # we check if they're all done - not futures, if still futures - then 
+    # we check if they're all done - not futures, if still futures -  wait??? 
+
+# now to gather instructions from server
+# the command_array_2d must be formated such that it sorted with sphero id's ascending
+# same with the valid_sphero_ids
+def command_gathering(valid_sphero_ids, command_array_2d):
+    pass
+
+# the individual method for running a command on a sphero ball
+def run_command(sb, command):
+    match (command.type):
+        case -1:
+            global KILL_FLAG
+            KILL_FLAG = 1
+        case 0:
+            sb.set_main_led(command.color)
+        case 1:
+            if (command.speed < 0):
+                sb._SpheroEduAPI__toy.drive_with_heading(abs(command.speed), sb.get_heading(), DriveFlags.BACKWARD)
+                time.sleep(command.duration)
+                sb.stop_roll()
+            else:
+                sb.roll(sb.get_heading(), command.speed, command.duration)
+        case 2:
+            sb.spin(command.degrees, command.duration)
+        case 3:
+            time.sleep(command.duration)
+
+# runs one cycle of commands
+def run_multi_command(sb_list, commands):
+    # holds what processes are running right now
+    threads = []
+    
+    for i in range(0, len(sb_list), 1):
+        thread = threading.Thread(target=run_command, args=[sb_list[i], commands[i]])
+        threads.append(thread)
+        thread.start()
+
+    while True:
+        # resync the system now
+        try:
+            for thread in threads:
+                thread.join(timeout=None)
+            break
+        except KeyboardInterrupt:
+            print("Running commands right now... please don't interupt.") 
+            continue
 
 # terminate ball to free it for future use
 def terminate_ball(sb):
     sb.__exit__(None, None, None)
 
 # terminate balls to allow it to be connected to in the future
-# possibly unsafe - testing needed
 def terminate_mutli_ball(sb_list):
     # should be fast enough to avoid anything silly
     print("DO NOT TERMINATE - ENDING PROCESSES RUNNING")
@@ -93,7 +162,7 @@ def terminate_mutli_ball(sb_list):
         try:            
             # reconnect the system now, should be safe???
             for thread in threads:
-                thread.join()
+                thread.join(timeout=None)
             break
 
         except KeyboardInterrupt:
@@ -101,24 +170,45 @@ def terminate_mutli_ball(sb_list):
             continue
 
 def main():
-    ball_names = ["SB-B5A9", "SB-B11D", "SB-E274"]
+    # set up the global kill flag which is used to tell the system to close out after this command
+    global KILL_FLAG
+    KILL_FLAG = 0
+
+    ball_names = ["SB-CEB2", "SB-B11D", "SB-76B3", "SB-1840", "SB-B5A9", "SB-BD0A", "SB-E274"]
+    
     name_to_location_dict = generate_dict_map()
     locations = []
-
     for ball_name in ball_names:
         locations.append(name_to_location_dict[ball_name])
+    # sorted in ascending order
+    locations.sort(key = lambda ball_id : ball_id)
+    print("ID's linked to initial ball names provided {}".format(locations))
 
+    # find the addresses to connect with
     toys_addresses = find_balls(ball_names, 5)
+
+    # then sort the addresses to match csv ordering
+    address_sort(toys_addresses, name_to_location_dict)
 
     # sb list and locations for coordinating it
     sb_list = [None] * len(name_to_location_dict)
 
     try: 
-        connect_multi_ball(toys_addresses, sb_list, locations)
+        connect_multi_ball(toys_addresses, sb_list, locations, 10)
+
+        # working to test out the command inputs
+        set_white = Instruction(0, 0, Color(255, 255, 255))
+        set_blue = Instruction(0, 0, Color(0, 0, 255))
+        delay = Instruction(0, 3, 2.5)
+        terminate = Instruction(0, -1)
+        commands_array = [[set_white] * len(sb_list), [delay] * len(sb_list), [set_blue] * len(sb_list), [terminate] * len(sb_list)]
+        while (KILL_FLAG == 0):
+            if (len(commands_array) != 0):
+                run_multi_command(sb_list, commands_array.pop(0))
 
     finally:
         # always attempt to disconnect after connecting to avoid manual resets
         terminate_mutli_ball(sb_list)
-
+        
 if __name__ == "__main__":
     main()
