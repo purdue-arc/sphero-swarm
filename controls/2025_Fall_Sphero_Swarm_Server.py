@@ -10,6 +10,10 @@ import threading
 from Instruction import Instruction
 import time
 
+# these for interfile communication, pickle turns objects into byte streams
+import pickle
+import socket
+
 def generate_dict_map():
     try:
         ret_dict = dict([])
@@ -92,9 +96,18 @@ def connect_multi_ball(toy_addresses, ret_list, locations, max_attempts):
     # brainstorming: the idea is wait for a set amount time, and then 
     # we check if they're all done - not futures, if still futures -  wait??? 
 
+# now to gather instructions from server
+# the command_array_2d must be formated such that it sorted with sphero id's ascending
+# same with the valid_sphero_ids
+def command_gathering(valid_sphero_ids, command_array_2d):
+    pass
+
+# the individual method for running a command on a sphero ball
 def run_command(sb, command):
-    print("{}: {}".format(sb._SpheroEduAPI__toy, command.type))
     match (command.type):
+        case -1:
+            global KILL_FLAG
+            KILL_FLAG = 1
         case 0:
             sb.set_main_led(command.color)
         case 1:
@@ -107,11 +120,27 @@ def run_command(sb, command):
         case 2:
             sb.spin(command.degrees, command.duration)
         case 3:
-            # this is a wait command
-            pass
+            time.sleep(command.duration)
 
-def run_multi_command():
-    pass
+# runs one cycle of commands
+def run_multi_command(sb_list, commands):
+    # holds what processes are running right now
+    threads = []
+    
+    for i in range(0, len(sb_list), 1):
+        thread = threading.Thread(target=run_command, args=[sb_list[i], commands[i]])
+        threads.append(thread)
+        thread.start()
+
+    while True:
+        # resync the system now
+        try:
+            for thread in threads:
+                thread.join(timeout=None)
+            break
+        except KeyboardInterrupt:
+            print("Running commands right now... please don't interupt.") 
+            continue
 
 # terminate ball to free it for future use
 def terminate_ball(sb):
@@ -141,13 +170,17 @@ def terminate_mutli_ball(sb_list):
             continue
 
 def main():
-    # "SB-CEB2", "SB-B11D", "SB-76B3", "SB-1840", "SB-B5A9", "SB-BD0A", "SB-E274"
-    ball_names = ["SB-CEB2", "SB-B11D", "SB-76B3", "SB-B5A9"]
+    # set up the global kill flag which is used to tell the system to close out after this command
+    global KILL_FLAG
+    KILL_FLAG = 0
+
+    ball_names = ["SB-CEB2", "SB-B11D", "SB-76B3", "SB-1840", "SB-B5A9", "SB-BD0A", "SB-E274"]
     
     name_to_location_dict = generate_dict_map()
     locations = []
     for ball_name in ball_names:
         locations.append(name_to_location_dict[ball_name])
+    # sorted in ascending order
     locations.sort(key = lambda ball_id : ball_id)
     print("ID's linked to initial ball names provided {}".format(locations))
 
@@ -162,6 +195,16 @@ def main():
 
     try: 
         connect_multi_ball(toys_addresses, sb_list, locations, 10)
+
+        # working to test out the command inputs
+        set_white = Instruction(0, 0, Color(255, 255, 255))
+        set_blue = Instruction(0, 0, Color(0, 0, 255))
+        delay = Instruction(0, 3, 2.5)
+        terminate = Instruction(0, -1)
+        commands_array = [[set_white] * len(sb_list), [delay] * len(sb_list), [set_blue] * len(sb_list), [terminate] * len(sb_list)]
+        while (KILL_FLAG == 0):
+            if (len(commands_array) != 0):
+                run_multi_command(sb_list, commands_array.pop(0))
 
     finally:
         # always attempt to disconnect after connecting to avoid manual resets
