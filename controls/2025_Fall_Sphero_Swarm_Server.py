@@ -70,7 +70,8 @@ def connect_ball(toy_address, ret_list, location, max_attempts):
 
 def connect_multi_ball(toy_addresses, ret_list, locations, max_attempts):
     # hopefully fast enough that control c'ing in this time should not be humanly reactable
-    print("Connecting to Spheros...")
+    print("Connecting to Spheros...") 
+
     # active thread tracker
     threads = []    
 
@@ -94,44 +95,57 @@ def connect_multi_ball(toy_addresses, ret_list, locations, max_attempts):
     print("Balls Connected: {}".format(ret_list))
     # brainstorming: if we start getting future type errors, double check here?
 
-# UNTESTED!!!
+# UNTESTED
 # now to gather instructions from server
 # the command_array_2d must be formated such that it sorted with sphero id's ascending
 # same with the valid_sphero_ids
 def command_gathering(valid_sphero_ids, command_array_2d):
     s = socket.socket()
+    # arbitrary non-priv port
     port = 1235
     s.bind(('localhost', port))
+    # enables the system to handle up to 5 connections before refusing more
     s.listen(5)
     print("Waiting for connection to client...")
-    c, address = s.accept()
+    # conn is the object required for comm with the other files
+    conn, address = s.accept()
+    # given this is the first and only connection to be made for now, 
+    # can immediately send relevant information
+    conn.send(pickle.dumps(valid_sphero_ids))
+
     global KILL_FLAG
-    while (not KILL_FLAG):
-        try:
-            appending_array = [None] * len(valid_sphero_ids)
-            instruction_list = pickle.loads(c.recv(1024))
-            for instruction in instruction_list:
-                try:
-                    index = valid_sphero_ids.index(instruction.spheroID)
-                    appending_array[index] = instruction
-                except ValueError:
-                    print("Attempting to send command to not connnected ball...")
-                    continue
+    while (KILL_FLAG == 0):
+        # try:
+        appending_array = [None] * len(valid_sphero_ids)
+        instruction_list = pickle.loads(conn.recv(1024)) # THIS IS A PROBLEM... WILL IDENTIFY
+        for instruction in instruction_list:
+            try:
+                if (instruction.type == -1):
+                    KILL_FLAG = 1
+                    break
+                index = valid_sphero_ids.index(instruction.spheroID)
+                appending_array[index] = instruction
+            except ValueError:
+                print("Attempting to send command to not connnected ball...")
+                continue
+        if (KILL_FLAG == 0):
             command_array_2d.append(appending_array)
-            c.send("Done".encode())
-        except:
+            conn.send("Done".encode())
+        """
+        except EOFError:
             print("EOFError...")
             s.close()
             # raise KILL_FLAG to terminate the process
             KILL_FLAG = 1
-
+        """
+            
 # the individual method for running a command on a sphero ball
 def run_command(sb, command):
     if (command != None):
         match (command.type):
             case -1:
-                global KILL_FLAG
-                KILL_FLAG = 1
+                # shouldn't occur - should be handled in the instructions recieving section
+                pass
             case 0:
                 sb.set_main_led(command.color)
             case 1:
@@ -172,7 +186,7 @@ def terminate_ball(sb):
         sb.__exit__(None, None, None)
 
 # terminate balls to allow it to be connected to in the future
-def terminate_mutli_ball(sb_list):
+def terminate_multi_ball(sb_list):
     # should be fast enough to avoid anything silly
     print("DO NOT TERMINATE - ENDING PROCESSES RUNNING")
     # use multi-threading to speed up close out process
@@ -207,7 +221,7 @@ def main():
         locations.append(name_to_location_dict[ball_name])
     # sorted in ascending order
     locations.sort(key = lambda ball_id : ball_id)
-    print("ID's linked to initial ball names provided {}".format(locations))
+    print("ID's linked to initial ball names provided, sorted: {}".format(locations))
 
     # find the addresses to connect with
     toys_addresses = find_balls(ball_names, 5)
@@ -221,21 +235,19 @@ def main():
     try: 
         connect_multi_ball(toys_addresses, sb_list, locations, 10)
 
+        commands_array = []
         # set up server at this point in thread...
+        command_gathering(locations, commands_array)
 
-        # working to test out the command inputs
-        set_white = Instruction(0, 0, 255, 255, 255)
-        set_blue = Instruction(0, 0, 0, 0, 255)
-        delay = Instruction(0, 3, 2.5)
-        terminate = Instruction(0, -1)
-        commands_array = [[set_white] * len(sb_list), [delay] * len(sb_list), [set_blue] * len(sb_list), [terminate] * len(sb_list)]
         while (KILL_FLAG == 0):
             if (len(commands_array) != 0):
                 run_multi_command(sb_list, commands_array.pop(0))
+            else:
+                time.sleep(0.1)
 
     finally:
         # always attempt to disconnect after connecting to avoid manual resets
-        terminate_mutli_ball(sb_list)
+        terminate_multi_ball(sb_list)
         
 if __name__ == "__main__":
     main()
