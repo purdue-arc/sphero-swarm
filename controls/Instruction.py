@@ -25,7 +25,7 @@ class Instruction:
                 # valid case, but this will just make a terminate command
                 pass
             case 0:
-                self.color = args[2]
+                self.color = Color(args[2], args[3], args[4])
             case 1:
                 self.speed = args[2]
                 self.duration = args[3]
