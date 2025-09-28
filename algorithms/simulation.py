@@ -1,78 +1,25 @@
 import pygame
-import math
-import random 
+from constants import *
+from algorithm import Algorithm
 
-# Initialize Pygame
-pygame.init()
-# clock 
-clock = pygame.time.Clock()
-
-# Screen dimensions
-WIDTH, HEIGHT = 800, 800
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Sphero Sparm Sim")
-
-# Constants 
-SPHERO_RADIUS = 10
-MAX_VELOCITY = 1
-COLLISION_RADIUS = SPHERO_RADIUS
-EPSILON = 8 # the amount of error we allow while detecting distance
-
-# Colors 
-BACKGROUND_COLOR = (30, 30, 30)
-LINE_COLOR = (200, 200, 200)
-
-BLUE = (0, 0, 255)
-RED = (255, 0, 0)
-GREEN = (0, 255, 0)
-YELLOW = (255, 255, 0)
-PURPLE = (128, 0, 128)
-ORANGE = (255, 165, 0)
-
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)
-GRAY = (150, 150, 150)
-
-
-# Triangle settings
-TRIANGLE_SIZE = 50  # Length of a side of each triangle
-TRIANGLE_HEIGHT = 50 * math.sqrt(3)  # Height of a triangle
-
-def print_bonds(bonds):
-    print()
-    for i, bond in enumerate(bonds):  # Use enumerate to get the index and bond
-        sphero_ids = ', '.join(str(sphero.id) for sphero in bond)  # Join sphero IDs with commas
-        print(f'{i}: [{sphero_ids}]')  # Print the bond index and its IDs in the desired format
-
-# Function to draw a triangular grid
-def draw_triangular_grid(surface, triangle_size, color):
-    triangle_size *= 2
-    height = math.sqrt(3) / 2 * triangle_size  # Height of an equilateral triangle
-
-    for y in range(-int(height), HEIGHT + int(height), int(height)):
-        for x in range(0, WIDTH + triangle_size, triangle_size):
-            # Calculate points for the upward triangle
-            p1 = (x, y)
-            p2 = (x + triangle_size // 2, y + int(height))
-            p3 = (x - triangle_size // 2, y + int(height))
-
-            # Draw the upward triangle
-            pygame.draw.polygon(surface, color, [p1, p2, p3], 1)
-
-            # draw the second triangle
-            p11 = (x, y + int(height)//2)
-            p22 = (x + triangle_size // 2, y + int(height)//2)
-            p33 = (x - triangle_size // 2, y + int(height)//2)
-
-            # Draw the upward triangle
-            pygame.draw.polygon(surface, color, [p11, p22, p33], 1)
-
-            # Calculate points for the downward triangle
-            if y + int(2 * height) <= HEIGHT + int(height):
-                p4 = (x, y + int(2 * height))
-                pygame.draw.polygon(surface, color, [p2, p4, p3], 1)
+def draw_grid(surface):
+    for x in range(0, SIM_WIDTH, SIM_DIST):
+        pygame.draw.line(surface=surface, color=BLACK, start_pos=(x, 0), end_pos=(x, SIM_HEIGHT))
+  
+    for y in range(0, SIM_HEIGHT, SIM_DIST):
+        pygame.draw.line(surface=surface, color=BLACK, start_pos=(0, y), end_pos=(SIM_WIDTH, y))
     
-# our pause button
+    for x in range (0, SIM_WIDTH, SIM_DIST):
+        for y in range(0, SIM_HEIGHT, SIM_DIST):
+            pygame.draw.line(surface=surface, color=BLACK, start_pos=(x, y), end_pos=(x + SIM_DIST, y + SIM_DIST))
+            pygame.draw.line(surface=surface, color=BLACK, start_pos=(x + SIM_DIST, y), end_pos=(x, y + SIM_DIST))
+
+
+def print_bonds(swarm):
+    for bonded_group in swarm.bonded_groups:
+        print(bonded_group) 
+    
+    
 def draw_pause_button(surface, color, rect, paused):
     pygame.draw.rect(surface, color, rect)
     font = pygame.font.Font(None, 36)
@@ -83,7 +30,6 @@ def draw_pause_button(surface, color, rect, paused):
     text_rect = text.get_rect(center=rect.center)
     surface.blit(text, text_rect)
 
-# our pause button
 def draw_rotate_button(surface, color):
     rect = pygame.Rect(10, 10, 100, 40)  # Positioned near the top-left corner
     pygame.draw.rect(surface, color, rect)
@@ -108,12 +54,92 @@ def draw_rotate_button(surface, color):
     we need to pick a direction
     then calc if the destination of rotation is within bounds.
     if its not then DONT ROTATE IT
-
-    
     '''
+    
+def move_sphero_to_target(sphero):
 
+    # if the speed is 0, then we have stopped and no updating needs to happen
+    if sphero.speed == 0:
+        return False
+
+    # finds the distance to the target
+    dx = abs(sphero.target_x - sphero.x)
+    dy = abs(sphero.target_y - sphero.y)
+
+
+    # if we get close enough of the target, we lock the ball's position
+    if dx + dy < EPSILON:
+
+        # lock to the target position. This will help avoid movement 
+        # errors accumulating up over time.
+        sphero.x = sphero.target_x
+        sphero.y = sphero.target_y
+
+        # also set the speed to 0 to show that the ball has stopped.
+        sphero.speed = 0
+    else:
+        sphero.x += sphero.speed
+        sphero.y += sphero.speed
+
+    return True
+
+def draw_sphero(surface, sphero):
+    pygame.draw.circle(surface, sphero.color if sphero.color else BLACK, (int(sphero.x), int(sphero.y)), SPHERO_SIM_RADIUS)
 
 if __name__ == "__main__":
+    pygame.init()
+    clock = pygame.time.Clock()
+
+    surface = pygame.display.set_mode((SIM_WIDTH, SIM_HEIGHT))
+    pygame.display.set_caption("sphero-swarm simulation")
+
+
+    algorithm = Algorithm(grid_width=GRID_WIDTH,
+                                grid_height=GRID_HEIGHT,
+                                n_spheros=N_SPHEROS)
+    
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+        # set to constant Background Color
+        surface.fill(WHITE)
+        draw_grid(surface=surface)
+
+        spheros_reached_target = True
+        for sphero in algorithm.spheros:
+            if move_sphero_to_target(sphero=sphero):
+                spheros_reached_target = False
+
+        if spheros_reached_target:
+            algorithm.update_grid_bonds()
+            algorithm.update_grid_move()
+        
+        # Draw the spheros
+        for sphero in algorithm.spheros:
+            draw_sphero(surface=surface, sphero=sphero)
+
+        # Update the display
+        pygame.display.flip()
+
+        # Control frame rate
+        clock.tick(60)
+        
+
+
+
+'''
+if __name__ == "__main__":
+
+    # Initialize Pygame
+    pygame.init()
+    # clock 
+    clock = pygame.time.Clock()
+
+    screen = pygame.display.set_mode((constants.WIDTH, constants.HEIGHT))
+    pygame.display.set_caption("sphero-swarm simulation")
 
     #instantiate spheros
     spheros = []
@@ -198,7 +224,34 @@ if __name__ == "__main__":
                             while (l < len(bonds[k])):
                                 other = bonds[k][l]
                                 # if two spheros are a SET distance apart, bond them
-                                # When bonding we combine their two individual arrays into one
+                                      collision = True
+                                        # this direction doesn't work, so remove it
+                                        available_directions.pop(current_direction)
+
+                                        # since removing we are shifting the list, we need to adjust the current direction
+                                        if (current_direction >= len(available_directions)):
+                                            current_direction = 0
+                                        
+                                        sphero.update_direction(available_directions[current_direction])
+                                        sphero.update_target()
+
+                                    else:
+                                        found_direction = True
+                        
+                    # reupdate all spheros to make sure they are all moving the same direction
+                    if (collision == True):
+                        # go through all the spheros in the bonding group and update their direction
+                        for j in range(len(bonds[i])):
+                            sphero = bonds[i][j]
+                    
+                            if (len(available_directions) != 0):
+                                sphero.update_direction(available_directions[current_direction])
+                                
+                            # if no available directions exist, then just stop moving
+                            else:
+                                sphero.velocity_x = 0
+                                sphero.velocity_y = 0  
+                            sphero.update_target() # When bonding we combine their two individual arrays into one
                                 if (sphero.check_bonding(other)):
                                     bonds[i].extend(bonds[k])
                                     bonds.pop(k)
@@ -289,34 +342,7 @@ if __name__ == "__main__":
                                         error = True
                                     
                                     if (error == True):
-                                        collision = True
-                                        # this direction doesn't work, so remove it
-                                        available_directions.pop(current_direction)
-
-                                        # since removing we are shifting the list, we need to adjust the current direction
-                                        if (current_direction >= len(available_directions)):
-                                            current_direction = 0
-                                        
-                                        sphero.update_direction(available_directions[current_direction])
-                                        sphero.update_target()
-
-                                    else:
-                                        found_direction = True
-                        
-                    # reupdate all spheros to make sure they are all moving the same direction
-                    if (collision == True):
-                        # go through all the spheros in the bonding group and update their direction
-                        for j in range(len(bonds[i])):
-                            sphero = bonds[i][j]
-                    
-                            if (len(available_directions) != 0):
-                                sphero.update_direction(available_directions[current_direction])
-                                
-                            # if no available directions exist, then just stop moving
-                            else:
-                                sphero.velocity_x = 0
-                                sphero.velocity_y = 0  
-                            sphero.update_target()
+                                 
         
         # Draw the pause button
         draw_pause_button(screen, WHITE, pause_button_rect, paused)
@@ -334,3 +360,5 @@ if __name__ == "__main__":
 
     # Quit Pygame
     pygame.quit()
+
+'''
