@@ -115,3 +115,9 @@ Relevant files and symbols (quick links)
 - [sphero-sim-w-grid.py](sphero-sim-w-grid.py)
 - [simulation.py](simulation.py)
 - [test.py](test.py)
+
+TODO:
+- add simulation methods to overhead
+- integrate new code in driver by removing all old code and using new functions
+- fix simulation
+- fix bugs in algorithm, sphero, and swarm (look for id indexing issues)

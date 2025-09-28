@@ -1,45 +1,28 @@
 import random
-from constants import MARGIN, DIRECTIONS
-from algorithms.swarm import Swarm
+from constants import *
+from swarm import Swarm
 from sphero import Sphero
 
 class Algorithm:
-    position_change = {
-        1: (0, 1),
-        2: (1, 1),
-        3: (1, 0),
-        4: (1, -1),
-        5: (0, -1),
-        6: (-1, -1),
-        7: (-1, 0),
-        8: (-1, 1)
-    }
-
-    def __init__(self, node_width, node_height, n_spheros, initial_positions=None):
-        self.node_width = node_width
-        self.node_height = node_height
-        self.nodes = [ [0 for _ in range(node_width)] for _ in range(node_height)]
+    def __init__(self, grid_width, grid_height, n_spheros, initial_positions=None):
+        self.grid_width = grid_width
+        self.grid_height = grid_height
+        self.nodes = [ [0 for _ in range(grid_width)] for _ in range(grid_height)]
         self.n_spheros = n_spheros
-        self.spheros = [None] * (n_spheros + 1) # add one such that its 1 indexed -> directly map ID to Index # 0index will be empty...
+        self.spheros = [None for _ in range(n_spheros)]
 
-        # If no initial positions provided, generate random unique positions
-        # and sort them by x then y so sphero IDs map from near (0,0) to far corner.
         if not initial_positions:
             initial_positions = self.generate_random_grid()
 
         id = 1
-        # Sort by x then y (non-decreasing) so IDs map from near (0,0) outward
-        initial_positions.sort(key=lambda pos: (pos[0], pos[1]))
+        # initial_positions.sort(key=lambda pos: (pos[0], pos[1]))
         for x, y in initial_positions:
-            self.spheros[id] = Sphero(id=id, x=x, y=y, direction=0)
+            self.spheros[id - 1] = Sphero(id=id, x=x, y=y, direction=0)
             self.nodes[x][y] = id
             id += 1
         self.swarm = Swarm(n=n_spheros)
 
     def generate_random_grid(self):
-        """
-            Generate `n_spheros` unique random positions, return the list of (x, y) tuples.
-        """
         positions = []
         for _ in range(self.n_spheros):
             x, y = self.random_initial_position()
@@ -47,11 +30,11 @@ class Algorithm:
         return positions
 
     def random_initial_position(self): # -> (int, int)
-        x = random.randint(0, self.node_width - 1)
-        y = random.randint(0, self.node_height - 1)
+        x = random.randint(0, self.grid_width - 1)
+        y = random.randint(0, self.grid_height - 1)
         while self.nodes[x][y]:
-            x = random.randint(0, self.node_width - 1)
-            y = random.randint(0, self.node_height - 1)
+            x = random.randint(0, self.grid_width - 1)
+            y = random.randint(0, self.grid_height - 1)
 
         # Reserve the node with a sentinel (e.g., -1) so subsequent picks
         # know it's taken; real IDs will be written in __init__ assignment.
@@ -59,21 +42,19 @@ class Algorithm:
         return x, y
 
     def find_sphero(self, id): # -> Sphero
-        return self.spheros[id]
+        return self.spheros[id - 1]
 
-    def compute_target_position(self, sphero, direction): # -> (int, int)
-        return (sphero.x + self.position_change[direction][0], sphero.y + self.position_change[direction][1])
+    def in_bounds(self, x, y):
+        return MARGIN <= x < GRID_WIDTH - MARGIN and MARGIN <= y < GRID_HEIGHT - MARGIN
     
-    def is_valid_move(self, direction, sphero, id): # -> bool
-        target_x, target_y = self.compute_target_position(direction=direction, sphero=sphero)
-        if target_x < MARGIN or target_x >= self.node_width - MARGIN:
-            return False
-        if target_y < MARGIN or target_y >= self.node_height - MARGIN:
+    def is_valid_move(self, direction, sphero): # -> bool
+        id = sphero.id
+        target_x, target_y = sphero.compute_target_position(direction=direction)
+        if not self.in_bounds(target_x, target_y):
             return False
         return (not self.nodes[target_x][target_y] or
                 self.swarm.is_bonded(id1=id, id2=self.nodes[target_x][target_y]))
 
-    # direction or movement or move?
     def find_valid_move(self, sphero, possible_directions): # -> (int, array[int])
         direction = random.choice(possible_directions)
         while not self.is_valid_move(direction=direction, sphero=sphero) and possible_directions:
@@ -81,8 +62,6 @@ class Algorithm:
             direction = random.choice(possible_directions)
         return (direction, possible_directions) if possible_directions else (0, [])
     
-
-    # movement?
     def find_bonded_group_move(self, bonded_group): # -> (int, array[int])
         possible_directions = [1, 2, 3, 4, 5, 6, 7, 8]
         direction = None
@@ -90,37 +69,33 @@ class Algorithm:
             sphero = self.find_sphero(id)
             direction, possible_directions = self.find_valid_move(sphero=sphero,
                                                                   possible_directions=possible_directions)
+            if not possible_directions:
+                return (0, [])
         return direction, possible_directions
     
-    def update_nodes(self, sphero, direction):
+    def update_nodes(self, sphero):
         self.nodes[sphero.x][sphero.y] = 0
-        target_x, target_y = self.compute_target_position(sphero=sphero, direction=direction)
-        self.nodes[target_x][target_y] = sphero.id
+        self.nodes[sphero.target_x][sphero.target_y] = sphero.id
     
-
-    # movement?
     def update_bonded_group_move(self, bonded_group):
         direction, possible_directions = self.find_bonded_group_move(bonded_group=bonded_group)
         for id in bonded_group:
             sphero = self.find_sphero(id)
-            sphero.update_direction(direction=direction)
-            self.update_nodes(sphero=sphero, direction=direction)
-
-    # update_grid_movement instead ??    
+            sphero.update_movement(direction=direction)
+            self.update_nodes(sphero=sphero)
+  
     def update_grid_move(self):
         for bonded_group in self.swarm.bonded_groups:
             self.update_bonded_group_move(bonded_group=bonded_group)
-    
 
-    # find a better function name
     def update_sphero_bonds(self, sphero):
-        # think about making directions constant or not
         for direction in range(1, DIRECTIONS + 1):
-            adj_x, adj_y = self.compute_target_position(sphero=sphero, direction=direction)
-            adj_id = self.nodes[adj_x][adj_y]
-            adj_sphero = self.find_sphero(id=adj_id)
-            if sphero.can_bond(adj_sphero=adj_sphero):
-                self.swarm.combine(id1=sphero.id, id2=adj_id)
+            adj_x, adj_y = sphero.compute_target_position(direction=direction)
+            if 0 < adj_x < GRID_WIDTH and 0 < adj_y < GRID_HEIGHT:
+                adj_id = self.nodes[adj_x][adj_y]
+                adj_sphero = self.find_sphero(id=adj_id)
+                if sphero.can_bond(adj_sphero=adj_sphero):
+                    self.swarm.combine(id1=sphero.id, id2=adj_id)
     
     def update_grid_bonds(self):
         for sphero in self.spheros:

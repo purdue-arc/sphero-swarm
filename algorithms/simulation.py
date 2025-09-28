@@ -1,57 +1,18 @@
 import pygame
-import constants
-import random
-import math
+from constants import *
 from algorithm import Algorithm
 
-'''
-    def update(self):
-
-        # if the speed is 0, then we have stopped and no updating needs to happen
-        if self.velocity_x == self.velocity_y == 0:
-            return False
-
-        # finds the distance to the target
-        dx = abs(self.target_x - self.x)
-        dy = abs(self.target_y - self.y)
-
-
-        # if we get close enough of the target, we lock the ball's position
-        if dx + dy < EPSILON:
-
-            # lock to the target position. This will help avoid movement 
-            # errors accumulating up over time.
-            self.x = self.target_x
-            self.y = self.target_y
-
-            # also set the speed to 0 to show that the ball has stopped.
-            self.velocity_x = 0
-            self.velocity_y = 0
-        else:
-            self.x += self.velocity_x
-            self.y += self.velocity_y
-
-        return True
-
-    def draw(self):
-        pygame.draw.circle(screen, self.color, (int(self.x), int(self.y)), SPHERO_RADIUS)
-
-    def update_target(self):
-        self.target_x = self.x + self.velocity_x * (TRIANGLE_SIZE) / 2
-        self.target_y = self.y + self.velocity_y * (TRIANGLE_SIZE) / 2
-'''
-
 def draw_grid(surface):
-    for x in range(0, constants.WIDTH, constants.NODES_DISTANCE):
-        pygame.draw.line(surface=surface, color=constants.BLACK, start_pos=(x, 0), end_pos=(x, constants.HEIGHT))
+    for x in range(0, SIM_WIDTH, SIM_DIST):
+        pygame.draw.line(surface=surface, color=BLACK, start_pos=(x, 0), end_pos=(x, SIM_HEIGHT))
   
-    for y in range(0, constants.HEIGHT, constants.NODES_DISTANCE):
-        pygame.draw.line(surface=surface, color=constants.BLACK, start_pos=(0, y), end_pos=(constants.WIDTH, y))
+    for y in range(0, SIM_HEIGHT, SIM_DIST):
+        pygame.draw.line(surface=surface, color=BLACK, start_pos=(0, y), end_pos=(SIM_WIDTH, y))
     
-    for x in range (0, constants.WIDTH, constants.NODES_DISTANCE):
-        for y in range(0, constants.HEIGHT, constants.NODES_DISTANCE):
-            pygame.draw.line(surface=surface, color=constants.BLACK, start_pos=(x, y), end_pos=(x + constants.NODES_DISTANCE, y + constants.NODES_DISTANCE))
-            pygame.draw.line(surface=surface, color=constants.BLACK, start_pos=(x + constants.NODES_DISTANCE, y), end_pos=(x, y + constants.NODES_DISTANCE))
+    for x in range (0, SIM_WIDTH, SIM_DIST):
+        for y in range(0, SIM_HEIGHT, SIM_DIST):
+            pygame.draw.line(surface=surface, color=BLACK, start_pos=(x, y), end_pos=(x + SIM_DIST, y + SIM_DIST))
+            pygame.draw.line(surface=surface, color=BLACK, start_pos=(x + SIM_DIST, y), end_pos=(x, y + SIM_DIST))
 
 
 def print_bonds(swarm):
@@ -65,7 +26,7 @@ def draw_pause_button(surface, color, rect, paused):
     button_name = 'Pause'
     if (paused == True):
         button_name = 'Resume'
-    text = font.render(button_name, True, constants.BLACK)
+    text = font.render(button_name, True, BLACK)
     text_rect = text.get_rect(center=rect.center)
     surface.blit(text, text_rect)
 
@@ -76,7 +37,7 @@ def draw_rotate_button(surface, color):
     font = pygame.font.Font(None, 36)
     button_name = 'Rotate'
     
-    text = font.render(button_name, True, constants.BLACK)
+    text = font.render(button_name, True, BLACK)
     text_rect = text.get_rect(center=rect.center)
     surface.blit(text, text_rect)
     
@@ -93,22 +54,49 @@ def draw_rotate_button(surface, color):
     we need to pick a direction
     then calc if the destination of rotation is within bounds.
     if its not then DONT ROTATE IT
-
-    
     '''
     
+def move_sphero_to_target(sphero):
+
+    # if the speed is 0, then we have stopped and no updating needs to happen
+    if sphero.speed == 0:
+        return False
+
+    # finds the distance to the target
+    dx = abs(sphero.target_x - sphero.x)
+    dy = abs(sphero.target_y - sphero.y)
+
+
+    # if we get close enough of the target, we lock the ball's position
+    if dx + dy < EPSILON:
+
+        # lock to the target position. This will help avoid movement 
+        # errors accumulating up over time.
+        sphero.x = sphero.target_x
+        sphero.y = sphero.target_y
+
+        # also set the speed to 0 to show that the ball has stopped.
+        sphero.speed = 0
+    else:
+        sphero.x += sphero.speed
+        sphero.y += sphero.speed
+
+    return True
+
+def draw_sphero(surface, sphero):
+    pygame.draw.circle(surface, sphero.color if sphero.color else BLACK, (int(sphero.x), int(sphero.y)), SPHERO_SIM_RADIUS)
 
 if __name__ == "__main__":
     pygame.init()
     clock = pygame.time.Clock()
 
-    surface = pygame.display.set_mode((constants.WIDTH, constants.HEIGHT))
+    surface = pygame.display.set_mode((SIM_WIDTH, SIM_HEIGHT))
     pygame.display.set_caption("sphero-swarm simulation")
 
 
-    sphero_movement = Algorithm(width=constants.NODES_WIDTH,
-                                height=constants.NODES_HEIGHT,
-                                n_spheros=constants.N_SPHEROS)
+    algorithm = Algorithm(grid_width=GRID_WIDTH,
+                                grid_height=GRID_HEIGHT,
+                                n_spheros=N_SPHEROS)
     
     running = True
     while running:
@@ -117,14 +105,32 @@ if __name__ == "__main__":
                 running = False
 
         # set to constant Background Color
-        surface.fill(constants.WHITE)
+        surface.fill(WHITE)
         draw_grid(surface=surface)
 
-        sphero_movement.update_grid_bonds()
-        sphero_movement.update_grid_move()
+        spheros_reached_target = True
+        for sphero in algorithm.spheros:
+            if move_sphero_to_target(sphero=sphero):
+                spheros_reached_target = False
+
+        if spheros_reached_target:
+            algorithm.update_grid_bonds()
+            algorithm.update_grid_move()
+        
+        # Draw the spheros
+        for sphero in algorithm.spheros:
+            draw_sphero(surface=surface, sphero=sphero)
+
+        # Update the display
+        pygame.display.flip()
+
+        # Control frame rate
+        clock.tick(60)
+        
+
+
 
 '''
-
 if __name__ == "__main__":
 
     # Initialize Pygame

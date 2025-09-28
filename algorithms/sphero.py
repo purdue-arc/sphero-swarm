@@ -1,29 +1,41 @@
-import math
+from constants import *
 
 class Sphero:
-    def __init__(self, id, x, y, previous_direction, direction, speed=1):
+    def __init__(self, id, x, y,
+                 target_x=None, target_y=None,
+                 previous_direction=0, direction=0, speed=1, color=None):
         self.id = id
         self.x = x
         self.y = y
-        self.speed = speed
+        self.target_x = target_x if target_x is not None else x
+        self.target_y = target_y if target_y is not None else y
         self.previous_direction = previous_direction
         self.direction = direction
+        self.speed = speed
+        self.color = color
+
+    def compute_target_position(self, direction): # -> (int, int)
+        return (self.x + position_change[direction][0], self.y + position_change[direction][1])   
+
+    def update_target(self):
+        self.target_x, self.target_y = self.compute_target_position(direction=self.direction)     
 
     def update_direction(self, direction):
         self.previous_direction = self.direction
         self.direction = direction
 
+    def update_movement(self, direction):
+        self.update_direction(direction=direction)
+        self.update_target()
+
     def get_direction_change(self):
         return self.previous_direction - self.direction
 
-    # checks whether spheros are one node apart
-
     def can_bond(self, adj_sphero):
-        if (math.abs(self.x - adj_sphero.x) <= 1 and
-            math.abs(self.y - adj_sphero.y) <= 1):
+        if (abs(self.x - adj_sphero.x) <= 1 and
+            abs(self.y - adj_sphero.y) <= 1):
             return True
         return False
-
 
     def __str__(self):
         return f"{self.id}"
