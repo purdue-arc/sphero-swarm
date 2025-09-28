@@ -1,11 +1,9 @@
 
-
 class sphero:
-    def __init__(self, x, y, id):
-        self.x = x
-        self.y = y
-        self.id = id
+    def __init__(self, cx, cy, id):
+        self.x = cx # The Center x Coordinate
+        self.y = cy # The Center Y coordinate
+        self.id = id # The ID of the sphero
 
-#Main Progrma 
-sphero1 = sphero(5, 5, 5)
-print(sphero1.id)
+
+# Main Code for running the model
