@@ -3,7 +3,7 @@ from constants import *
 class Sphero:
     def __init__(self, id, x, y,
                  target_x=None, target_y=None,
-                 previous_direction=0, direction=0, speed=1, color=None):
+                 previous_direction=0, direction=0, speed=10, color=BLACK):
         self.id = id
         self.x = x
         self.y = y
@@ -31,6 +31,9 @@ class Sphero:
     def get_direction_change(self):
         return self.previous_direction - self.direction
 
+    def get_position_change(self):
+        return position_change[self.direction]
+
     def can_bond(self, adj_sphero):
         if (abs(self.x - adj_sphero.x) <= 1 and
             abs(self.y - adj_sphero.y) <= 1):
@@ -38,7 +41,7 @@ class Sphero:
         return False
 
     def __str__(self):
-        return f"{self.id}"
+        return f"pos: {self.x}, {self.y}, id: {self.id}"
     
 # TODO:
 # remove update direction

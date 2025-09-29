@@ -4,7 +4,8 @@ from swarm import Swarm
 from sphero import Sphero
 
 class Algorithm:
-    def __init__(self, grid_width, grid_height, n_spheros, initial_positions=None):
+    def __init__(self, grid_width, grid_height, n_spheros,
+                 colors=None, initial_positions=None):
         self.grid_width = grid_width
         self.grid_height = grid_height
         self.nodes = [ [0 for _ in range(grid_width)] for _ in range(grid_height)]
@@ -14,13 +15,22 @@ class Algorithm:
         if not initial_positions:
             initial_positions = self.generate_random_grid()
 
+        if not colors:
+            colors = self.generate_random_colors()
+
         id = 1
         # initial_positions.sort(key=lambda pos: (pos[0], pos[1]))
-        for x, y in initial_positions:
-            self.spheros[id - 1] = Sphero(id=id, x=x, y=y, direction=0)
+        for (x, y), color in zip(initial_positions, colors):
+            self.spheros[id - 1] = Sphero(id=id, x=x, y=y, color=color, direction=0)
             self.nodes[x][y] = id
             id += 1
         self.swarm = Swarm(n=n_spheros)
+
+    def generate_random_colors(self):
+        colors = []
+        for _ in range(self.n_spheros):
+            colors.append(random.choice(COLORS))
+        return colors
 
     def generate_random_grid(self):
         positions = []
@@ -30,11 +40,11 @@ class Algorithm:
         return positions
 
     def random_initial_position(self): # -> (int, int)
-        x = random.randint(0, self.grid_width - 1)
-        y = random.randint(0, self.grid_height - 1)
+        x = random.randint(MARGIN, self.grid_width - MARGIN)
+        y = random.randint(MARGIN, self.grid_height - MARGIN)
         while self.nodes[x][y]:
-            x = random.randint(0, self.grid_width - 1)
-            y = random.randint(0, self.grid_height - 1)
+            x = random.randint(MARGIN, self.grid_width - MARGIN)
+            y = random.randint(MARGIN, self.grid_height - MARGIN)
 
         # Reserve the node with a sentinel (e.g., -1) so subsequent picks
         # know it's taken; real IDs will be written in __init__ assignment.
@@ -59,6 +69,8 @@ class Algorithm:
         direction = random.choice(possible_directions)
         while not self.is_valid_move(direction=direction, sphero=sphero) and possible_directions:
             possible_directions.remove(direction)
+            if not possible_directions:
+                return (0, [])
             direction = random.choice(possible_directions)
         return (direction, possible_directions) if possible_directions else (0, [])
     

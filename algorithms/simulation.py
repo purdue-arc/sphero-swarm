@@ -56,35 +56,23 @@ def draw_rotate_button(surface, color):
     if its not then DONT ROTATE IT
     '''
     
-def move_sphero_to_target(sphero):
+def reached_target(sphero):
+    if (abs(sphero.target_x - sphero.target_x) < EPSILON and
+        abs(sphero.target_x - sphero.target_x) < EPSILON):
+        return True
+    return False
 
-    # if the speed is 0, then we have stopped and no updating needs to happen
-    if sphero.speed == 0:
-        return False
-
-    # finds the distance to the target
-    dx = abs(sphero.target_x - sphero.x)
-    dy = abs(sphero.target_y - sphero.y)
-
-
-    # if we get close enough of the target, we lock the ball's position
-    if dx + dy < EPSILON:
-
-        # lock to the target position. This will help avoid movement 
-        # errors accumulating up over time.
+def moving_sphero_to_target(sphero):
+    if reached_target(sphero=sphero):
         sphero.x = sphero.target_x
         sphero.y = sphero.target_y
-
-        # also set the speed to 0 to show that the ball has stopped.
-        sphero.speed = 0
-    else:
-        sphero.x += sphero.speed
-        sphero.y += sphero.speed
-
+        return False
+    sphero.x += position_change[sphero.direction][0] * sphero.speed
+    sphero.y += position_change[sphero.direction][1] * sphero.speed
     return True
 
 def draw_sphero(surface, sphero):
-    pygame.draw.circle(surface, sphero.color if sphero.color else BLACK, (int(sphero.x), int(sphero.y)), SPHERO_SIM_RADIUS)
+    pygame.draw.circle(surface, sphero.color, (int(sphero.x) * SIM_DIST, int(sphero.y) * SIM_DIST), SPHERO_SIM_RADIUS)
 
 if __name__ == "__main__":
     pygame.init()
@@ -95,8 +83,10 @@ if __name__ == "__main__":
 
 
     algorithm = Algorithm(grid_width=GRID_WIDTH,
-                                grid_height=GRID_HEIGHT,
-                                n_spheros=N_SPHEROS)
+                            grid_height=GRID_HEIGHT,
+                            n_spheros=N_SPHEROS)
+    for sphero in algorithm.spheros:
+        print(sphero)
     
     running = True
     while running:
@@ -110,8 +100,9 @@ if __name__ == "__main__":
 
         spheros_reached_target = True
         for sphero in algorithm.spheros:
-            if move_sphero_to_target(sphero=sphero):
+            if moving_sphero_to_target(sphero=sphero):
                 spheros_reached_target = False
+            print(sphero)
 
         if spheros_reached_target:
             algorithm.update_grid_bonds()
@@ -125,7 +116,7 @@ if __name__ == "__main__":
         pygame.display.flip()
 
         # Control frame rate
-        clock.tick(60)
+        clock.tick(3)
         
 
 
