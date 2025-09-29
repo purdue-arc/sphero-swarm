@@ -57,8 +57,8 @@ def draw_rotate_button(surface, color):
     '''
     
 def reached_target(sphero):
-    if (abs(sphero.target_x - sphero.target_x) < EPSILON and
-        abs(sphero.target_x - sphero.target_x) < EPSILON):
+    if (abs(sphero.target_x - sphero.x) <= EPSILON and
+        abs(sphero.target_y - sphero.y) <= EPSILON):
         return True
     return False
 

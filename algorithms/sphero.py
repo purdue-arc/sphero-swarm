@@ -3,7 +3,7 @@ from constants import *
 class Sphero:
     def __init__(self, id, x, y,
                  target_x=None, target_y=None,
-                 previous_direction=0, direction=0, speed=10, color=BLACK):
+                 previous_direction=0, direction=0, speed=1, color=BLACK):
         self.id = id
         self.x = x
         self.y = y
