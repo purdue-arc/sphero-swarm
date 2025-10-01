@@ -19,7 +19,6 @@ class Algorithm:
             colors = self.generate_random_colors()
 
         id = 1
-        # initial_positions.sort(key=lambda pos: (pos[0], pos[1]))
         for (x, y), color in zip(initial_positions, colors):
             self.spheros[id - 1] = Sphero(id=id, x=x, y=y, color=color, direction=0)
             self.nodes[x][y] = id
@@ -45,17 +44,13 @@ class Algorithm:
         while self.nodes[x][y]:
             x = random.randint(MARGIN, self.grid_width - MARGIN)
             y = random.randint(MARGIN, self.grid_height - MARGIN)
-
-        # Reserve the node with a sentinel (e.g., -1) so subsequent picks
-        # know it's taken; real IDs will be written in __init__ assignment.
-        self.nodes[x][y] = -1
         return x, y
 
     def find_sphero(self, id): # -> Sphero
         return self.spheros[id - 1]
 
-    def in_bounds(self, x, y):
-        return MARGIN <= x < GRID_WIDTH - MARGIN and MARGIN <= y < GRID_HEIGHT - MARGIN
+    def in_bounds(self, x, y): # -> bool
+        return MARGIN <= x < self.grid_width - MARGIN and MARGIN <= y < self.grid_height - MARGIN
     
     def is_valid_move(self, direction, sphero): # -> bool
         id = sphero.id
@@ -65,32 +60,28 @@ class Algorithm:
         return (not self.nodes[target_x][target_y] or
                 self.swarm.is_bonded(id1=id, id2=self.nodes[target_x][target_y]))
 
-    def find_valid_move(self, sphero, possible_directions): # -> (int, array[int])
-        direction = random.choice(possible_directions)
-        while not self.is_valid_move(direction=direction, sphero=sphero) and possible_directions:
-            possible_directions.remove(direction)
-            if not possible_directions:
-                return (0, [])
-            direction = random.choice(possible_directions)
-        return (direction, possible_directions) if possible_directions else (0, [])
+    def find_valid_move(self, sphero, possible_directions): # -> array[int]
+        for direction in possible_directions[:]:
+            if not self.is_valid_move(direction=direction, sphero=sphero):
+                possible_directions.remove(direction)
+        return possible_directions if possible_directions else []
     
     def find_bonded_group_move(self, bonded_group): # -> (int, array[int])
         possible_directions = [1, 2, 3, 4, 5, 6, 7, 8]
         direction = None
         for id in bonded_group:
             sphero = self.find_sphero(id)
-            direction, possible_directions = self.find_valid_move(sphero=sphero,
-                                                                  possible_directions=possible_directions)
-            if not possible_directions:
-                return (0, [])
-        return direction, possible_directions
+            possible_directions = self.find_valid_move(sphero=sphero,
+                                                        possible_directions=possible_directions)
+        direction = random.choice(possible_directions)
+        return direction
     
     def update_nodes(self, sphero):
         self.nodes[sphero.x][sphero.y] = 0
         self.nodes[sphero.target_x][sphero.target_y] = sphero.id
     
     def update_bonded_group_move(self, bonded_group):
-        direction, possible_directions = self.find_bonded_group_move(bonded_group=bonded_group)
+        direction = self.find_bonded_group_move(bonded_group=bonded_group)
         for id in bonded_group:
             sphero = self.find_sphero(id)
             sphero.update_movement(direction=direction)
@@ -100,10 +91,10 @@ class Algorithm:
         for bonded_group in self.swarm.bonded_groups:
             self.update_bonded_group_move(bonded_group=bonded_group)
 
-    def update_sphero_bonds(self, sphero):
+    def update_sphero_bonds(self, sphero): 
         for direction in range(1, DIRECTIONS + 1):
             adj_x, adj_y = sphero.compute_target_position(direction=direction)
-            if 0 < adj_x < GRID_WIDTH and 0 < adj_y < GRID_HEIGHT:
+            if self.in_bounds(adj_x, adj_y):
                 adj_id = self.nodes[adj_x][adj_y]
                 adj_sphero = self.find_sphero(id=adj_id)
                 if sphero.can_bond(adj_sphero=adj_sphero):
@@ -112,3 +103,11 @@ class Algorithm:
     def update_grid_bonds(self):
         for sphero in self.spheros:
             self.update_sphero_bonds(sphero=sphero)
+
+# algorithm = Algorithm(grid_width=GRID_WIDTH,
+#                         grid_height=GRID_HEIGHT,
+#                         n_spheros=N_SPHEROS)
+
+# sphero = Sphero(id=1, x=1, y=1)
+# algorithm.find_valid_move(sphero, [1, 2, 3, 4, 5, 6, 7, 8])
+
