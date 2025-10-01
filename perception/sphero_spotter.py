@@ -1,62 +1,77 @@
-import zmq
-import threading
+import threading 
+import pickle
+import zmq # for socket to connect to algs
+import time
 
-
-
-
-
-
-
-
-# @Prithika @Anthony
-# - Coordinate class
-#       Sphero ID
-#       x coord
-#       y coord
-
-
-
-# @Prithika - create function that takes pixel coords and spits out grid coords. 
-grid_dimensions = [10, 12]
-frame_dim_x = 12316
+# CONSTANTS
+GRID_DIM_X = 12 # TODO actually like make these real. right now they are all made up 
+GRID_DIM_Y = 10
+frame_dim_x = 1080
 frame_dim_y = 1440
+
+def pixel_to_grid_coords(pixel_x, pixel_y):
+    '''
+    TODO 
+    @Prithika - create function that takes pixel coords and spits out grid coords based off of our grid size.
+    '''
+    pass
+    return None
 # 
 
 def get_sphero_coords():
     '''
+    TODO 
     Returns list of coords of all spheros in terms of grid units.
     '''
-    return 'TODO'
+    coords = []
+    return coords
 
 def listener():
+    '''
+    This function is started in a thread and concurrently listens for requests from Algorithm team's side.
+
+    Algorithm team will send a request containing "init" and we will wait for that. we will send back a message saying 
+    "connected" and then start listening for strings saying "coords". When we receive a string 
+    containing "exit", the listener will stop.
+    '''
     # connect to the socket
     context = zmq.Context()
     socket = context.socket(zmq.REP)
     socket.bind("tcp://*:5555")
+    print('sphero_spotter: socket bind success')
 
-    print("sphero_spotter connected! yippee")
 
-    socket.send_string("sphero_spotter.py connected! yippee!!!!")
+    # start listening for 'init', 'coords' requests or 'exit'.
+    while True:
+        print('sphero_spotter: listening...')
+        msg = socket.recv_string()
+        print(f"Received request '{msg}' from algorithms!")
 
-thread = threading.Thread(target=listener, daemon=True)
-thread.start()
+        if msg == 'init':
+            socket.send_string("connected")
+        elif msg == 'coords':
+            #reply = pickle.dump(get_sphero_coords())    # byte dump list of spheros. Algorithms gets to unpack it
+            #reply = pickle.dump('hi')
+            #socket.send(reply)                   # send bytedump of sphero coord objects back
+            socket.send_string('[pickled SpheroCoordinate objects]')
+            print('sphero_spotter: sending coords')
+        elif msg == 'exit':
+            socket.send_string('bye')
+            break
+        else:
+            socket.send_string("error - command doesn\'t match one of ['init', 'coords', 'exit']")
+
+
 
 
 if __name__ == '__main__':
-    # initialize some stuff
 
+    # start the listening thread
+    thread = threading.Thread(target=listener, daemon=False) # start a listening thread
+    # we do daemon=False because if the listener is shut down then we want the 
+    # spotter to close.
+    thread.start()
 
-
-    # listening loop 
-    while True:
-        # algorithms will send "1"
-        message = socket.recv_string()
-        print(f"Received request from algorithms! ima send back info now")
-
-        #reply = f"Response to {message}"
-        sphero_coords = get_sphero_coords()
-
-        socket.send_string(sphero_coords)
-
+    # TODO start the camera feed, object tracking and updating, all that stuff
 
 
