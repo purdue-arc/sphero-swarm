@@ -173,5 +173,6 @@ if __name__ == '__main__':
                 client.send_string("exit")
                 break
 
+    thread.join()
     cv2.destroyAllWindows()
     print("ENDED")
