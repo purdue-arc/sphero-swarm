@@ -1,4 +1,6 @@
 from constants import *
+from math import atan, cos, sin, sqrt
+import random
 
 class Sphero:
     def __init__(self, id, x, y,
@@ -14,8 +16,23 @@ class Sphero:
         self.speed = speed
         self.color = color
 
-    def compute_target_position(self, direction): # -> (int, int)
-        return (self.x + position_change[direction][0], self.y + position_change[direction][1])   
+    def compute_rotation_target(self, direction, center):
+        x_rel = self.x - center.x
+        y_rel = self.y - center.y
+        angle = atan(x_rel / y_rel) + direction
+        target_x = cos(angle) * sqrt((x_rel ** 2) + (y_rel ** 2)) + center.x
+        target_y = sin(angle) * sqrt((x_rel ** 2) + (y_rel ** 2)) + center.y
+        radius = sqrt(x_rel ** 2 + y_rel ** 2)
+        return (target_x, target_y, radius)    
+    
+    def compute_translation_target(self, direction, position_change):
+        return (self.x + position_change[direction][0], self.y + position_change[direction][1], 0)
+    
+    def compute_target_position(self, direction, center): # -> (int, int)
+        if direction % 1 == 0:
+            return self.compute_translation_target(self, direction, position_change) 
+        else:
+            return self.compute_rotation_taget(self, direction, center)
 
     def update_target(self):
         self.target_x, self.target_y = self.compute_target_position(direction=self.direction)     

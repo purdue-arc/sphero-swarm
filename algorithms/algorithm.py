@@ -2,6 +2,7 @@ import random
 from constants import *
 from swarm import Swarm
 from sphero import Sphero
+from math import pi
 
 class Algorithm:
     def __init__(self, grid_width, grid_height, n_spheros,
@@ -52,27 +53,27 @@ class Algorithm:
     def in_bounds(self, x, y): # -> bool
         return MARGIN <= x < self.grid_width - MARGIN and MARGIN <= y < self.grid_height - MARGIN
     
-    def is_valid_move(self, direction, sphero): # -> bool
+    def is_valid_move(self, direction, sphero, bonded_group): # -> bool
         id = sphero.id
-        target_x, target_y = sphero.compute_target_position(direction=direction)
+        target_x, target_y, radius = sphero.compute_target_position(direction=direction, center = bonded_group[random.randint(0, len(bonded_group) - 1)])
         if not self.in_bounds(target_x, target_y):
             return False
         return (not self.nodes[target_x][target_y] or
                 self.swarm.is_bonded(id1=id, id2=self.nodes[target_x][target_y]))
 
-    def find_valid_move(self, sphero, possible_directions): # -> array[int]
+    def find_valid_move(self, sphero, possible_directions, bonded_group): # -> array[int]
         for direction in possible_directions[:]:
-            if not self.is_valid_move(direction=direction, sphero=sphero):
+            if not self.is_valid_move(direction=direction, sphero=sphero, bonded_group=bonded_group):
                 possible_directions.remove(direction)
         return possible_directions if possible_directions else []
     
     def find_bonded_group_move(self, bonded_group): # -> (int, array[int])
-        possible_directions = [1, 2, 3, 4, 5, 6, 7, 8]
+        possible_directions = [1, 2, 3, 4, 5, 6, 7, 8, -pi/2, pi/2]
         direction = None
         for id in bonded_group:
             sphero = self.find_sphero(id)
             possible_directions = self.find_valid_move(sphero=sphero,
-                                                        possible_directions=possible_directions)
+                                                        possible_directions=possible_directions, bonded_group=bonded_group)
         direction = random.choice(possible_directions)
         return direction
     
