@@ -172,5 +172,6 @@ if __name__ == '__main__':
                 stop_event.set()
                 break
 
+    thread.join()
     cv2.destroyAllWindows()
     print("ENDED")
