@@ -35,9 +35,6 @@ def initialize_spheros():
     n_found = 0
     return n_found
 
-# Define a global stop event
-stop_event = threading.Event()
-
 def listener():
     '''
     This function is started in a thread and concurrently listens for requests from Algorithm team's side.
@@ -54,7 +51,7 @@ def listener():
 
 
     # start listening for 'init', 'coords' requests or 'exit'.
-    while not stop_event.is_set():
+    while True:
         print('sphero_spotter: listening...')
         msg = socket.recv_string()
         print(f"Received request '{msg}' from algorithms!")
@@ -71,11 +68,11 @@ def listener():
             print('sphero_spotter: sending coords')
 
         elif msg == 'exit':
-            socket.send_string('bye')
             break
 
         else:
             socket.send_string("error - command doesn\'t match one of ['init', 'coords', 'exit']")
+    print('listener stopped')
 
 
 
@@ -169,7 +166,11 @@ if __name__ == '__main__':
 
             cv2.imshow("Sphero IDs (frozen from first frame)", frame)
             if cv2.waitKey(1) == 27:  # ESC
-                stop_event.set()
+                 # send the "exit" command to the listener.
+                context = zmq.Context()
+                client = context.socket(zmq.REQ)
+                client.connect("tcp://localhost:5555")
+                client.send_string("exit")
                 break
 
     cv2.destroyAllWindows()
