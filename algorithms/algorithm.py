@@ -28,15 +28,15 @@ class Algorithm:
             id += 1
         self.swarm = Swarm(n=n_spheros)
 
-    def generate_random_colors(self):
+    def generate_random_colors(self): # -> List[color]
         """
-        Generate an array of random colors of size number of spheros
+        Generate a list of random colors, with length equal to the number of spheros
 
         Args:
             None
 
         Returns:
-            List[colors]: a list of random colors, with length equal to number of spheros
+            List[colors]: a list of random colors, with length equal to the number of spheros
         """
 
         colors = []
@@ -46,7 +46,8 @@ class Algorithm:
 
     def random_initial_position(self): # -> (int, int)
         """
-        Generate a valid random initial position on the grid
+        Generate a random initial position on the grid that is both in bounds and
+        doesn't collide with another sphero
 
         Args:
             None
@@ -62,7 +63,7 @@ class Algorithm:
             y = random.randint(MARGIN, self.grid_height - MARGIN)
         return x, y
 
-    def generate_random_grid(self):
+    def generate_random_grid(self): # -> List[int]
         """
         Generate a random set of initial positions for all spheros on the grid
 
@@ -94,7 +95,7 @@ class Algorithm:
 
     def in_bounds(self, x, y): # -> bool
         """
-        Determins if the passed in position is in the grid bounds
+        Determines if the passed in position is in the grid bounaries
 
         Args:
             x: (int) passed in x-coordinate 
@@ -115,13 +116,16 @@ class Algorithm:
             sphero: (Sphero) the passed in sphero
         
         Returns:
-            (bool): Is the direction passed in is a valid direction for the sphero?
+            (bool): Is the direction passed in a valid direction for the sphero?
         """
 
         id = sphero.id
         target_x, target_y = sphero.compute_target_position(direction=direction)
         if not self.in_bounds(target_x, target_y):
             return False
+        
+        # the direction is valid if the node has no sphero or
+        # the node has a sphero which is apart of the same bonding group
         return (not self.nodes[target_x][target_y] or
                 self.swarm.is_bonded(id1=id, id2=self.nodes[target_x][target_y]))
 

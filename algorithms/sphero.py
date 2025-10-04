@@ -19,7 +19,7 @@ class Sphero:
         Compute our sphero's target position given the direction
 
         Args:
-            (int) direction: value between 0 to DIRECTIONS
+            direction: (int) value between 0 to DIRECTIONS
         
         Returns:
             (int, int): sphero's target position
@@ -45,7 +45,7 @@ class Sphero:
         Update our sphero's direction and previous direction given a direction
 
         Args:
-            (int) direction: value between 0 and DIRECTIONS
+            direction: (int) value between 0 and DIRECTIONS
 
         Returns:
             None
@@ -59,7 +59,7 @@ class Sphero:
         Update a spheros direction and target position given a direction
 
         Args:
-            (int) direction: value between 0 and DIRECTIONS
+            direction: (int) value between 0 and DIRECTIONS
 
         Returns:
             None
@@ -95,10 +95,10 @@ class Sphero:
 
     def can_bond(self, adj_sphero):
         """
-        Determines if our sphero and another sphero is close enough to bond
+        Determines if our sphero and another sphero are close enough to bond
 
         Args:
-            (sphero) adj_sphero: another sphero
+            adj_sphero: (Sphero) another sphero
 
         Returns:
             (bool): Is our sphero and the adjacent sphero close enough to bond?

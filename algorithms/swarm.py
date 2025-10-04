@@ -1,7 +1,7 @@
 class Swarm:
     def __init__(self, n):
         self.bonded_groups = [[id] for id in range(1, n + 1)]
-        self.bonded_group_index = [index for index in range(n)] # maybe should change to parent?
+        self.bonded_group_index = [index for index in range(n)]
 
     def find_bonding_group(self, id): # -> List[Sphero]
         """

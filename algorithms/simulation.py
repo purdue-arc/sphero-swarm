@@ -101,8 +101,7 @@ if __name__ == "__main__":
             if event.type == pygame.QUIT:
                 running = False
 
-        # set to constant Background Color
-        surface.fill(WHITE)
+        surface.fill(WHITE) # replace frame with empty background
         draw_grid(surface=surface)
 
         spheros_reached_target = True
@@ -111,7 +110,7 @@ if __name__ == "__main__":
                 spheros_reached_target = False 
 
 
-        # if the spheros reached their target, bond spheros and find new directions
+        # if all spheros reached their target, bond spheros and find new directions
         if spheros_reached_target:
             algorithm.update_grid_bonds()
             algorithm.update_grid_move()
