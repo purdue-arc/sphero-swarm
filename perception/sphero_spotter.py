@@ -32,6 +32,9 @@ def initialize_spheros():
     n_found = 0
     return n_found
 
+# Define a global stop event
+stop_event = threading.Event()
+
 def listener():
     '''
     This function is started in a thread and concurrently listens for requests from Algorithm team's side.
@@ -48,7 +51,7 @@ def listener():
 
 
     # start listening for 'init', 'coords' requests or 'exit'.
-    while True:
+    while not stop_event.is_set():
         print('sphero_spotter: listening...')
         msg = socket.recv_string()
         print(f"Received request '{msg}' from algorithms!")
@@ -84,7 +87,7 @@ if __name__ == '__main__':
 
     # TODO start the camera feed, object tracking and updating, all that stuff
 
-    # start camera feed
+
 
 
 
