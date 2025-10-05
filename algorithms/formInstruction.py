@@ -1,5 +1,10 @@
 import numpy as np
 
+'''
+Given the current direction the sphero is facing (which can be calculated by subtracting perceptions'
+coordinates from the sphero's previous coordinates) and the new position the sphero wants to get to,
+return the angle that the sphero must turn
+'''
 def nextVectorDirection(actual, next):
     nextv = np.array([next[0], next[1]]).astype(float)
     actualv = np.array([actual[0], actual[1]]).astype(float)
