@@ -1,5 +1,5 @@
 import random
-from constants import *
+from .constants import *
 from swarm import Swarm
 from sphero import Sphero
 
@@ -99,6 +99,7 @@ class Algorithm:
         """
         if id:
             return self.spheros[id - 1]
+        return None
 
     def in_bounds(self, x, y): # -> bool
         """
@@ -170,7 +171,7 @@ class Algorithm:
             sphero = self.find_sphero(id)
             possible_directions = self.find_valid_move(sphero=sphero,
                                                         possible_directions=possible_directions)
-        direction = random.choice(possible_directions)
+        direction = random.choice(possible_directions) if possible_directions else 0
         return direction
     
     def update_nodes(self, sphero):

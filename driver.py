@@ -3,7 +3,7 @@ import socket
 from algorithms.algorithm import Algorithm
 from algorithms.constants import *
 from controls.Instruction import Instruction
-from spherov2.types import Color
+# from spherov2.types import Color
 
 
 s = socket.socket()
@@ -13,8 +13,8 @@ s.connect(('localhost', port))
 
 
 if __name__ == "__main__":
-    sphero_tag = []
-    initial_positions = []
+    sphero_tag = ["SB-76B3", "SB-BD0A", "SB-B5A9"]
+    initial_positions = [(0, 0), (0, 1), (0, 2)]
     instructions = []
     algorithm = Algorithm(grid_width=GRID_WIDTH,
                             grid_height=GRID_HEIGHT,
@@ -28,6 +28,9 @@ if __name__ == "__main__":
     running = True
     while running:
         algorithm.update_grid_bonds()
+        for sphero in algorithm.spheros: # fix this, I was being lazy
+            sphero.x = sphero.target_x
+            sphero.y = sphero.target_y
         algorithm.update_grid_move()
 
         for sphero in algorithm.spheros:
