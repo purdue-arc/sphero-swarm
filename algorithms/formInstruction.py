@@ -3,13 +3,17 @@ import numpy as np
 def nextVectorDirection(actual, next):
     nextv = np.array([next[0], next[1]]).astype(float)
     actualv = np.array([actual[0], actual[1]]).astype(float)
-    nextv = nextv - actualv
+    nextv[1] = -1 * nextv[1]
+    actualv[1] = -1 * actualv[1]
+
+    nextv = nextv - actualv # when this is 0 sphero is not moving to a new location
     d = np.dot(nextv, actualv)
 
-    print(nextv)
     print(actualv)
+    print(nextv)
 
-    theta = np.arccos(d/ (np.linalg.norm(nextv) * np.linalg.norm(actualv))) # check for dividing by 0
+    theta = np.arccos(d/ (np.linalg.norm(nextv) * np.linalg.norm(actualv))) # check for dividing dot product by 0
+    # figure out what to do when actualv is 0?
     theta = np.round(theta * (180 / np.pi))
     degnext = np.arctan2(nextv[1], nextv[0]) + np.pi
     degact = np.arctan2(actualv[1], actualv[0]) + np.pi
