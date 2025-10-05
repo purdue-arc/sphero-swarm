@@ -23,7 +23,7 @@ class Algorithm:
 
         # generate random colors for spheros if none passed in
         if not colors:
-            colors = self.generate_random_colors()
+            colors = self.generate_colors()
 
         id = 1
         for (x, y), color in zip(initial_positions, colors):
@@ -32,20 +32,20 @@ class Algorithm:
             id += 1
         self.swarm = Swarm(n=n_spheros)
 
-    def generate_random_colors(self): # -> List[color]
+    def generate_colors(self): # -> List[color]
         """
-        Generate a list of random colors, with length equal to the number of spheros
+        Generate a list of colors, with length equal to the number of spheros
 
         Args:
             None
 
         Returns:
-            List[colors]: a list of random colors, with length equal to the number of spheros
+            List[colors]: a list of colors, with length equal to the number of spheros
         """
 
         colors = []
-        for _ in range(self.n_spheros):
-            colors.append(random.choice(COLORS))
+        for i in range(self.n_spheros):
+            colors.append(COLORS[i % len(COLORS)])
         return colors
 
     def random_initial_position(self): # -> (int, int)
@@ -65,6 +65,9 @@ class Algorithm:
         while self.nodes[x][y]:
             x = random.randint(MARGIN, self.grid_height - MARGIN)
             y = random.randint(MARGIN, self.grid_width - MARGIN)
+
+        # fill in board with temporary id
+        self.nodes[x][y] = -1
         return x, y
 
     def generate_random_grid(self): # -> List[int]
