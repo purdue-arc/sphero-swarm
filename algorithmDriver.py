@@ -63,7 +63,7 @@ if __name__ == '__main__':
             print("Sent request to get real coords of sphero {}", sphero.id)
             response = socket.recv_string()
             print("Sphero {} is actually at position ({}, {})", response)
-            direction = nextVectorDirection({response.x, response.y}, {sphero.x, sphero.y})
+            direction = nextVectorDirection({response.x - sphero.x, response.y - sphero.y}, {sphero.target_x, sphero.target_y})
             magnitude = nextVectorMagnitude({response.x, response.y}, {sphero.x, sphero.y})
             instructions.append(Instruction(sphero.id, 2, direction, TURN_DURATION))
             instructions.append(Instruction(sphero.id, 1, magnitude, ROLL_DURATION))
