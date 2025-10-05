@@ -3,16 +3,26 @@ DIRECTIONS = 8
 
 N_SPHEROS = 20
 
-GRID_WIDTH = 10
-GRID_HEIGHT = 10
-SIM_DIST = 50
+# the number of nodes on the grid widthwise
+GRID_WIDTH = 15
 
-SPHERO_SIM_RADIUS = 25
+# the number of nodes on the grid heightwise
+GRID_HEIGHT = 15
+
+# the pixel distance between two nodes 
+SIM_DIST = 50
+FRAMES = 60
+
+SPHERO_SIM_RADIUS = 15
 
 SIM_WIDTH = GRID_WIDTH * SIM_DIST
 SIM_HEIGHT = GRID_HEIGHT * SIM_DIST
 
-EPSILON = 5
+EPSILON = 0.01
+
+SPHERO_SPEED = 60
+ROLL_DURATION = 1 # in seconds
+TURN_DURATION = 1 # in seconds
 
 BLUE = (0, 0, 255)
 RED = (255, 0, 0)
@@ -24,6 +34,8 @@ ORANGE = (255, 165, 0)
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 GRAY = (150, 150, 150)
+
+COLORS = [BLUE, RED, GREEN, YELLOW, PURPLE, ORANGE]
 
 position_change = {
     0: (0, 0),

@@ -1,123 +1,92 @@
-### Algorithms Subteam
+# Algorithms Subteam
 
 ## Simulation
 
-# On VSCode 
+### Running the Simulation (on VSCode)
 
-Simply run file ```sphero-sim-w-grid.py```
+* Run the file [`simulation.py`](simulation.py) directly.
 
-# If Pygame is not installed
+### If Pygame is not installed
 
-You may want to create a virtual environment:
+Install pygame:
 
-``` python3 -m venv env ```
-
-and activate it with 
-
-``` source env/bin/activate ```
-
-Then pip install python using 
-
-```./env/bin/pip install pygame```
-
-Finally, run the file in the virtual environment
-
-```./env/bin/python sphero-sim-w-grid.py```
-
-## Driver
-
-```sphero_driver.py``` is the program used to control the actual spheros.
-TODO: Documentation needed for using the driver 
+   ```bash
+   python -m pip install pygame
+   ```
 
 
-### Algorithms folder — file overview
+## Algorithms Folder — File Overview
 
-This section summarizes the purpose, key components, and connections between the Python files in the `algorithms` folder.
+This section summarizes the purpose, key components, and usage connections of the Python files in `algorithms/`.
 
-- [constants.py](constants.py)
-  - Purpose: shared constants for simulations (grid size, spacing, sphero counts, velocities).
-  - Key components: `MARGIN`, `DIRECTIONS`, `N_SPHEROS`, `NODES_WIDTH`, `NODES_HEIGHT`, `NODES_DISTANCE`, `WIDTH`, `HEIGHT`, `VELOCITY`.
-  - Used by: [`Algorithm`](algorithm.py), [`simulation.py`](simulation.py), [`test.py`](test.py).
+### [constants.py](constants.py)
 
-- [sphero.py](sphero.py)
-  - Purpose: defines the Sphero data object used by algorithms that simulate grid movement and bonding.
-  - Key components: class [`Sphero`](sphero.py) with fields `id`, `x`, `y`, `previous_direction`, `direction`; methods `update_direction()`, `get_direction_change()`, `can_bond()`, `__str__()`.
-  - Notes: `can_bond` intends to check coordinate adjacency;
-  - Used by: [`Algorithm`](algorithm.py), `sphero-sim-w-grid.py` variants in `documentation/` and `sphero-sim-w-grid.py`.
+* **Purpose:** Defines shared constants (grid dimensions, sphero counts, colors, spacing, velocities).
+* **Key Components:** `MARGIN`, `DIRECTIONS`, `N_SPHEROS`, `GRID_WIDTH`, `GRID_HEIGHT`, `SIM_DIST`, `SIM_WIDTH`, `SIM_HEIGHT`, `EPSILON`.
+* **Used by:** [`algorithm.py`](algorithm.py), [`simulation.py`](simulation.py), [`test.py`](test.py).
 
-- [swarm.py](swarm.py)
-  - Purpose: union-find-like structure tracking bonded groups.
-  - Key components: class [`Swarm`](swarm.py) storing `bonded_groups` (list of groups) and `bonded_group_index` (mapping id → group index); methods `is_bonded()` and `combine()`.
-  - Used by: [`Algorithm`](algorithm.py) to decide valid moves and merges.
+### [sphero.py](sphero.py)
 
-- [algorithm.py](algorithm.py)
-  - Purpose: core grid-based movement and bonding logic (Algorithm class for controlling Sphero agents on node grid).
-  - Key components:
-    - class [`Algorithm`](algorithm.py) with:
-      - `position_change` map (direction → delta).
-      - initialization logic that creates `nodes` grid and a `spheros` list.
-      - methods: `generate_random_grid()`, `random_initial_position()`, `find_sphero()`, `compute_target_position()`, `is_valid_move()`, `find_valid_move()`, `find_bonded_group_move()`, `update_nodes()`, `update_bonded_group_move()`, `update_grid_move()`, `check_bonding()`.
-    - Collaborates with [`Swarm`](swarm.py) and [`Sphero`](sphero.py).
-  - Notes / issues:
+* **Purpose:** Defines the `Sphero` class, representing an agent on the grid.
+* **Key Components:**
 
+  * Fields: `id`, `x`, `y`, `target_x`, `target_y`, `direction`, `previous_direction`, `color`, `speed`.
+  * Methods: `compute_target_position()`, `update_direction()`, `update_target()`, `update_movement()`, `get_position_change()`, `can_bond()`, `__str__()`.
+* **Used by:** [`algorithm.py`](algorithm.py), [`sphero-sim-w-grid.py`](sphero-sim-w-grid.py).
 
-- [simulation.py](simulation.py)
-  - Purpose: small utilities for rendering grid and UI elements, plus a script entrypoint that constructs an `Algorithm` instance.
-  - Key components:
-    - color constants (duplicated here; could use [`constants.py`](constants.py) instead).
-    - `draw_grid(surface)` — renders a rectangular grid using values from [`constants`](constants.py) (`WIDTH`, `HEIGHT`, `NODES_DISTANCE`, `DISTANCE` reference — note: `DISTANCE` is not defined in `constants.py`; check usage).
-    - UI helpers: `print_bonds()`, `draw_pause_button()`, `draw_rotate_button()`.
-    - Main demo code that creates `Algorithm(...)` (constructed from [`algorithm.py`](algorithm.py)).
-  - Used by: can be run as a simple visual demo; references [`Algorithm`](algorithm.py).
+### [swarm.py](swarm.py)
 
-- [sphero-sim-w-grid.py](sphero-sim-w-grid.py)
-  - Purpose: an independent Pygame simulation that draws a triangular grid and simulates sphero bonding/rotation behavior.
-  - Key components:
-    - grid drawing: `draw_triangular_grid(surface, triangle_size, color)`.
-    - button helpers: `draw_pause_button()`, `draw_rotate_button()` with event rectangles returned for interaction.
-    - Sphero simulation loop: creates Sphero-like objects, `bonds` groups, movement update/target logic, bonding checks, and UI controls.
-  - This file is the primary runnable demo referenced by the top-level algorithms README ("Simply run file `sphero-sim-w-grid.py`").
+* **Purpose:** Tracks bonded groups of Spheros.
+* **Key Components:**
 
-- [test.py](test.py)
-  - Purpose: minimal Pygame test harness that creates a display and calls `draw_grid`.
-  - Key components:
-    - imports `pygame` and `constants`.
-    - calls `draw_grid(screen)` (expects `draw_grid` implementation in `simulation.py` or similar).
-  - Notes: `draw_grid` is implemented in [`simulation.py`](simulation.py) — running `test.py` as-is will need that function to be imported or accessible.
+  * Class `Swarm` with attributes `bonded_groups`, `bonded_group_index`.
+  * Methods: `find_bonding_group()`, `is_bonded()`, `combine()`.
+* **Used by:** [`algorithm.py`](algorithm.py).
 
-- [documentation/*.py](documentation/Sphero Swarm Simulation*.py)
-  - Purpose: multiple iterations of simulation prototypes (Sphero Swarm Simulation, Simulation2..7).
-  - Key components: each file is a Pygame prototype that defines `Sphero` and `SpheroSwarm` classes, UI `Button` helpers, and a `run_simulation()` entrypoint. Many of them contain similar methods: `update_position()`, `update_velocity()`, `draw()`, `display_raw_data()`.
-  - Use: useful references for features like pause/resume, color-change buttons, raw-data display and polymerization behavior.
+### [algorithm.py](algorithm.py)
 
-How things connect (big picture)
-- The shared constants in [`constants.py`](constants.py) provide the grid and simulation sizing. The visual rendering functions in [`simulation.py`](simulation.py) use those constants to draw the rectangular grid.
-- The core agent model is [`Sphero`](sphero.py). The group/bond logic is implemented by [`Swarm`](swarm.py).
-- The decision and movement logic is in [`Algorithm`](algorithm.py) which uses `Sphero` and `Swarm` to compute valid moves and update the `nodes` occupancy grid.
-- `sphero-sim-w-grid.py` and the scripts in `documentation/` are runnable demos that implement Pygame loops, use local Sphero-like objects and bonding logic (some replicate behavior from [`Algorithm`](algorithm.py) but keep their own Sphero class definitions).
-- `test.py` is a minimal harness to invoke the grid drawing.
+* **Purpose:** Implements movement and bonding logic for Spheros on the grid.
+* **Key Components:**
 
-Quick pointers to run and improve
-- To run the triangular-grid demo: run [sphero-sim-w-grid.py](sphero-sim-w-grid.py).
-- To run the rectangular-grid Algorithm demo: run [simulation.py](simulation.py) — it constructs an [`Algorithm`](algorithm.py) instance.
-- Consider consolidating duplicated constants (colors, sizes) — move shared colors into [`constants.py`](constants.py).
-- Fixes to check:
-  - Replace `math.abs` in [`Sphero.can_bond`](sphero.py) with `abs()` or `math.fabs()`.
-  - Use a safe 2D list creation in [`Algorithm.__init__`](algorithm.py): `self.nodes = [[0 for _ in range(node_width)] for _ in range(node_height)]` to avoid aliasing rows.
-  - Ensure imports work based on how you run scripts (script vs package): some files import using package-style paths (`from algorithms.swarm import Swarm`) which may need to be adjusted when running a file directly.
+  * Class `Algorithm` with:
 
-Relevant files and symbols (quick links)
-- [`constants`](constants.py)
-- [`Sphero`](sphero.py)
-- [`Swarm`](swarm.py)
-- [`Algorithm`](algorithm.py)
-- [`draw_grid`](simulation.py)
-- [sphero-sim-w-grid.py](sphero-sim-w-grid.py)
-- [simulation.py](simulation.py)
-- [test.py](test.py)
+    * Grid setup (`nodes`, `spheros`).
+    * Methods for initialization (`generate_random_grid()`, `random_initial_position()`).
+    * Movement (`is_valid_move()`, `find_valid_move()`, `update_nodes()`, `update_grid_move()`).
+    * Bonding (`update_sphero_bonds()`, `update_grid_bonds()`).
+  * Collaborates with `Sphero` and `Swarm`.
 
-TODO:
-- add simulation methods to overhead
-- integrate new code in driver by removing all old code and using new functions
-- fix simulation
-- fix bugs in algorithm, sphero, and swarm (look for id indexing issues)
+### [simulation.py](simulation.py)
+
+* **Purpose:** Provides visualization and the main loop for rectangular-grid simulation.
+* **Key Components:**
+
+  * Rendering: `draw_grid()`, `draw_sphero()`.
+  * UI helpers: `draw_pause_button()`.
+  * Movement: `moving_sphero_to_target()`, `reached_target()`.
+  * Entrypoint: runs a `pygame` loop using an `Algorithm` instance.
+* **Used by:** Directly runnable as the rectangular-grid simulation.
+
+### [documentation](documentation/)
+
+* **Purpose:** Historical Pygame simulation prototypes.
+* **Key Components:** Each defines `Sphero`, `Swarm`, UI buttons, and `run_simulation()`.
+* **Notes:** Contain useful reference implementations for UI and bonding behavior.
+
+---
+
+## How Things Connect (Big Picture)
+
+* **Core agent model:** [`Sphero`](sphero.py).
+* **Group/bond logic:** [`Swarm`](swarm.py).
+* **Decision/movement logic:** [`Algorithm`](algorithm.py), combining `Sphero` + `Swarm`.
+* **Visualization & demos:** [`simulation.py`](simulation.py), [`sphero-sim-w-grid.py`](sphero-sim-w-grid.py), `documentation/*.py`.
+* **Shared constants:** [`constants.py`](constants.py).
+
+---
+
+## IMPORTANT NOTE
+
+x is treated as the height, and y is treated as the width. Where (0,0) is the top left corner of the grid and (HEIGHT - 1, WIDTH - 1) is the bottom right corner. 
+
+## TODO
