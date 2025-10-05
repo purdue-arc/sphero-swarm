@@ -1,9 +1,35 @@
 import pickle # to unbytedump our stuff
 import zmq # for socket to connect to algs
+import random
+from controls.Instruction import Instruction
+from spherov2.types import Color
+import math
+import time
+import socket as controlsSocket
+from algorithms.formInstruction import nextVectorDirection, nextVectorMagnitude
+
+# Color constants
+BLUE = Color(0, 0, 255)
+RED = Color(255, 0, 0)
+GREEN = Color(0, 255, 0)
+YELLOW = Color(255, 255, 0)
+PURPLE = Color(128, 0, 128)
+ORANGE = Color(255, 165, 0)
+
+# CONSTANTS 
+SPHERO_SPEED = 60
+ROLL_DURATION = 1 # in seconds
+TURN_DURATION = 1 # in seconds
 
 if __name__ == '__main__':
 
-    # set up zmq socket
+    # set up client for controls
+    s = controlsSocket.socket()
+    port = 1235
+
+    s.connect(('localhost', port))
+
+    # set up client 
     context = zmq.Context()
     socket = context.socket(zmq.REQ)
     socket.connect("tcp://localhost:5555")
@@ -31,25 +57,24 @@ if __name__ == '__main__':
 
         spheros_next_coords = [] # An array of where every sphero wants to go next
 
+        instructions = [] # The array of instructions we will eventually send controls
         for sphero in spheros_next_coords:
             socket.send_string(sphero.id)
-            print("Sent request to get real coords of sphero ")
-        count += 1
-        time.sleep(1) # pretend to wait for spheros to move 
+            print("Sent request to get real coords of sphero {}", sphero.id)
+            response = socket.recv_string()
+            print("Sphero {} is actually at position ({}, {})", response)
+            direction = nextVectorDirection({response.x, response.y}, {sphero.x, sphero.y})
+            magnitude = nextVectorMagnitude({response.x, response.y}, {sphero.x, sphero.y})
+            instructions.append(Instruction(sphero.id, 2, direction, TURN_DURATION))
+            instructions.append(Instruction(sphero.id, 1, magnitude, ROLL_DURATION))
 
-        # send a request to sphero_spotter for coordinates.
-        request = 'coords'
-        print("Sent:\t\t", request)
-        socket.send_string(request)
+        quit = True
+        s.send(pickle.dumps(instructions))
+        buffer = s.recv(1024).decode()
 
-        # receive a bytedump of SpheroCoordinate objects and unpickle it. 
-        # TODO look at controls code for unpickling 
-        # maybe do recv_multipart() and send_multipart()? look into it.
-        #bytedump = pickle.loads(socket.recv())
-        #print(bytedump)
 
-        response = socket.recv_string()
-        print("Received:\t", response)
+        if quit:
+            break
     
     # tell sphero_spotter listener to exit
     socket.send_string('exit')
