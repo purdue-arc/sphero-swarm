@@ -3,8 +3,13 @@ DIRECTIONS = 8
 
 N_SPHEROS = 20
 
+# the number of nodes on the grid widthwise
 GRID_WIDTH = 15
+
+# the number of nodes on the grid heightwise
 GRID_HEIGHT = 15
+
+# the pixel distance between two nodes 
 SIM_DIST = 50
 FRAMES = 60
 

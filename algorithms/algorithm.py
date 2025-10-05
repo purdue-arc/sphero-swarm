@@ -9,7 +9,11 @@ class Algorithm:
         
         self.grid_width = grid_width
         self.grid_height = grid_height
-        self.nodes = [ [0 for _ in range(grid_width)] for _ in range(grid_height)]
+
+        # 2D array representing the nodes of our grid
+        # nodes[i][j] = 0 means no sphero is on the node
+        # nodes[i][j] != 0 means that the sphero with the id of value nodes[i][j] is at that node
+        self.nodes = [ [0 for _ in range(grid_width)] for _ in range(grid_height)] 
         self.n_spheros = n_spheros
         self.spheros = [None for _ in range(n_spheros)]
 

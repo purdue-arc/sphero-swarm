@@ -1,6 +1,11 @@
 class Swarm:
     def __init__(self, n):
+
+        # A 2D array where each individual array represents a bonding group
+        # and stores all sphero ids that are apart of the same bonding group
         self.bonded_groups = [[id] for id in range(1, n + 1)]
+
+        # an array containing the bonding group index for each sphero, accessed by id - 1
         self.bonded_group_index = [index for index in range(n)]
 
     def find_bonding_group(self, id): # -> List[Sphero]
@@ -42,7 +47,11 @@ class Swarm:
         group_index1 = self.bonded_group_index[id1 - 1]
         group_index2 = self.bonded_group_index[id2 - 1]
 
+        # if they are not already apart of the same bonding group
         if (group_index1 != group_index2):
+
+            # add all ids from bonding_group2 to bonding_group 1
+            # and update the bonding_group_index array
             for id in self.bonded_groups[group_index2]:
                 self.bonded_group_index[id - 1] = group_index1
             self.bonded_groups[group_index1].extend(self.bonded_groups[group_index2])
