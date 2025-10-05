@@ -5,6 +5,8 @@ class Sphero:
                  target_x=None, target_y=None,
                  previous_direction=0, direction=0, speed=1, color=None):
         self.id = id
+        self.prev_x = 0
+        self.prev_y = 0
         self.x = x
         self.y = y
         self.target_x = target_x if target_x is not None else x
