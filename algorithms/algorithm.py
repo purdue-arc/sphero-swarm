@@ -97,8 +97,8 @@ class Algorithm:
         Returns:
             (Sphero): the sphero object that has the specified id
         """
-
-        return self.spheros[id - 1]
+        if id:
+            return self.spheros[id - 1]
 
     def in_bounds(self, x, y): # -> bool
         """
@@ -236,11 +236,12 @@ class Algorithm:
             # if the surrounding position is in bounds
             if self.in_bounds(adj_x, adj_y):
                 adj_id = self.nodes[adj_x][adj_y]
-                adj_sphero = self.find_sphero(id=adj_id)
+                if adj_id:
+                    adj_sphero = self.find_sphero(id=adj_id)
 
-                # bond both spheros if they can bond
-                if sphero.can_bond(adj_sphero=adj_sphero):
-                    self.swarm.combine(id1=sphero.id, id2=adj_id)
+                    # bond both spheros if they can bond
+                    if sphero.can_bond(adj_sphero=adj_sphero):
+                        self.swarm.combine(id1=sphero.id, id2=adj_id)
     
     def update_grid_bonds(self):
         """
