@@ -60,11 +60,11 @@ class Algorithm:
             (int, int): a valid random initial position
         """
 
-        x = random.randint(MARGIN, self.grid_width - MARGIN)
-        y = random.randint(MARGIN, self.grid_height - MARGIN)
+        x = random.randint(MARGIN, self.grid_height - MARGIN)
+        y = random.randint(MARGIN, self.grid_width - MARGIN)
         while self.nodes[x][y]:
-            x = random.randint(MARGIN, self.grid_width - MARGIN)
-            y = random.randint(MARGIN, self.grid_height - MARGIN)
+            x = random.randint(MARGIN, self.grid_height - MARGIN)
+            y = random.randint(MARGIN, self.grid_width - MARGIN)
         return x, y
 
     def generate_random_grid(self): # -> List[int]
@@ -109,7 +109,7 @@ class Algorithm:
             (bool): Is the x and y coordinates in the boundaries of the grid?
         """
 
-        return MARGIN <= x < self.grid_width - MARGIN and MARGIN <= y < self.grid_height - MARGIN
+        return MARGIN <= x < self.grid_height - MARGIN and MARGIN <= y < self.grid_width - MARGIN
     
     def is_valid_move(self, direction, sphero): # -> bool
         """

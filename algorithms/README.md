@@ -85,4 +85,8 @@ This section summarizes the purpose, key components, and usage connections of th
 
 ---
 
+## IMPORTANT NOTE
+
+x is treated as the height, and y is treated as the width. Where (0,0) is the top left corner of the grid and (HEIGHT - 1, WIDTH - 1) is the bottom right corner. 
+
 ## TODO
