@@ -8,6 +8,8 @@ return the angle that the sphero must turn
 def nextVectorDirection(actual, next):
     nextv = np.array([next[0], next[1]]).astype(float)
     actualv = np.array([actual[0], actual[1]]).astype(float)
+
+
     nextv[1] = -1 * nextv[1]
     actualv[1] = -1 * actualv[1]
 
@@ -37,6 +39,10 @@ def nextVectorMagnitude(actual, next):
 
     print(d)
 
+
+'''
+Print statement testing
+'''
 x = input("act x")
 y = input("act y")
 nx = input("next x")
