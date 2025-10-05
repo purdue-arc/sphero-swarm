@@ -67,7 +67,7 @@ This section summarizes the purpose, key components, and usage connections of th
   * Entrypoint: runs a `pygame` loop using an `Algorithm` instance.
 * **Used by:** Directly runnable as the rectangular-grid simulation.
 
-### [documentation/*.py](documentation/)
+### [documentation](documentation/)
 
 * **Purpose:** Historical Pygame simulation prototypes.
 * **Key Components:** Each defines `Sphero`, `Swarm`, UI buttons, and `run_simulation()`.
