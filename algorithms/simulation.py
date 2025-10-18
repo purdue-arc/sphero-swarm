@@ -49,7 +49,7 @@ def reached_target(sphero):
         (bool): Did the sphero reach it's target position?
     """
 
-    randomEpsilon = random.randrange(1, 5) * 0.1;
+    randomEpsilon = random.randrange(1, 5) * 0.1
 
     if (abs(sphero.target_x - sphero.x) <= randomEpsilon and
         abs(sphero.target_y - sphero.y) <= randomEpsilon):
