@@ -3,7 +3,7 @@ from spherov2 import scanner
 import time
 
 print("Looking for address")
-sb_address = scanner.find_toy(toy_name="SB-CEB2")
+sb_address = scanner.find_toy(toy_name="SB-B11D")
 print("Address found, connecting...")
 
 with SpheroEduAPI(sb_address) as api:
@@ -19,7 +19,7 @@ with SpheroEduAPI(sb_address) as api:
                 print("Avaliable commands\ncircle\nfig8\nsemicirclewave\nkill")
             case "circle":
                 try:
-                    api.set_speed(100)
+                    api.set_speed(50)
                     heading = 0
                     while True:
                         api.set_heading(heading=heading)
