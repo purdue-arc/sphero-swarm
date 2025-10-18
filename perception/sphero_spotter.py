@@ -1,9 +1,8 @@
-import threading 
-import pickle
-import zmq # for socket to connect to algs
-import time
-import depthai as dai
-from ultralytics import YOLO
+import threading                
+import zmq                      # for socket to connect to algs
+import depthai as dai           # for camera connection
+
+from ultralytics import YOLO    # computer vision imports
 import cv2
 
 from SpheroCoordinate import SpheroCoordinate
@@ -42,6 +41,14 @@ def listener():
     Algorithm team will send a request containing "init" and we will wait for that. we will send back a message saying 
     "connected" and then start listening for strings saying "coords". When we receive a string 
     containing "exit", the listener will stop.
+
+    We receive:             | We send back:
+    ------------------------|-------------------------------------------
+    'init'                  | number of spheros we detected, as a string.
+    'coords'                | json of {sphero IDs, x, y}
+    'exit'                  | nothing
+
+
     '''
     # connect to the socket
     context = zmq.Context()
@@ -53,12 +60,13 @@ def listener():
     # start listening for 'init', 'coords' requests or 'exit'.
     while True:
         print('sphero_spotter: listening...')
+
         msg = socket.recv_string()
         print(f"Received request '{msg}' from algorithms!")
 
         if msg == 'init':
             num_found = initialize_spheros() # get their positions and assign IDs.
-            socket.send_string(f"connected to {num_found} spheros")
+            socket.send_string(f"{num_found}")
 
         elif msg == 'coords':
             #reply = pickle.dump(get_sphero_coords())    # byte dump list of spheros. Algorithms gets to unpack it
