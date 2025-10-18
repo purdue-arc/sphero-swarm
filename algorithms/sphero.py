@@ -7,6 +7,8 @@ class Sphero:
         self.id = id
         self.x = x
         self.y = y
+        self.true_x = x
+        self.true_y = y
         self.target_x = target_x if target_x is not None else x
         self.target_y = target_y if target_y is not None else y
         self.previous_direction = previous_direction

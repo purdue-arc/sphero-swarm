@@ -3,6 +3,9 @@ from constants import *
 from algorithm import Algorithm
 import random
 
+# THIS LINE SETS THE SEED, REMOVE FOR DIFFERENT RESULTS
+random.seed(42)
+
 def draw_grid(surface):
     """
     Draw the grid lines
@@ -69,6 +72,8 @@ def moving_sphero_to_target(sphero):
         return False
     sphero.x += position_change[sphero.direction][0] * (sphero.speed / SIM_DIST)
     sphero.y += position_change[sphero.direction][1] * (sphero.speed / SIM_DIST)
+    sphero.true_x += position_change[sphero.direction][0] * (sphero.speed / SIM_DIST)
+    sphero.true_y += position_change[sphero.direction][1] * (sphero.speed / SIM_DIST)
     return True
 
 def draw_sphero(surface, sphero):
@@ -82,7 +87,7 @@ def draw_sphero(surface, sphero):
     Returns:
         None
     """
-    pygame.draw.circle(surface, sphero.color, (sphero.x * SIM_DIST, sphero.y * SIM_DIST), SPHERO_SIM_RADIUS)
+    pygame.draw.circle(surface, sphero.color, (sphero.true_x * SIM_DIST, sphero.true_y * SIM_DIST), SPHERO_SIM_RADIUS)
 
 if __name__ == "__main__":
     pygame.init()
