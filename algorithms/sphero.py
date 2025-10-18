@@ -1,4 +1,4 @@
-from constants import *
+from .constants import *
 
 class Sphero:
     def __init__(self, id, x, y,

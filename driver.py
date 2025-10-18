@@ -6,23 +6,26 @@ from controls.Instruction import Instruction
 # from spherov2.types import Color
 
 
-s = socket.socket()
-port = 1235
-
-s.connect(('localhost', port))
 
 
 if __name__ == "__main__":
-    sphero_tag = ["SB-76B3", "SB-BD0A", "SB-B5A9"]
-    initial_positions = [(0, 0), (0, 1), (0, 2)]
+    s = socket.socket()
+    port = 1235
+
+    s.connect(('localhost', port))
+
+    #sphero_tag = ["SB-E274", "SB-76B3", "SB-CEB2"]
+    sphero_tag = ["SB-E274"]
+    initial_positions = [(0, 0)]
     instructions = []
     algorithm = Algorithm(grid_width=GRID_WIDTH,
                             grid_height=GRID_HEIGHT,
-                            n_spheros=N_SPHEROS)
+                            n_spheros=1)
     
     # send empty instruction to test communication
-    s.send(pickle.dumps(instructions))
-    buffer = s.recv(1024).decode()
+    # s.send(pickle.dumps(instructions))
+    # buffer = s.recv(1024).decode()
+    print("init success")
 
 
     running = True
@@ -36,7 +39,7 @@ if __name__ == "__main__":
         for sphero in algorithm.spheros:
             direction_change = sphero.get_direction_change()
 
-            rotate_instruction = Instruction(sphero_tag[sphero.id - 1], 2, 60 * direction_change, TURN_DURATION)
+            rotate_instruction = Instruction(sphero.id, 2, 60 * direction_change, TURN_DURATION)
             instructions.append(rotate_instruction)
 
             roll_instruction = Instruction(sphero.id, 1, SPHERO_SPEED, ROLL_DURATION)

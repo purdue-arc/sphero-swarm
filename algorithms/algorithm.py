@@ -1,7 +1,7 @@
 import random
-from constants import *
-from swarm import Swarm
-from sphero import Sphero
+from .constants import *
+from .swarm import Swarm
+from .sphero import Sphero
 
 class Algorithm:
     def __init__(self, grid_width, grid_height, n_spheros,
