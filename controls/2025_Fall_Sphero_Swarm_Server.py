@@ -6,8 +6,12 @@ from spherov2 import scanner
 from spherov2.sphero_edu import SpheroEduAPI
 from spherov2.commands.drive import DriveFlags
 import threading
-from Instruction import Instruction
+from .Instruction import Instruction
 import time
+import os
+
+# USE THE FOLLOWING COMMAND TO RUN THIS FILE FROM THE ROOT:
+# python -m controls.2025_Fall_Sphero_Swarm_Server   
 
 # these for interfile communication, pickle turns objects into byte streams
 import pickle
@@ -16,7 +20,9 @@ import socket
 def generate_dict_map():
     try:
         ret_dict = dict([])
-        with open("name_to_location_dict.csv", "r") as file:
+        # open the CSV relative to this file's directory so module can be run from repo root
+        csv_path = os.path.join(os.path.dirname(__file__), "name_to_location_dict.csv")
+        with open(csv_path, "r") as file:
             # purposefully purge first line
             line = file.readline()
             while (True):

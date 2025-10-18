@@ -45,8 +45,11 @@ if __name__ == "__main__":
             roll_instruction = Instruction(sphero.id, 1, SPHERO_SPEED, ROLL_DURATION)
             instructions.append(roll_instruction)
 
+        print("Instructions:", instructions)
+
         # send the instructions
         s.send(pickle.dumps(instructions))
 
         # waits for a response from the API
-        buffer = s.recv(1024).decode()
+        buffer = s.recv(1024)
+        print("Buffer:", buffer.split()[0])
