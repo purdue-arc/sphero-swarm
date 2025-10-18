@@ -17,12 +17,18 @@ class Sphero:
         self.color = color
 
     def compute_rotation_target(self, direction, center):
-        x_rel = self.x - center.x
-        y_rel = self.y - center.y
-        angle = atan(x_rel / y_rel) + direction
-        target_x = cos(angle) * sqrt((x_rel ** 2) + (y_rel ** 2)) + center.x
-        target_y = sin(angle) * sqrt((x_rel ** 2) + (y_rel ** 2)) + center.y
-        radius = sqrt(x_rel ** 2 + y_rel ** 2)
+        if (self.id != center.id):
+            x_rel = self.x - center.x
+            y_rel = self.y - center.y
+            angle = atan(x_rel / y_rel) + direction
+            target_x = cos(angle) * sqrt((x_rel ** 2) + (y_rel ** 2)) + center.x
+            target_y = sin(angle) * sqrt((x_rel ** 2) + (y_rel ** 2)) + center.y
+            radius = sqrt(x_rel ** 2 + y_rel ** 2)
+        else:
+            target_x = center.x
+            target_y = center.y
+            radius = 0
+            
         return (target_x, target_y, radius)    
     
     def compute_translation_target(self, direction, position_change):
