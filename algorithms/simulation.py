@@ -1,6 +1,7 @@
 import pygame
 from constants import *
 from algorithm import Algorithm
+import random
 
 def draw_grid(surface):
     """
@@ -45,8 +46,10 @@ def reached_target(sphero):
         (bool): Did the sphero reach it's target position?
     """
 
-    if (abs(sphero.target_x - sphero.x) <= EPSILON and
-        abs(sphero.target_y - sphero.y) <= EPSILON):
+    randomEpsilon = random.randrange(1, 5) * 0.1;
+
+    if (abs(sphero.target_x - sphero.x) <= randomEpsilon and
+        abs(sphero.target_y - sphero.y) <= randomEpsilon):
         return True
     return False
 
