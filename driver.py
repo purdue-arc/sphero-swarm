@@ -17,7 +17,7 @@ if __name__ == "__main__":
 
     #sphero_tag = ["SB-E274", "SB-76B3", "SB-CEB2"]
     sphero_tag = ["SB-E274", "SB-76B3", "SB-CEB2"]
-    initial_positions = [(0, 0), (0, 3), (3, 0)]
+    initial_positions = [(0, 0), (0, 2), (2, 2)]
     algorithm = Algorithm(grid_width=GRID_WIDTH,
                             grid_height=GRID_HEIGHT,
                             n_spheros=3)

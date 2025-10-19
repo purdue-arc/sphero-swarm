@@ -1,13 +1,13 @@
-MARGIN = 1
+MARGIN = 0
 DIRECTIONS = 8
 
 N_SPHEROS = 20
 
 # the number of nodes on the grid widthwise
-GRID_WIDTH = 15
+GRID_WIDTH = 6
 
 # the number of nodes on the grid heightwise
-GRID_HEIGHT = 15
+GRID_HEIGHT = 6
 
 # the pixel distance between two nodes 
 SIM_DIST = 50
