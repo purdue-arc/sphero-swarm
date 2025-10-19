@@ -228,7 +228,7 @@ def main():
     KILL_FLAG = 0
 
     #ball_names = ["SB-B11D", "SB-1840", "SB-B5A9", "SB-BD0A"]
-    ball_names = ["SB-B11D"]
+    ball_names = ["SB-E274", "SB-76B3", "SB-CEB2"]
     
     name_to_location_dict = generate_dict_map()
     valid_sphero_ids = []
@@ -259,6 +259,13 @@ def main():
         while (KILL_FLAG == 0):
             if (len(commands_array) != 0):
                 print(commands_array)
+                print()
+                print()
+                print()
+                print(len(commands_array))
+                print()
+                print()
+                print()
                 print("Running command {}".format(num_commands_run))
                 run_multi_command(sb_list, commands_array.pop(0))
                 num_commands_run = num_commands_run + 1
