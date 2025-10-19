@@ -94,7 +94,7 @@ if __name__ == '__main__':
     thread.start()
 
     # TODO start the camera feed, object tracking and updating, all that stuff
-    model = YOLO("bestv2.pt")
+    model = YOLO("./model/bestv2.pt")
 
     # --- CONFIG ---
     ASSIGN_NEW_IDS_AFTER_FIRST_FRAME = True  # set True if you want to label newcomers too
