@@ -1,7 +1,7 @@
 MARGIN = 1
 DIRECTIONS = 8
 
-N_SPHEROS = 20
+N_SPHEROS = 5
 
 # the number of nodes on the grid widthwise
 GRID_WIDTH = 15
