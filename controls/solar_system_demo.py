@@ -1,5 +1,3 @@
-# B11D is broken
-
 from Fall_2025_Sphero_Swarm_Server import *
 from spherov2.types import Color
 
@@ -85,13 +83,14 @@ try:
 
     SPEEDS = [0, 50, 50, 50]
     headings = [0] * 4
+    heading_increment = [0, 10, 5, 3]
 
     while True:
         try:
             for i in range(0, len(sb_list), 1):
                     sb_list[i].set_heading(heading=headings[i])
                     sb_list[i].set_speed(SPEEDS[i])
-                    headings[i] += 10
+                    headings[i] += heading_increment[i]
             time.sleep(0.001)
         except KeyboardInterrupt:
             for sb in sb_list:

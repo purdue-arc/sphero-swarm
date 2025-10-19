@@ -1,6 +1,5 @@
 # PLEASE READ:
 #   - Have Bluetooth on this device prior to running code, to avoid getting a WIN error if you are on Windows OS
-#   - IN PROGRESS!!!
 
 from spherov2 import scanner
 from spherov2.sphero_edu import SpheroEduAPI
@@ -221,7 +220,7 @@ def main():
     global KILL_FLAG
     KILL_FLAG = 0
 
-    ball_names = ["SB-B11D", "SB-1840", "SB-B5A9", "SB-BD0A"]
+    ball_names = ["SB-E274", "SB-76B3", "SB-CEB2"]
     
     name_to_location_dict = generate_dict_map()
     valid_sphero_ids = []
