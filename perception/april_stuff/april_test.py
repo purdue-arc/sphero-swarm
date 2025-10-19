@@ -38,6 +38,9 @@ while True:
     if len(centers) == 4:
         # Sort by ID for consistency
         centers.sort(key=lambda x: x[0])
+        temp = centers[2]
+        centers[2] = centers[3]
+        centers[3] = temp
         points = [c[1] for c in centers]
 
         # Draw lines connecting the four centers in order and back to the first
