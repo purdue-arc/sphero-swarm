@@ -3,7 +3,7 @@ from spherov2 import scanner
 import time
 
 print("Looking for address")
-sb_address = scanner.find_toy(toy_name="SB-B11D")
+sb_address = scanner.find_toy(toy_name="SB-1840")
 print("Address found, connecting...")
 
 with SpheroEduAPI(sb_address) as api:
@@ -19,12 +19,15 @@ with SpheroEduAPI(sb_address) as api:
                 print("Avaliable commands\ncircle\nfig8\nsemicirclewave\nkill")
             case "circle":
                 try:
+                    speed = int(input("Speed: "))
+                    heading_increment = int(input("Heading inc: "))
+                    timing_between_updates = float(input("Wait time (in mS): ")) / 1000
                     api.set_speed(50)
                     heading = 0
                     while True:
                         api.set_heading(heading=heading)
-                        heading += 10
-                        time.sleep(0.001)
+                        heading += heading_increment
+                        time.sleep(timing_between_updates)
                 except KeyboardInterrupt:
                     api.set_speed(0)
             case "fig8":
