@@ -30,7 +30,7 @@ if __name__ == "__main__":
 
     running = True
     while running:
-        print("new move")
+        # print("new move")
         
         rotate_instructions = []
         roll_instructions = []
@@ -57,11 +57,11 @@ if __name__ == "__main__":
 
         # waits for a response from the API
         buffer = s.recv(1024)
-        print("Buffer:", buffer.split()[0])
+        # print("Buffer:", buffer.split()[0])
 
         # send the instructions
         s.send(pickle.dumps(roll_instructions))
 
         # waits for a response from the API
         buffer = s.recv(1024)
-        print("Buffer:", buffer.split()[0])
+        # print("Buffer:", buffer.split()[0])
