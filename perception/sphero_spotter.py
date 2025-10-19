@@ -45,7 +45,7 @@ def listener():
     We receive:             | We send back:
     ------------------------|-------------------------------------------
     'init'                  | number of spheros we detected, as a string.
-    'coords'                | json of {sphero IDs, x, y}
+    'coords'                | json of format {"numSpheros": __, "spheros": [{"id": __ , "x":__, "y":__ }]
     'exit'                  | nothing
 
 
