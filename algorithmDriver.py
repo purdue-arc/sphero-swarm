@@ -63,8 +63,8 @@ if __name__ == '__main__':
             print("Sent request to get real coords of sphero {}", sphero.id)
             response = socket.recv_json()
             print("Sphero {} is actually at position ({}, {})", response)
-            direction = nextVectorDirection({response.x - sphero.prev_x, response.y - sphero.prev_y}, {sphero.target_x, sphero.target_y})
-            magnitude = nextVectorMagnitude({response.x, response.y}, {sphero.x, sphero.y})
+            direction = nextVectorDirection({response['x'] - sphero.prev_x, response['y'] - sphero.prev_y}, {sphero.target_x, sphero.target_y})
+            magnitude = nextVectorMagnitude({response['x'], response['y']}, {sphero.x, sphero.y})
             instructions.append(Instruction(sphero.id, 2, direction, TURN_DURATION))
             instructions.append(Instruction(sphero.id, 1, magnitude, ROLL_DURATION))
 
@@ -76,8 +76,8 @@ if __name__ == '__main__':
             the algorithm wants our sphero to go to. In the next iteration, we will find the actual
             coordinates the sphero went to and update the next prev accordingly
             '''
-            sphero.prev_x = response.x
-            sphero.prev_y = response.y
+            sphero.prev_x = response['x']
+            sphero.prev_y = response['y']
             sphero.x = sphero.target_x
             sphero.y = sphero.yarget_y
 
