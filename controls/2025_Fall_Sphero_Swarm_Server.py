@@ -228,7 +228,7 @@ def main():
     KILL_FLAG = 0
 
     #ball_names = ["SB-B11D", "SB-1840", "SB-B5A9", "SB-BD0A"]
-    ball_names = ["SB-E274"]
+    ball_names = ["SB-B11D"]
     
     name_to_location_dict = generate_dict_map()
     valid_sphero_ids = []

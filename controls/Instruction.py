@@ -41,4 +41,7 @@ class Instruction:
 
         elif (args[1] == 4):
             self.type = 4
+    
+    def __str__(self):
+        return f"Instruction: {self.spheroID}, type: {self.type}, degrees: {self.degrees}, speed: {self.speed}, duration: {self.duration}"
 

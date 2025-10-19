@@ -15,9 +15,8 @@ if __name__ == "__main__":
     s.connect(('localhost', port))
 
     #sphero_tag = ["SB-E274", "SB-76B3", "SB-CEB2"]
-    sphero_tag = ["SB-E274"]
+    sphero_tag = ["SB-B11D"]
     initial_positions = [(0, 0)]
-    instructions = []
     algorithm = Algorithm(grid_width=GRID_WIDTH,
                             grid_height=GRID_HEIGHT,
                             n_spheros=1)
@@ -30,6 +29,7 @@ if __name__ == "__main__":
 
     running = True
     while running:
+        instructions = []
         algorithm.update_grid_bonds()
         for sphero in algorithm.spheros: # fix this, I was being lazy
             sphero.x = sphero.target_x
@@ -38,14 +38,13 @@ if __name__ == "__main__":
 
         for sphero in algorithm.spheros:
             direction_change = sphero.get_direction_change()
-
-            rotate_instruction = Instruction(sphero.id, 2, 60 * direction_change, TURN_DURATION)
+            rotate_instruction = Instruction(sphero.id, 2, 45 * direction_change, TURN_DURATION)
             instructions.append(rotate_instruction)
 
             roll_instruction = Instruction(sphero.id, 1, SPHERO_SPEED, ROLL_DURATION)
             instructions.append(roll_instruction)
-
-        print("Instructions:", instructions)
+            print(f"Instruction {sphero.id}: {instructions[-2]}")
+            print(f"Instruction {sphero.id}: {instructions[-1]}")
 
         # send the instructions
         s.send(pickle.dumps(instructions))
