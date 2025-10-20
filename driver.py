@@ -16,11 +16,11 @@ if __name__ == "__main__":
     s.connect(('localhost', port))
 
     #sphero_tag = ["SB-E274", "SB-76B3", "SB-CEB2"]
-    sphero_tag = ["SB-E274", "SB-76B3", "SB-CEB2"]
-    initial_positions = [(0, 0), (0, 3), (3, 0)]
+    sphero_tag = ["SB-E274", "SB-76B3", "SB-CEB2", "SB-B11D"]
+    initial_positions = [(0, 0), (0, 3), (3, 0), (3, 3)]
     algorithm = Algorithm(grid_width=GRID_WIDTH,
                             grid_height=GRID_HEIGHT,
-                            n_spheros=3)
+                            n_spheros=len(sphero_tag))
     
     # send empty instruction to test communication
     # s.send(pickle.dumps(instructions))
@@ -47,9 +47,11 @@ if __name__ == "__main__":
         for sphero in algorithm.spheros:
             direction_change = sphero.get_direction_change()
             rotate_instruction = Instruction(sphero.id, 2, 45 * direction_change, TURN_DURATION)
+            print(str(rotate_instruction))
             rotate_instructions.append(rotate_instruction)
 
             roll_instruction = Instruction(sphero.id, 1, SPHERO_SPEED, ROLL_DURATION)
+            print(str(roll_instruction))
             roll_instructions.append(roll_instruction)
         
         # send the instructions

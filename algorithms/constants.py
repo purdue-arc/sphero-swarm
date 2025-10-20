@@ -4,10 +4,10 @@ DIRECTIONS = 8
 N_SPHEROS = 20
 
 # the number of nodes on the grid widthwise
-GRID_WIDTH = 5
+GRID_WIDTH = 10
 
 # the number of nodes on the grid heightwise
-GRID_HEIGHT = 5
+GRID_HEIGHT = 10
 
 # the pixel distance between two nodes 
 SIM_DIST = 50
@@ -21,7 +21,7 @@ SIM_HEIGHT = GRID_HEIGHT * SIM_DIST
 EPSILON = 0.01
 
 SPHERO_SPEED = 60
-ROLL_DURATION = 0.2 # in seconds
+ROLL_DURATION = 0.8 # in seconds
 TURN_DURATION = 0.5 # in seconds
 
 BLUE = (0, 0, 255)
