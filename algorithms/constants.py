@@ -21,7 +21,7 @@ SIM_HEIGHT = GRID_HEIGHT * SIM_DIST
 EPSILON = 0.01
 
 SPHERO_SPEED = 60
-ROLL_DURATION = 1 # in seconds
+ROLL_DURATION = 0.8 # in seconds
 TURN_DURATION = 0.5 # in seconds
 
 BLUE = (0, 0, 255)

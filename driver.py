@@ -20,7 +20,7 @@ if __name__ == "__main__":
     initial_positions = [(0, 0), (0, 2), (2, 2)]
     algorithm = Algorithm(grid_width=GRID_WIDTH,
                             grid_height=GRID_HEIGHT,
-                            n_spheros=3)
+                            n_spheros=len(sphero_tag))
     
     # send empty instruction to test communication
     # s.send(pickle.dumps(instructions))
@@ -30,7 +30,7 @@ if __name__ == "__main__":
 
     running = True
     while running:
-        print("new move")
+        # print("new move")
         
         rotate_instructions = []
         roll_instructions = []
@@ -47,9 +47,11 @@ if __name__ == "__main__":
         for sphero in algorithm.spheros:
             direction_change = sphero.get_direction_change()
             rotate_instruction = Instruction(sphero.id, 2, 45 * direction_change, TURN_DURATION)
+            print(str(rotate_instruction))
             rotate_instructions.append(rotate_instruction)
 
             roll_instruction = Instruction(sphero.id, 1, SPHERO_SPEED, ROLL_DURATION)
+            print(str(roll_instruction))
             roll_instructions.append(roll_instruction)
         
         # send the instructions
@@ -57,11 +59,11 @@ if __name__ == "__main__":
 
         # waits for a response from the API
         buffer = s.recv(1024)
-        print("Buffer:", buffer.split()[0])
+        # print("Buffer:", buffer.split()[0])
 
         # send the instructions
         s.send(pickle.dumps(roll_instructions))
 
         # waits for a response from the API
         buffer = s.recv(1024)
-        print("Buffer:", buffer.split()[0])
+        # print("Buffer:", buffer.split()[0])
