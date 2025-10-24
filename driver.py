@@ -20,7 +20,8 @@ if __name__ == "__main__":
     initial_positions = [(0, 0), (0, 2), (2, 2)]
     algorithm = Algorithm(grid_width=GRID_WIDTH,
                             grid_height=GRID_HEIGHT,
-                            n_spheros=len(sphero_tag))
+                            n_spheros=len(sphero_tag),
+                            initial_positions=initial_positions)
     
     # send empty instruction to test communication
     # s.send(pickle.dumps(instructions))
