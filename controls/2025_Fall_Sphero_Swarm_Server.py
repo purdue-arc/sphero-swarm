@@ -6,7 +6,7 @@ from spherov2 import scanner
 from spherov2.sphero_edu import SpheroEduAPI
 from spherov2.commands.drive import DriveFlags
 import threading
-from .Instruction import Instruction
+from controls.Instruction import Instruction
 import time
 import os
 from algorithms.constants import SPHERO_TAGS
