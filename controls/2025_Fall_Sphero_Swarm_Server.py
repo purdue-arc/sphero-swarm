@@ -9,6 +9,7 @@ import threading
 from .Instruction import Instruction
 import time
 import os
+from algorithms.constants import SPHERO_TAGS
 
 # USE THE FOLLOWING COMMAND TO RUN THIS FILE FROM THE ROOT:
 # python -m controls.2025_Fall_Sphero_Swarm_Server   
@@ -228,7 +229,7 @@ def main():
     KILL_FLAG = 0
 
     #ball_names = ["SB-B11D", "SB-1840", "SB-B5A9", "SB-BD0A"]
-    ball_names = ["SB-E274", "SB-76B3", "SB-CEB2", "SB-B11D"]
+    ball_names = SPHERO_TAGS
     
     name_to_location_dict = generate_dict_map()
     valid_sphero_ids = []

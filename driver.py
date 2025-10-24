@@ -16,7 +16,7 @@ if __name__ == "__main__":
     s.connect(('localhost', port))
 
     #sphero_tag = ["SB-E274", "SB-76B3", "SB-CEB2"]
-    sphero_tag = ["SB-E274", "SB-76B3", "SB-CEB2"]
+    sphero_tag = SPHERO_TAGS
     initial_positions = [(0, 0), (0, 2), (2, 2)]
     algorithm = Algorithm(grid_width=GRID_WIDTH,
                             grid_height=GRID_HEIGHT,

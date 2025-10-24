@@ -48,3 +48,5 @@ position_change = {
     7: (-1, 0),
     8: (-1, 1)
 }
+
+SPHERO_TAGS = ["SB-E274", "SB-76B3", "SB-CEB2"]
