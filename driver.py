@@ -4,6 +4,8 @@ from algorithms.algorithm import Algorithm
 from algorithms.constants import *
 from controls.Instruction import Instruction
 from time import sleep
+from algorithms import simulation as sim
+import pygame
 # from spherov2.types import Color
 
 
@@ -26,12 +28,25 @@ if __name__ == "__main__":
     # send empty instruction to test communication
     # s.send(pickle.dumps(instructions))
     # buffer = s.recv(1024).decode()
+
+
+    # Display setup
+    pygame.init()
+    clock = pygame.time.Clock()
+
+    surface = pygame.display.set_mode((SIM_WIDTH, SIM_HEIGHT))
+    pygame.display.set_caption("sphero-swarm simulation")
+
     print("init success")
 
 
     running = True
     while running:
         # print("new move")
+
+        # Clear the display and draw the grid
+        surface.fill(WHITE) # replace frame with empty background
+        sim.draw_grid(surface=surface)
         
         rotate_instructions = []
         roll_instructions = []
@@ -41,6 +56,10 @@ if __name__ == "__main__":
             sphero.x = sphero.target_x
             sphero.y = sphero.target_y
         algorithm.update_grid_move()
+
+        # Draw the spheros on the display
+        sim.draw_sphero(surface=surface, sphero=sphero)
+        pygame.display.flip()
 
         rotate_instructions = []
         roll_instructions = []
