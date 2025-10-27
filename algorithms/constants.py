@@ -1,13 +1,13 @@
 MARGIN = 0
 DIRECTIONS = 8
 
-N_SPHEROS = 20
+N_SPHEROS = 6
 
 # the number of nodes on the grid widthwise
-GRID_WIDTH = 6
+GRID_WIDTH = 12
 
 # the number of nodes on the grid heightwise
-GRID_HEIGHT = 6
+GRID_HEIGHT = 12
 
 # the pixel distance between two nodes 
 SIM_DIST = 50
@@ -49,4 +49,6 @@ position_change = {
     8: (-1, 1)
 }
 
-SPHERO_TAGS = ["SB-E274", "SB-76B3", "SB-CEB2"]
+SPHERO_TAGS = ['SB-CEB2', 'SB-B5A9', 'SB-BD0A', 'SB-B11D', 'SB-E274', 'SB-1840']
+
+
