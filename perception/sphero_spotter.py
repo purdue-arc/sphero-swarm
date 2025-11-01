@@ -113,7 +113,7 @@ def calculateFrame(frame):
     global frozen
     # Run YOLOv8 tracking
     results = model.track(frame, tracker="botsort.yaml", persist=True, verbose=False)
-
+    
     if not results or results[0].boxes is None or len(results[0].boxes) == 0:
         if not args.nogui:
             cv2.imshow("Sphero IDs", frame)
@@ -137,7 +137,7 @@ def calculateFrame(frame):
         dets_sorted = sorted(dets, key=lambda t: (t[0], t[1]))
         for (cx, cy, cls_id, x1, y1, x2, y2, tid) in dets_sorted:
             if tid not in id_map:
-                spheros[tid] = len(id_map)
+                id_map[tid] = len(id_map)
         frozen = True
 
     # Draw all tracked objects
