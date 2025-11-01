@@ -43,13 +43,13 @@ while True:
         custom_points = []
         for i, tid in enumerate(ids):  # fix enumerate
             corners = tag_points[tid]
-            if i == 0:  # top-left tag → use bottom-right corner (corner[2])
+            if i == 0:  # top-left tag → use bottom-right corner (corner[1])
                 custom_points.append(tuple(corners[1]))
-            elif i == 1:  # top-right tag → bottom-left corner (corner[3])
+            elif i == 1:  # top-right tag → bottom-left corner (corner[0])
                 custom_points.append(tuple(corners[0]))
-            elif i == 2:  # bottom-right tag → top-left corner (corner[0])
+            elif i == 2:  # bottom-right tag → top-left corner (corner[2])
                 custom_points.append(tuple(corners[2]))
-            elif i == 3:  # bottom-left tag → top-right corner (corner[1])
+            elif i == 3:  # bottom-left tag → top-right corner (corner[3])
                 custom_points.append(tuple(corners[3]))
 
         custom_points = np.array(custom_points, dtype=np.float32)
