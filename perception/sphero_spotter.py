@@ -10,6 +10,10 @@ import cv2
 import argparse
 import json
 
+from pupil_apriltags import Detector # for april tag detection
+import numpy as np
+detector = Detector()
+
 from SpheroCoordinate import SpheroCoordinate
 from input_streams import WebcamStream, VideoFileStream
 
@@ -46,6 +50,44 @@ def pixel_to_grid_coords(pixel_x, pixel_y):
     pass
     return (pixel_x, pixel_y)
 # 
+
+def process_apriltags(frame):
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    results = detector.detect(gray)
+    tag_points = {}
+
+    for r in results:
+        corners = r.corners.astype(int)
+        tag_id = r.tag_id
+        cX, cY = int(r.center[0]), int(r.center[1])
+
+        # Draw tag outline and ID
+        for j in range(4):
+            cv2.line(frame, tuple(corners[j]), tuple(corners[(j + 1) % 4]), (0, 255, 0), 2)
+        cv2.circle(frame, (cX, cY), 4, (0, 0, 255), -1)
+        cv2.putText(frame, f"ID: {tag_id}", (cX - 20, cY - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+        tag_points[tag_id] = corners
+
+    # Optional perspective correction if 4 tags detected
+    warped = None
+    if len(tag_points) == 4:
+        ids = sorted(tag_points.keys())
+        custom_points = []
+        for i, tid in enumerate(ids):
+            corners = tag_points[tid]
+            if i == 0: custom_points.append(tuple(corners[1]))
+            elif i == 1: custom_points.append(tuple(corners[0]))
+            elif i == 2: custom_points.append(tuple(corners[2]))
+            elif i == 3: custom_points.append(tuple(corners[3]))
+
+        custom_points = np.array(custom_points, dtype=np.float32)
+        size = 500
+        dst_pts = np.array([[0,0],[size,0],[0,size],[size,size]], dtype=np.float32)
+        M = cv2.getPerspectiveTransform(custom_points, dst_pts)
+        warped = cv2.warpPerspective(frame, M, (size, size))
+
+    return warped if warped is not None else frame
 
 def initialize_spheros():
     '''
@@ -112,6 +154,7 @@ current_id = 0
 def calculateFrame(frame):
     global frozen
     # Run YOLOv8 tracking
+    frame = process_apriltags(frame)
     results = model.track(frame, tracker="botsort.yaml", persist=True, verbose=False)
 
     if not results or results[0].boxes is None or len(results[0].boxes) == 0:
