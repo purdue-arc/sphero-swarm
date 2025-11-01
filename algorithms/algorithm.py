@@ -13,7 +13,7 @@ class Algorithm:
         # 2D array representing the nodes of our grid
         # nodes[i][j] = 0 means no sphero is on the node
         # nodes[i][j] != 0 means that the sphero with the id of value nodes[i][j] is at that node
-        self.nodes = [ [0 for _ in range(grid_width)] for _ in range(grid_height)] 
+        self.nodes = [ [0 for _ in range(grid_height)] for _ in range(grid_width)] 
         self.n_spheros = n_spheros
         self.spheros = [None for _ in range(n_spheros)]
 
@@ -27,7 +27,7 @@ class Algorithm:
 
         id = 1
         for (x, y), color in zip(initial_positions, colors):
-            self.spheros[id - 1] = Sphero(id=id, x=x, y=y, color=color, direction=1)
+            self.spheros[id - 1] = Sphero(id=id, x=x, y=y, color=color, direction=0)
             self.nodes[x][y] = id
             id += 1
         self.swarm = Swarm(n=n_spheros)
@@ -60,11 +60,11 @@ class Algorithm:
             (int, int): a valid random initial position
         """
 
-        x = random.randint(MARGIN, self.grid_height - MARGIN)
-        y = random.randint(MARGIN, self.grid_width - MARGIN)
+        x = random.randint(MARGIN, self.grid_width - MARGIN)
+        y = random.randint(MARGIN, self.grid_height - MARGIN)
         while self.nodes[x][y]:
-            x = random.randint(MARGIN, self.grid_height - MARGIN)
-            y = random.randint(MARGIN, self.grid_width - MARGIN)
+            x = random.randint(MARGIN, self.grid_width - MARGIN)
+            y = random.randint(MARGIN, self.grid_height - MARGIN)
 
         # fill in board with temporary id
         self.nodes[x][y] = -1
@@ -113,7 +113,7 @@ class Algorithm:
             (bool): Is the x and y coordinates in the boundaries of the grid?
         """
 
-        return MARGIN <= x < self.grid_height - MARGIN and MARGIN <= y < self.grid_width - MARGIN
+        return MARGIN <= x < self.grid_width - MARGIN and MARGIN <= y < self.grid_height - MARGIN
     
     def is_valid_move(self, direction, sphero): # -> bool
         """
