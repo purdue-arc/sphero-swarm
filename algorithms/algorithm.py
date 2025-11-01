@@ -165,7 +165,7 @@ class Algorithm:
             (int): a valid direction for the bonded group
         """
 
-        possible_directions = [1, 2, 3, 4, 5, 6, 7, 8]
+        possible_directions = ALL_DIRECTIONS
         direction = None
         for id in bonded_group:
             sphero = self.find_sphero(id)
