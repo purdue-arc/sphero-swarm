@@ -1,6 +1,9 @@
 # PLEASE READ:
 #   - Have Bluetooth on this device prior to running code, to avoid getting a WIN error if you are on Windows OS
 
+# check out get_battery_percentage in power in the Spherov2 module
+# are we really pairing using bluetooth or are we broadcasting...
+
 from spherov2 import scanner
 from spherov2.sphero_edu import SpheroEduAPI
 from spherov2.commands.drive import DriveFlags
@@ -67,8 +70,44 @@ def connect_ball(toy_address, ret_list, location, max_attempts):
             print("Trying to connect with: {}, attempt {}".format(toy_address, attempts))
             continue
 
-# currently, only really manages 3 at a time??? so maybe break it up to avoid insanely long waits
-# future ideas
+# not necessarily faster - in fact slower???
+'''
+def pipelined_connect_multi_ball(toy_addresses, ret_list, num_sent_at_once, max_attempts):
+    # hopefully fast enough that control c'ing in this time should not be humanly reactable
+    print("Connecting to Spheros...") 
+
+    # active thread tracker
+    threads = []    
+
+    cur_pos = 0
+    terminate = False
+    while (not terminate):
+        for i in range(0, num_sent_at_once, 1):
+            if (i + cur_pos < len(toy_addresses)):
+                thread = threading.Thread(target=connect_ball, args=[toy_addresses[cur_pos + i], ret_list, cur_pos + i, max_attempts])
+                threads.append(thread)
+                thread.start()
+            else:
+                terminate = True
+                break
+        # resync the system now
+        while True:
+            try:
+                for thread in threads:
+                    thread.join(timeout=None)
+                break
+            except KeyboardInterrupt:
+                print("Connection ongoning... please don't interupt.") 
+                continue
+        # clear out threads and update the position
+        threads = []
+        cur_pos += num_sent_at_once
+
+    # verify function
+    print("Balls Connected: {}".format(ret_list))
+    # brainstorming: if we start getting future type errors, double check here?
+'''
+     
 def connect_multi_ball(toy_addresses, ret_list, max_attempts):
     # hopefully fast enough that control c'ing in this time should not be humanly reactable
     print("Connecting to Spheros...") 
@@ -95,7 +134,7 @@ def connect_multi_ball(toy_addresses, ret_list, max_attempts):
     # verify function
     print("Balls Connected: {}".format(ret_list))
     # brainstorming: if we start getting future type errors, double check here?
-    
+
 # now to gather instructions from server
 # the command_array_2d must be formated such that it sorted with sphero id's ascending
 # same with the valid_sphero_ids

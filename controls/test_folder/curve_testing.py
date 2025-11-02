@@ -1,9 +1,24 @@
+# idea... while in 50 speed
+# 10, 1 mS delay creates very tight circle
+# 5, 0.5 mS delay creates wider circle
+# 1, 0.1 mS delay creates very wide circle
+# 
+# just varying increments seemed to work fine also 
+
+# the idea for circular rotation is that 
+# speed is practically constant so long as the value is greater than 50
+# the angle of change and the time for each angle change is all that matters
+# as a result, one can tell how long it will take for the entire system to make 1 cycle
+# this determines radius using constant speed assumption via 2pi * r = total_time * speed
+
+# maybe also need to add in material coefficients
+
 from spherov2.sphero_edu import SpheroEduAPI
 from spherov2 import scanner
 import time
 
 print("Looking for address")
-sb_address = scanner.find_toy(toy_name="SB-1840")
+sb_address = scanner.find_toy(toy_name="SB-B5A9")
 print("Address found, connecting...")
 
 with SpheroEduAPI(sb_address) as api:
