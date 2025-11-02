@@ -51,7 +51,7 @@ def control():
     global on
     lock = Lock()
     s = socket.socket()
-    port = 1235
+    port = 4040
     s.bind(('localhost', port))
     s.listen(5)
     print("Waiting for connection")
