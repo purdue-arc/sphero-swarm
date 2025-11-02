@@ -83,7 +83,7 @@ class Algorithm:
             sphero = self.find_sphero(id)
             sphero.update_movement(direction=direction)
             self.update_nodes(sphero=sphero)
-  
+    #:(
     def update_grid_move(self):
         for bonded_group in self.swarm.bonded_groups:
             self.update_bonded_group_move(bonded_group=bonded_group)
