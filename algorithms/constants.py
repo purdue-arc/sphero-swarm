@@ -18,10 +18,10 @@ position_change = {
 N_SPHEROS = 6
 
 # the number of nodes on the grid widthwise
-GRID_WIDTH = 12
+GRID_WIDTH = 7
 
 # the number of nodes on the grid heightwise
-GRID_HEIGHT = 12
+GRID_HEIGHT = 7
 
 # the pixel distance between two nodes 
 SIM_DIST = 50
@@ -51,6 +51,6 @@ GRAY = (150, 150, 150)
 
 COLORS = [BLUE, RED, GREEN, YELLOW, PURPLE, ORANGE]
 
-SPHERO_TAGS = ['SB-CEB2', 'SB-B5A9', 'SB-BD0A', 'SB-B11D', 'SB-E274', 'SB-1840']
+SPHERO_TAGS = ['SB-CEB2', 'SB-B5A9', 'SB-BD0A', 'SB-1840']
 
 

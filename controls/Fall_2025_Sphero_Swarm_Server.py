@@ -5,8 +5,9 @@ from spherov2 import scanner
 from spherov2.sphero_edu import SpheroEduAPI
 from spherov2.commands.drive import DriveFlags
 import threading
-from Instruction import Instruction
+from controls.Instruction import Instruction
 import time
+from algorithms.constants import SPHERO_TAGS
 
 # these for interfile communication, pickle turns objects into byte streams
 import pickle
@@ -15,7 +16,7 @@ import socket
 def generate_dict_map():
     try:
         ret_dict = dict([])
-        with open("name_to_location_dict.csv", "r") as file:
+        with open("controls/name_to_location_dict.csv", "r") as file:
             # purposefully purge first line
             line = file.readline()
             while (True):
@@ -220,7 +221,7 @@ def main():
     global KILL_FLAG
     KILL_FLAG = 0
 
-    ball_names = ["SB-E274", "SB-76B3", "SB-CEB2"]
+    ball_names = SPHERO_TAGS
     
     name_to_location_dict = generate_dict_map()
     valid_sphero_ids = []
