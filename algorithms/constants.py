@@ -15,7 +15,7 @@ position_change = {
     8: (-1, 1)
 }
 
-N_SPHEROS = 6
+N_SPHEROS = 4
 
 # the number of nodes on the grid widthwise
 GRID_WIDTH = 7
@@ -29,8 +29,8 @@ FRAMES = 60
 
 SPHERO_SIM_RADIUS = 15
 
-SIM_WIDTH = GRID_WIDTH * SIM_DIST
-SIM_HEIGHT = GRID_HEIGHT * SIM_DIST
+SIM_WIDTH = (GRID_WIDTH-1) * SIM_DIST
+SIM_HEIGHT = (GRID_HEIGHT-1) * SIM_DIST
 
 EPSILON = 0.01
 
