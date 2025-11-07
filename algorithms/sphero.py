@@ -103,8 +103,8 @@ class Sphero:
         Returns:
             (bool): Is our sphero and the adjacent sphero close enough to bond?
         """
-        if (abs(self.x - adj_sphero.x) <= 1 and
-            abs(self.y - adj_sphero.y) <= 1):
+        if (int(abs(self.x - adj_sphero.x)) <= 1 and
+            int(abs(self.y - adj_sphero.y)) <= 1):
             return True
         return False
 
