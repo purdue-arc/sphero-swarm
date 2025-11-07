@@ -3,9 +3,6 @@ from constants import *
 from swarm import Swarm
 from sphero import Sphero
 
-# THIS LINE SETS THE SEED, REMOVE FOR DIFFERENT RESULTS
-random.seed(43)
-
 class Algorithm:
     def __init__(self, grid_width, grid_height, n_spheros,
                  colors=None, initial_positions=None):

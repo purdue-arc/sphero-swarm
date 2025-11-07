@@ -3,9 +3,6 @@ from constants import *
 from algorithm import Algorithm
 import random
 
-# THIS LINE SETS THE SEED, REMOVE FOR DIFFERENT RESULTS
-random.seed(43)
-
 def draw_grid(surface):
     """
     Draw the grid lines
