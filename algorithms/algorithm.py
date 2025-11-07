@@ -1,7 +1,7 @@
 import random
-from constants import *
-from swarm import Swarm
-from sphero import Sphero
+from .constants import *
+from .swarm import Swarm
+from .sphero import Sphero
 
 class Algorithm:
     def __init__(self, grid_width, grid_height, n_spheros,
@@ -13,7 +13,7 @@ class Algorithm:
         # 2D array representing the nodes of our grid
         # nodes[i][j] = 0 means no sphero is on the node
         # nodes[i][j] != 0 means that the sphero with the id of value nodes[i][j] is at that node
-        self.nodes = [ [0 for _ in range(grid_width)] for _ in range(grid_height)] 
+        self.nodes = [ [0 for _ in range(grid_height)] for _ in range(grid_width)] 
         self.n_spheros = n_spheros
         self.spheros = [None for _ in range(n_spheros)]
 
@@ -60,11 +60,11 @@ class Algorithm:
             (int, int): a valid random initial position
         """
 
-        x = random.randint(MARGIN, self.grid_height - MARGIN)
-        y = random.randint(MARGIN, self.grid_width - MARGIN)
+        x = random.randint(MARGIN, self.grid_width - MARGIN)
+        y = random.randint(MARGIN, self.grid_height - MARGIN)
         while self.nodes[x][y]:
-            x = random.randint(MARGIN, self.grid_height - MARGIN)
-            y = random.randint(MARGIN, self.grid_width - MARGIN)
+            x = random.randint(MARGIN, self.grid_width - MARGIN)
+            y = random.randint(MARGIN, self.grid_height - MARGIN)
 
         # fill in board with temporary id
         self.nodes[x][y] = -1
@@ -113,7 +113,7 @@ class Algorithm:
             (bool): Is the x and y coordinates in the boundaries of the grid?
         """
 
-        return MARGIN <= x < self.grid_height - MARGIN and MARGIN <= y < self.grid_width - MARGIN
+        return MARGIN <= x < self.grid_width - MARGIN and MARGIN <= y < self.grid_height - MARGIN
     
     def is_valid_move(self, direction, sphero): # -> bool
         """
@@ -165,7 +165,7 @@ class Algorithm:
             (int): a valid direction for the bonded group
         """
 
-        possible_directions = [1, 2, 3, 4, 5, 6, 7, 8]
+        possible_directions = ALL_DIRECTIONS
         direction = None
         for id in bonded_group:
             sphero = self.find_sphero(id)
