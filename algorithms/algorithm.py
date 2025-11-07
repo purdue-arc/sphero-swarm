@@ -28,7 +28,7 @@ class Algorithm:
 
         id = 1
         for (x, y), color in zip(initial_positions, colors):
-            self.spheros[id - 1] = Sphero(id=id, x=x, y=y, color=color, direction=0)
+            self.spheros[id - 1] = Sphero(id=id, x=x, y=y, color=color, direction=1)
             self.nodes[x][y] = id
             id += 1
 
