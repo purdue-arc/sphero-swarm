@@ -1,7 +1,9 @@
+from math import pi
+
 MARGIN = 0
 DIRECTIONS = 8
 
-ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8]
+ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8, -pi/2, pi/2]
 
 position_change = {
     0: (0, 0),
