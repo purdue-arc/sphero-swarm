@@ -1,10 +1,29 @@
-MARGIN = 1
+MARGIN = 0
 DIRECTIONS = 8
 
-N_SPHEROS = 20
+ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8]
 
-GRID_WIDTH = 15
-GRID_HEIGHT = 15
+position_change = {
+    0: (0, 0),
+    1: (0, 1),
+    2: (1, 1),
+    3: (1, 0),
+    4: (1, -1),
+    5: (0, -1),
+    6: (-1, -1),
+    7: (-1, 0),
+    8: (-1, 1)
+}
+
+N_SPHEROS = 6
+
+# the number of nodes on the grid widthwise
+GRID_WIDTH = 7
+
+# the number of nodes on the grid heightwise
+GRID_HEIGHT = 7
+
+# the pixel distance between two nodes 
 SIM_DIST = 50
 FRAMES = 60
 
@@ -14,6 +33,10 @@ SIM_WIDTH = GRID_WIDTH * SIM_DIST
 SIM_HEIGHT = GRID_HEIGHT * SIM_DIST
 
 EPSILON = 0.01
+
+SPHERO_SPEED = 60
+ROLL_DURATION = 0.8 # in seconds
+TURN_DURATION = 0.5 # in seconds
 
 BLUE = (0, 0, 255)
 RED = (255, 0, 0)
@@ -28,14 +51,6 @@ GRAY = (150, 150, 150)
 
 COLORS = [BLUE, RED, GREEN, YELLOW, PURPLE, ORANGE]
 
-position_change = {
-    0: (0, 0),
-    1: (0, 1),
-    2: (1, 1),
-    3: (1, 0),
-    4: (1, -1),
-    5: (0, -1),
-    6: (-1, -1),
-    7: (-1, 0),
-    8: (-1, 1)
-}
+SPHERO_TAGS = ['SB-CEB2', 'SB-B5A9', 'SB-BD0A', 'SB-1840']
+
+
