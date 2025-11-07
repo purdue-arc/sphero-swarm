@@ -1,6 +1,7 @@
 # socket_listener.py
 import socket
 import pickle
+import time
 
 def start_server(host='localhost', port=1235):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -17,7 +18,17 @@ def start_server(host='localhost', port=1235):
             if not data:
                 print("No data received. Closing connection.")
                 break
+            
+            
+            conn.send(b"Nothing")
 
+            data = conn.recv(4096)
+            if not data:
+                print("No data received. Closing connection.")
+                break
+            
+            time.sleep(.3)
+            
             conn.send(b"Nothing")
 
     except KeyboardInterrupt:

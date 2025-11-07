@@ -49,8 +49,6 @@ if __name__ == "__main__":
                 print(str(sphero))
                 roll_instructions.append(roll_instruction)
 
-            sleep(1)
-
             # send the instructions
             s.send(pickle.dumps(rotate_instructions))
 
