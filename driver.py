@@ -15,7 +15,7 @@ if __name__ == "__main__":
     s.connect(('localhost', port))
 
     sphero_tag = SPHERO_TAGS
-    initial_positions = [(0,0), (2,0), (4,0), (6, 0)]
+    initial_positions = INITIAL_POSITIONS
 
     algorithm = Algorithm(grid_width=GRID_WIDTH,
                             grid_height=GRID_HEIGHT,
@@ -49,6 +49,7 @@ if __name__ == "__main__":
                 print(str(sphero))
                 roll_instructions.append(roll_instruction)
 
+
             # send the instructions
             s.send(pickle.dumps(rotate_instructions))
 
@@ -61,9 +62,11 @@ if __name__ == "__main__":
             # waits for a response from the API
             buffer = s.recv(1024)
             
+            sleep(4)
+    
             for sphero in spheros:
                 teleport_sphero_to_target(sphero)
-    
+
     except KeyboardInterrupt:
         print("\nShutting down...")
         running = False

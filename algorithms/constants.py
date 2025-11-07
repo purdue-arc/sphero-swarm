@@ -15,7 +15,7 @@ position_change = {
     8: (-1, 1)
 }
 
-N_SPHEROS = 4
+N_SPHEROS = 2
 
 # the number of nodes on the grid widthwise
 GRID_WIDTH = 7
@@ -51,6 +51,6 @@ GRAY = (150, 150, 150)
 
 COLORS = [BLUE, RED, GREEN, YELLOW, PURPLE, ORANGE]
 
-SPHERO_TAGS = ['SB-CEB2', 'SB-B5A9', 'SB-BD0A', 'SB-1840']
-
+SPHERO_TAGS = ['SB-B5A9', 'SB-BD0A']
+INITIAL_POSITIONS = [(0,0), (2,0)]
 
