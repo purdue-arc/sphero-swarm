@@ -4,11 +4,19 @@
 # check out get_battery_percentage in power in the Spherov2 module
 # are we really pairing using bluetooth or are we broadcasting...
 
+# scanner to find balls
 from spherov2 import scanner
+# api itself proper
 from spherov2.sphero_edu import SpheroEduAPI
+# use Power to check voltage directly, getting a sense of how well charged a Sphero is
+from spherov2.commands.power import Power 
+# drive flags for the method selected of straight line movements
 from spherov2.commands.drive import DriveFlags
+# threading to allow for multiple balls at moving
 import threading
+# instructions for the purposes of organization
 from Instruction import Instruction
+
 import time
 
 # these for interfile communication, pickle turns objects into byte streams
@@ -62,51 +70,10 @@ def connect_ball(toy_address, ret_list, location, max_attempts):
             sb = SpheroEduAPI(toy_address).__enter__()
             ret_list[location] = sb
             break
-        except KeyboardInterrupt:
-            print("Please do not terminate... issues will arise if terminated during connection")
-            continue
         except:
             attempts += 1
             print("Trying to connect with: {}, attempt {}".format(toy_address, attempts))
             continue
-
-# not necessarily faster - in fact slower???
-'''
-def pipelined_connect_multi_ball(toy_addresses, ret_list, num_sent_at_once, max_attempts):
-    # hopefully fast enough that control c'ing in this time should not be humanly reactable
-    print("Connecting to Spheros...") 
-
-    # active thread tracker
-    threads = []    
-
-    cur_pos = 0
-    terminate = False
-    while (not terminate):
-        for i in range(0, num_sent_at_once, 1):
-            if (i + cur_pos < len(toy_addresses)):
-                thread = threading.Thread(target=connect_ball, args=[toy_addresses[cur_pos + i], ret_list, cur_pos + i, max_attempts])
-                threads.append(thread)
-                thread.start()
-            else:
-                terminate = True
-                break
-        # resync the system now
-        while True:
-            try:
-                for thread in threads:
-                    thread.join(timeout=None)
-                break
-            except KeyboardInterrupt:
-                print("Connection ongoning... please don't interupt.") 
-                continue
-        # clear out threads and update the position
-        threads = []
-        cur_pos += num_sent_at_once
-
-    # verify function
-    print("Balls Connected: {}".format(ret_list))
-    # brainstorming: if we start getting future type errors, double check here?
-'''
      
 def connect_multi_ball(toy_addresses, ret_list, max_attempts):
     # hopefully fast enough that control c'ing in this time should not be humanly reactable
@@ -134,6 +101,11 @@ def connect_multi_ball(toy_addresses, ret_list, max_attempts):
     # verify function
     print("Balls Connected: {}".format(ret_list))
     # brainstorming: if we start getting future type errors, double check here?
+
+# I believe the threshold for low battery is a voltage reading of approximately 3.6 volts or less
+# 3.7+ is basically full charge...
+def check_voltage(sb):
+    return Power.get_battery_voltage(sb._SpheroEduAPI__toy)
 
 # now to gather instructions from server
 # the command_array_2d must be formated such that it sorted with sphero id's ascending
@@ -197,17 +169,40 @@ def run_command(sb, command):
             case 1:
                 if (command.speed < 0):
                     sb._SpheroEduAPI__toy.drive_with_heading(abs(command.speed), sb.get_heading(), DriveFlags.BACKWARD)
-                    time.sleep(command.duration)
                     sb.stop_roll()
                 else:
-                    sb.roll(sb.get_heading(), command.speed, command.duration)
+                    sb._SpheroEduAPI__toy.drive_with_heading(abs(command.speed), sb.get_heading(), DriveFlags.FORWARD)
+                command_dur = command.duration
+                while (command_dur > 0 and KILL_FLAG == 0):
+                    time.sleep(0.01)
+                    command_dur -= 0.01
+                sb.stop_roll()
             case 2:
-                sb.spin(command.degrees, command.duration)
+                # cannot use sb.spin here, as the KILL_FLAG doesn't really work out then, code based on it
+                # sb.spin(command.degrees, command.duration)
+
+                time_pre_rev = .45
+
+                abs_angle = abs(command.degrees)
+                duration = max(command.duration, time_pre_rev * abs_angle / 360)
+
+                start = time.time()
+                angle_gone = 0
+                while (angle_gone < abs_angle and KILL_FLAG == 0):
+                    delta = round(min((time.time() - start) / duration, 1.) * abs_angle) - angle_gone
+                    sb.set_heading(sb.get_heading() + delta if command.degrees > 0 else sb.get_heading() - delta)
+                    angle_gone += delta
+
             case 3:
-                time.sleep(command.duration)
+                command_dur = command.duration
+                while (command_dur > 0 and KILL_FLAG == 0):
+                    time.sleep(0.01)
+                    command_dur -= 0.01
 
 # runs one cycle of commands
 def run_multi_command(sb_list, commands):
+    global KILL_FLAG
+
     # holds what processes are running right now
     threads = []
 
@@ -223,7 +218,8 @@ def run_multi_command(sb_list, commands):
                 thread.join(timeout=None)
             break
         except KeyboardInterrupt:
-            print("Running commands right now... please don't interupt.") 
+            print("Terminating sequence... please don't interupt again") 
+            KILL_FLAG = 1
             continue
 
 # terminate ball to free it for future use
@@ -259,7 +255,8 @@ def main():
     global KILL_FLAG
     KILL_FLAG = 0
 
-    ball_names = ["SB-E274", "SB-76B3", "SB-CEB2"]
+    # id's in order: 3, 1, 5, 4, 0
+    ball_names = ["SB-B5A9", "SB-1840", "SB-BD0A", "SB-CEB2", "SB-76B3"]
     
     name_to_location_dict = generate_dict_map()
     valid_sphero_ids = []
@@ -281,16 +278,29 @@ def main():
     try: 
         connect_multi_ball(toys_addresses, sb_list, 10)
 
+        for sb in sb_list:
+            print(check_voltage(sb))
+
+        # server commands array
+        '''
         commands_array = []
         # set up server at this point in thread...
         cmd_gather_thread = threading.Thread(target=command_gathering, args=[valid_sphero_ids, commands_array])
         cmd_gather_thread.start()
+        '''
 
+        # manual testing
+        # 0, 1, 3, 4, 5
+        # grey, white, red, green, blue
+        commands_array = [[Instruction(0, 0, 0, 0, 0), Instruction(1, 0, 255, 255, 255), Instruction(3, 0, 255, 0, 0), Instruction(4, 0, 0, 255, 0), Instruction(5, 0, 0, 0, 255)],
+                          [Instruction(0, 1, 10, 300), Instruction(1, 2, 360, 300), Instruction(3, 3, 300), None, None]]
+        
         num_commands_run = 1
         while (KILL_FLAG == 0):
             if (len(commands_array) != 0):
                 print(commands_array)
                 print("Running command {}".format(num_commands_run))
+                # run_multi_command is done in main thread
                 run_multi_command(sb_list, commands_array.pop(0))
                 num_commands_run = num_commands_run + 1
             else:

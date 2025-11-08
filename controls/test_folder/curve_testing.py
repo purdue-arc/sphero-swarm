@@ -16,11 +16,13 @@
 from spherov2.sphero_edu import SpheroEduAPI
 from spherov2 import scanner
 import time
+import math
 
 print("Looking for address")
-sb_address = scanner.find_toy(toy_name="SB-B5A9")
+sb_address = scanner.find_toy(toy_name="SB-B11D")
 print("Address found, connecting...")
 
+'''
 with SpheroEduAPI(sb_address) as api:
     while True:
         user_input = ""
@@ -76,3 +78,36 @@ with SpheroEduAPI(sb_address) as api:
                 break
             case _:
                 print("not found... use help for more info")
+'''
+
+# realistically, the only way to control rotation radius uses a combination of both
+# speed and heading increments... however, heading increments has a larger effect
+
+# small circle method -> breaks for very large radius
+with SpheroEduAPI(sb_address) as api:            
+    while True:
+        try:
+            # radius and time for complete rotation
+            time_for_rotation = float(input("Time to Complete Rotation (s): ")) 
+            radius_of_circle = float(input("Radius (cm): "))
+            scaling_factor = float(input("Scaling factor: ")) 
+            
+            speed = min(255, int(radius_of_circle * 2 * math.pi / time_for_rotation * scaling_factor))
+            print(speed)
+            heading_increment = 1
+            timing_between_updates = time_for_rotation / 360
+
+            # speed = int(input("Speed: "))
+            # heading_increment = int(input("Heading inc: "))
+            # timing_between_updates = float(input("Wait time (in mS): ")) / 1000
+            
+            api.set_speed(speed)
+            heading = 0
+            while True:
+                api.set_heading(heading=heading)
+                heading += heading_increment
+                time.sleep(timing_between_updates)
+        except KeyboardInterrupt:
+            api.set_speed(0)
+            if (input("Continue? ") == "N"):
+                break

@@ -64,3 +64,42 @@ finally:
 print("Time (s): {}".format(time.time() - start_time))
 
 # not really
+
+
+# not necessarily faster - in fact slower???
+'''
+def pipelined_connect_multi_ball(toy_addresses, ret_list, num_sent_at_once, max_attempts):
+    # hopefully fast enough that control c'ing in this time should not be humanly reactable
+    print("Connecting to Spheros...") 
+
+    # active thread tracker
+    threads = []    
+
+    cur_pos = 0
+    terminate = False
+    while (not terminate):
+        for i in range(0, num_sent_at_once, 1):
+            if (i + cur_pos < len(toy_addresses)):
+                thread = threading.Thread(target=connect_ball, args=[toy_addresses[cur_pos + i], ret_list, cur_pos + i, max_attempts])
+                threads.append(thread)
+                thread.start()
+            else:
+                terminate = True
+                break
+        # resync the system now
+        while True:
+            try:
+                for thread in threads:
+                    thread.join(timeout=None)
+                break
+            except KeyboardInterrupt:
+                print("Connection ongoning... please don't interupt.") 
+                continue
+        # clear out threads and update the position
+        threads = []
+        cur_pos += num_sent_at_once
+
+    # verify function
+    print("Balls Connected: {}".format(ret_list))
+    # brainstorming: if we start getting future type errors, double check here?
+'''
