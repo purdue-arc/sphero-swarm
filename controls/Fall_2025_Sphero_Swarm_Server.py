@@ -26,7 +26,7 @@ import socket
 def generate_dict_map():
     try:
         ret_dict = dict([])
-        with open("name_to_location_dict.csv", "r") as file:
+        with open("controls/name_to_location_dict.csv", "r") as file:
             # purposefully purge first line
             line = file.readline()
             while (True):
