@@ -50,7 +50,7 @@ if __name__ == "__main__":
 
                 # If we are going diagonal, adjust speed by a factor of sqrt(2). thanks pythagoras
                 if sphero.direction > 0 and sphero.direction % 2 == 0:
-                    speed = int(SPHERO_SPEED * math.sqrt(2))
+                    speed = SPHERO_DIAGONAL_SPEED
 
                 roll_instruction = Instruction(sphero.id, 1, speed, ROLL_DURATION)
                 print(str(sphero))
