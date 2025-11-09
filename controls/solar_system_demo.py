@@ -1,3 +1,5 @@
+# issue is that at present - the turning angles aren't sharp enough
+
 from Fall_2025_Sphero_Swarm_Server import *
 from spherov2.types import Color
 
@@ -44,7 +46,7 @@ EARTH_MATRIX = [[BLACK] * 8,
                 [BLACK, BLACK, WHITE, BLUE, BLUE, BLUE, BLACK, BLACK],
                 [BLACK] * 8]
 
-ball_names = ["SB-B11D", "SB-1840", "SB-B5A9", "SB-BD0A"]
+ball_names = ["SB-BD0A", "SB-B11D", "SB-B5A9", "SB-76B3"]
 
 name_to_location_dict = generate_dict_map()
 valid_sphero_ids = []
@@ -91,7 +93,7 @@ try:
                     sb_list[i].set_heading(heading=headings[i])
                     sb_list[i].set_speed(SPEEDS[i])
                     headings[i] += heading_increment[i]
-            time.sleep(0.001)
+            time.sleep(0.01 / 1000)
         except KeyboardInterrupt:
             for sb in sb_list:
                 sb.set_speed(0)

@@ -2,6 +2,7 @@ import random
 from .constants import *
 from .swarm import Swarm
 from .sphero import Sphero
+from typing import cast
 
 class Algorithm:
     def __init__(self, grid_width, grid_height, n_spheros,
@@ -15,7 +16,7 @@ class Algorithm:
         # nodes[i][j] != 0 means that the sphero with the id of value nodes[i][j] is at that node
         self.nodes = [ [0 for _ in range(grid_height)] for _ in range(grid_width)] 
         self.n_spheros = n_spheros
-        self.spheros = [None for _ in range(n_spheros)]
+        self.spheros: list[Sphero] = cast(list[Sphero], [None] * n_spheros)
 
         # generate random initial positions if none passed in
         if not initial_positions:
@@ -27,9 +28,10 @@ class Algorithm:
 
         id = 1
         for (x, y), color in zip(initial_positions, colors):
-            self.spheros[id - 1] = Sphero(id=id, x=x, y=y, color=color, direction=0)
+            self.spheros[id - 1] = Sphero(id=id, x=x, y=y, color=color, direction=1)
             self.nodes[x][y] = id
             id += 1
+
         self.swarm = Swarm(n=n_spheros)
 
     def generate_colors(self): # -> List[color]
@@ -60,11 +62,11 @@ class Algorithm:
             (int, int): a valid random initial position
         """
 
-        x = random.randint(MARGIN, self.grid_width - MARGIN)
-        y = random.randint(MARGIN, self.grid_height - MARGIN)
+        x = random.randint(MARGIN, self.grid_width - MARGIN - 1)
+        y = random.randint(MARGIN, self.grid_height - MARGIN - 1)
         while self.nodes[x][y]:
-            x = random.randint(MARGIN, self.grid_width - MARGIN)
-            y = random.randint(MARGIN, self.grid_height - MARGIN)
+            x = random.randint(MARGIN, self.grid_width - MARGIN - 1)
+            y = random.randint(MARGIN, self.grid_height - MARGIN - 1)
 
         # fill in board with temporary id
         self.nodes[x][y] = -1
@@ -148,7 +150,6 @@ class Algorithm:
         Returns:
             (List[int]): a list of all valid directions for the given sphero
         """
-
         for direction in possible_directions[:]:
             if not self.is_valid_move(direction=direction, sphero=sphero):
                 possible_directions.remove(direction)
@@ -165,7 +166,7 @@ class Algorithm:
             (int): a valid direction for the bonded group
         """
 
-        possible_directions = ALL_DIRECTIONS
+        possible_directions = ALL_DIRECTIONS.copy()
         direction = None
         for id in bonded_group:
             sphero = self.find_sphero(id)
@@ -202,8 +203,12 @@ class Algorithm:
         direction = self.find_bonded_group_move(bonded_group=bonded_group)
         for id in bonded_group:
             sphero = self.find_sphero(id)
-            sphero.update_movement(direction=direction)
-            self.update_nodes(sphero=sphero)
+            if sphero is not None:
+                sphero.update_movement(direction=direction)
+                self.update_nodes(sphero=sphero)
+            else:
+                # Should never happen
+                raise NotImplementedError()
   
     def update_grid_move(self):
         """

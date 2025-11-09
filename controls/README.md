@@ -7,6 +7,7 @@ A simple Python script to connect to multiple Sphero robots and control them.
 1. **Install Python package**:
    ```bash
    pip install spherov2
+   
    ```
 
 2. **Enable Bluetooth** on your computer before running

@@ -23,10 +23,10 @@ class Instruction:
         self.type = args[1]
         match (args[1]):
             case -2:
-                # valid case - similar to case -1
+                # valid case - similar to case -1, but immediately terminates all commands
                 pass
             case -1:
-                # valid case, but this will just make a terminate command
+                # valid case, but this will just make a terminate command at the end of an array
                 pass
             case 0:
                 self.color = Color(args[2], args[3], args[4])

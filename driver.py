@@ -1,10 +1,13 @@
 import pickle
 import socket
+import math
 from algorithms.algorithm import Algorithm
 from algorithms.constants import *
+from algorithms.simulation import StartSimulation, spheros, teleport_sphero_to_target
 from controls.Instruction import Instruction
 from time import sleep
-
+import threading
+import pygame
 
 if __name__ == "__main__":
     s = socket.socket()
@@ -13,7 +16,7 @@ if __name__ == "__main__":
     s.connect(('localhost', port))
 
     sphero_tag = SPHERO_TAGS
-    initial_positions = [(0,0), (2,0), (4,0), (6, 0)]
+    initial_positions = INITIAL_POSITIONS
 
     algorithm = Algorithm(grid_width=GRID_WIDTH,
                             grid_height=GRID_HEIGHT,
@@ -21,40 +24,58 @@ if __name__ == "__main__":
                             initial_positions=initial_positions)
     print("init success")
 
+    simulation_thread = threading.Thread(target=StartSimulation, args=(algorithm,), daemon=True)
+    simulation_thread.start()
 
     running = True
-    while running:
-        rotate_instructions = []
-        roll_instructions = []
+    try:
+        while running:
+            print("-"*50)
 
-        for sphero in algorithm.spheros:
-            sphero.x = sphero.target_x
-            sphero.y = sphero.target_y
-        algorithm.update_grid_bonds()
-        algorithm.update_grid_move()
+            for sphero in algorithm.spheros:
+                sphero.x = sphero.target_x
+                sphero.y = sphero.target_y
+            algorithm.update_grid_bonds()
+            algorithm.update_grid_move()
 
-        rotate_instructions = []
-        roll_instructions = []
+            rotate_instructions = []
+            roll_instructions = []
 
-        for sphero in algorithm.spheros:
-            direction_change = sphero.get_direction_change()
-            rotate_instruction = Instruction(sphero.id, 2, 45 * direction_change, TURN_DURATION)
-            rotate_instructions.append(rotate_instruction)
+            for sphero in algorithm.spheros:
+                direction_change = sphero.get_direction_change()
+                rotate_instruction = Instruction(sphero.id, 2, 45 * direction_change, TURN_DURATION)
+                rotate_instructions.append(rotate_instruction)
 
-            roll_instruction = Instruction(sphero.id, 1, SPHERO_SPEED, ROLL_DURATION)
-            print(str(sphero))
-            roll_instructions.append(roll_instruction)
+                speed = SPHERO_SPEED
 
-        #sleep(1)
+                # If we are going diagonal, adjust speed by a factor of sqrt(2). thanks pythagoras
+                if sphero.direction > 0 and sphero.direction % 2 == 0:
+                    speed = SPHERO_DIAGONAL_SPEED
 
-        # send the instructions
-        s.send(pickle.dumps(rotate_instructions))
+                roll_instruction = Instruction(sphero.id, 1, speed, ROLL_DURATION)
+                print(str(sphero))
+                roll_instructions.append(roll_instruction)
 
-        # waits for a response from the API
-        buffer = s.recv(1024)
 
-        # send the instructions
-        s.send(pickle.dumps(roll_instructions))
+            # send the instructions
+            s.send(pickle.dumps(rotate_instructions))
 
-        # waits for a response from the API
-        buffer = s.recv(1024)
+            # waits for a response from the API
+            buffer = s.recv(1024)
+
+            # send the instructions
+            s.send(pickle.dumps(roll_instructions))
+
+            # waits for a response from the API
+            buffer = s.recv(1024)
+            
+            sleep(4)
+    
+            for sphero in spheros:
+                teleport_sphero_to_target(sphero)
+
+    except KeyboardInterrupt:
+        print("\nShutting down...")
+        running = False
+        pygame.quit()
+        s.close()
