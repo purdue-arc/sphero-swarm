@@ -1,8 +1,11 @@
 # PLEASE READ:
 #   - Have Bluetooth on this device prior to running code, to avoid getting a WIN error if you are on Windows OS
+#   - Have not tested in CLIENT_MODE
 
-# check out get_battery_percentage in power in the Spherov2 module
-# are we really pairing using bluetooth or are we broadcasting...
+global CLIENT_MODE
+CLIENT_MODE = False
+global RAN_NUM 
+RAN_NUM = -1
 
 # scanner to find balls
 from spherov2 import scanner
@@ -41,7 +44,7 @@ except Exception:
 def generate_dict_map():
     try:
         ret_dict = dict([])
-        with open("controls/name_to_location_dict.csv", "r") as file:
+        with open("name_to_location_dict.csv", "r") as file:
             # purposefully purge first line
             line = file.readline()
             while (True):
@@ -139,7 +142,7 @@ def command_gathering(valid_sphero_ids, command_array_2d):
     # can immediately send relevant information
     conn.send(pickle.dumps(valid_sphero_ids))
 
-    global KILL_FLAG
+    global KILL_FLAG, RAN_NUM
     while (KILL_FLAG == 0):
         try:
             appending_array = [None] * len(valid_sphero_ids)
@@ -153,11 +156,12 @@ def command_gathering(valid_sphero_ids, command_array_2d):
                     index = valid_sphero_ids.index(instruction.spheroID)
                     appending_array[index] = instruction
                 except ValueError:
-                    print("Attempting to send command to not connnected ball...")
+                    print("Attempting to send command to unconnnected ball...")
                     continue
             if (KILL_FLAG == 0):
                 command_array_2d.append(appending_array)
-                conn.send("Done".encode())
+                conn.send("{}".format(RAN_NUM).encode())
+                RAN_NUM = -1
         except EOFError:
             print("EOFError..., other process terminated")
             s.close()
@@ -167,6 +171,8 @@ def command_gathering(valid_sphero_ids, command_array_2d):
                 kill_array.append(Instruction(id,-1))
             command_array_2d.append(kill_array)
             # exit for loop - return to main
+            # allows all remaining commands to be run
+            CLIENT_MODE = False
             break
             
 # the individual method for running a command on a sphero ball
@@ -215,8 +221,12 @@ def run_command(sb, command):
                     command_dur -= 0.01
 
 # runs one cycle of commands
-def run_multi_command(sb_list, commands):
-    global KILL_FLAG
+def run_multi_command(sb_list, commands, num_instructions_run):
+    global KILL_FLAG, CLIENT_MODE, RAN_NUM
+
+    # stall till the system is done
+    while (CLIENT_MODE and RAN_NUM != -1):
+        pass
 
     # holds what processes are running right now
     threads = []
@@ -226,16 +236,17 @@ def run_multi_command(sb_list, commands):
         threads.append(thread)
         thread.start()
 
-    while True:
-        # resync the system now
-        try:
-            for thread in threads:
-                thread.join(timeout=None)
-            break
-        except KeyboardInterrupt:
-            print("Terminating sequence... please don't interupt again") 
-            KILL_FLAG = 1
-            continue
+    try:
+        while (not all([not thread.is_alive() for thread in threads])):
+            time.sleep(0.01)
+    except KeyboardInterrupt:
+        print("Terminating commmands...")
+        KILL_FLAG = 1
+
+    for thread in threads:
+        thread.join(timeout=None)
+
+    RAN_NUM = num_instructions_run
 
 # terminate ball to free it for future use
 def terminate_ball(sb):
@@ -302,8 +313,8 @@ def main():
     global KILL_FLAG
     KILL_FLAG = 0
 
-    # id's in order: 3, 1, 5, 4, 0
-    ball_names = ["SB-B5A9", "SB-1840", "SB-BD0A", "SB-CEB2", "SB-76B3"]
+    # id's in order: 2, 1, 5, 4
+    ball_names = ["SB-B11D", "SB-1840", "SB-BD0A", "SB-CEB2"]
     
     name_to_location_dict = generate_dict_map()
     valid_sphero_ids = []
@@ -335,26 +346,26 @@ def main():
             print(check_voltage(sb))
 
         # server commands array
-        '''
+        global CLIENT_MODE
         commands_array = []
-        # set up server at this point in thread...
-        cmd_gather_thread = threading.Thread(target=command_gathering, args=[valid_sphero_ids, commands_array])
-        cmd_gather_thread.start()
-        '''
-
-        # manual testing
-        # 0, 1, 3, 4, 5
-        # grey, white, red, green, blue
-        commands_array = [[Instruction(0, 0, 0, 0, 0), Instruction(1, 0, 255, 255, 255), Instruction(3, 0, 255, 0, 0), Instruction(4, 0, 0, 255, 0), Instruction(5, 0, 0, 0, 255)],
-                          [Instruction(0, 1, 10, 300), Instruction(1, 2, 360, 300), Instruction(3, 3, 300), None, None]]
-        
+        if (CLIENT_MODE):
+            # set up server at this point in thread...
+            cmd_gather_thread = threading.Thread(target=command_gathering, args=[valid_sphero_ids, commands_array])
+            cmd_gather_thread.start()
+        else:
+            # manual testing
+            # 1, 2, 4, 5
+            # white, red, green, blue
+            commands_array = [[Instruction(1, 0, 255, 255, 255), Instruction(2, 0, 255, 0, 0), Instruction(4, 0, 0, 255, 0), Instruction(5, 0, 0, 0, 255)],
+                            [Instruction(1, 1, 50, 25), Instruction(2, 2, 360, 25), Instruction(4, 3, 25), None, None]]
+            
         num_commands_run = 1
         while (KILL_FLAG == 0):
             if (len(commands_array) != 0):
                 print(commands_array)
                 print("Running command {}".format(num_commands_run))
                 # run_multi_command is done in main thread
-                run_multi_command(sb_list, commands_array.pop(0))
+                run_multi_command(sb_list, commands_array.pop(0), num_commands_run)
                 num_commands_run = num_commands_run + 1
                 get_kalman_filtering(sb_list=sb_list)  
             else:
