@@ -1,6 +1,6 @@
 import pygame
-from constants import *
-from algorithm import Algorithm
+from .constants import *
+from .algorithm import Algorithm
 import random
 
 def draw_grid(surface):

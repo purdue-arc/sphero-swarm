@@ -1,7 +1,7 @@
 import random
-from constants import *
-from swarm import Swarm
-from sphero import Sphero
+from .constants import *
+from .swarm import Swarm
+from .sphero import Sphero
 from math import pi
 from typing import cast
 
@@ -132,7 +132,7 @@ class Algorithm:
         """
 
         id = sphero.id
-        target_x, target_y, radius = sphero.compute_target_position(direction=direction, center = bonded_group[random.randint(0, len(bonded_group) - 1)])
+        target_x, target_y, radius = sphero.compute_target_position(direction=direction, center = self.find_sphero(bonded_group[random.randint(0, len(bonded_group) - 1)]))
         if not self.in_bounds(target_x, target_y):
             return False
         
@@ -239,7 +239,13 @@ class Algorithm:
 
         # check all surrounding spheros
         for direction in range(1, DIRECTIONS - 1):
-            adj_x, adj_y, radius = sphero.compute_target_position(direction=direction)
+
+            if direction % 1 == 0:
+                adj_x, adj_y, radius = sphero.compute_target_position(direction=direction)
+            else:
+                for sphero_id in Swarm.find_bonding_group(sphero.id):
+                    center = self.find_sphero(sphero_id)
+                    adj_x, adj_y, radius = sphero.compute_target_position(direction=direction, center=center)
 
             # if the surrounding position is in bounds
             if self.in_bounds(adj_x, adj_y):
