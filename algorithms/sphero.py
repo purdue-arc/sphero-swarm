@@ -34,11 +34,11 @@ class Sphero:
     def compute_translation_target(self, direction, position_change):
         return (self.x + position_change[direction][0], self.y + position_change[direction][1], 0)
     
-    def compute_target_position(self, direction, center): # -> (int, int)
+    def compute_target_position(self, direction, center=None): # -> (int, int)
         if direction % 1 == 0:
-            return self.compute_translation_target(self, direction, position_change) 
+            return self.compute_translation_target(direction, position_change) 
         else:
-            return self.compute_rotation_taget(self, direction, center)
+            return self.compute_rotation_target(self, direction, center)
 
     def update_target(self):
         """

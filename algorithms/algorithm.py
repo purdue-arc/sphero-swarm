@@ -233,8 +233,8 @@ class Algorithm:
         """
 
         # check all surrounding spheros
-        for direction in range(1, DIRECTIONS + 1):
-            adj_x, adj_y = sphero.compute_target_position(direction=direction)
+        for direction in range(1, DIRECTIONS - 1):
+            adj_x, adj_y, radius = sphero.compute_target_position(direction=direction)
 
             # if the surrounding position is in bounds
             if self.in_bounds(adj_x, adj_y):
