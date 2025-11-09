@@ -12,7 +12,6 @@ import json
 
 from pupil_apriltags import Detector # for april tag detection
 import numpy as np
-import time
 detector = Detector()
 
 from SpheroCoordinate import SpheroCoordinate
@@ -23,7 +22,6 @@ parser.add_argument('--nogui', '-n', action='store_true', help="Run the Sphero S
 parser.add_argument('--locked', '-l', action='store_true', help="Freeze the initial Sphero ID assignments. No new IDs will be assigned after the first frame.")
 parser.add_argument('--model', '-m', type=str, default="./models/bestv3.pt", help="Path to the YOLO model file to use for object detection (default: %(default)s).")
 parser.add_argument('--debug', '-d', action='store_true', help="Activates debug mode (aka prints out all the spheres)")
-parser.add_argument('--latency', '-t', action='store_true', help="Prints the latency in the camera as well as processing time")
 
 group = parser.add_mutually_exclusive_group()
 group.add_argument('--video', '-v', type=str, help="Use provided video path as input stream")
@@ -230,9 +228,8 @@ if __name__ == '__main__':
     thread.start()
 
     # TODO start the camera feed, object tracking and updating, all that stuff
-    
+
     try:
-    
         if stream is not None:
             while True:
                 frame = stream.read()
@@ -255,39 +252,8 @@ if __name__ == '__main__':
                     queue = outputQueues["RGB"]
                     videoIn = queue.get()
                     assert isinstance(videoIn, dai.ImgFrame)
-
-                    # --- LATENCY: Start Measurements (OAK-D) ---
-                    if args.latency:
-                        # 1. Get device capture timestamp (when the image was taken)
-                        capture_timestamp = videoIn.getTimestamp()
-                        
-                        # 2. Get host time *now* (when frame arrived)
-                        host_receive_time = dai.Clock.now()
-                        
-                        # 3. Calculate pipeline latency (device capture -> host receive)
-                        pipeline_latency_ms = (host_receive_time - capture_timestamp).total_seconds() * 1000
-                        
-                        # 4. Start processing timer on host
-                        processing_start_time = time.perf_counter()
-
                     frame = videoIn.getCvFrame()
                     calculateFrame(frame)
-
-                    # --- LATENCY: Stop Measurements (OAK-D) ---
-                    if args.latency:
-                    # 5. End processing timer
-                        processing_end_time = time.perf_counter()
-                        processing_time_ms = (processing_end_time - processing_start_time) * 1000
-
-                        # 6. Get host time *after processing*
-                        host_processed_time = dai.Clock.now()
-                        
-                        # 7. Calculate total end-to-end latency (device capture -> host processing finished)
-                        total_e2e_latency_ms = (host_processed_time - capture_timestamp).total_seconds() * 1000
-                        
-                        # --- Print diagnostics ---
-                        print(f"Pipeline Latency: {pipeline_latency_ms:.2f} ms | Processing Time: {processing_time_ms:.2f} ms | Total E2E Latency: {total_e2e_latency_ms:.2f} ms")
-
 
     except KeyboardInterrupt:
         print("\nShutting down...")
