@@ -14,7 +14,6 @@
 | `-d` | `--debug` | Activates debug mode (prints out all the spheres) |
 | `-v PATH` | `--video PATH` | Use provided video path as input stream |
 | `-w` | `--webcam` | Use webcam as input stream |
-| `-t` | `--latency` | Measure the latency in the camera ⏱️ |
 
 
 # If Libaries are not installed
