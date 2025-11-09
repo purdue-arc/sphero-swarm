@@ -17,13 +17,13 @@ position_change = {
     8: (-1, 1)
 }
 
-N_SPHEROS = 6
+N_SPHEROS = 2
 
 # the number of nodes on the grid widthwise
-GRID_WIDTH = 7
+GRID_WIDTH = 3
 
 # the number of nodes on the grid heightwise
-GRID_HEIGHT = 7
+GRID_HEIGHT = 3
 
 # the pixel distance between two nodes 
 SIM_DIST = 50
@@ -31,12 +31,13 @@ FRAMES = 60
 
 SPHERO_SIM_RADIUS = 15
 
-SIM_WIDTH = GRID_WIDTH * SIM_DIST
-SIM_HEIGHT = GRID_HEIGHT * SIM_DIST
+SIM_WIDTH = (GRID_WIDTH-1) * SIM_DIST
+SIM_HEIGHT = (GRID_HEIGHT-1) * SIM_DIST
 
 EPSILON = 0.01
 
 SPHERO_SPEED = 60
+SPHERO_DIAGONAL_SPEED = 76 # 60 * sqrt(2), but adjusted for acceleration. Thanks to jack for testing this
 ROLL_DURATION = 0.8 # in seconds
 TURN_DURATION = 0.5 # in seconds
 
@@ -53,6 +54,6 @@ GRAY = (150, 150, 150)
 
 COLORS = [BLUE, RED, GREEN, YELLOW, PURPLE, ORANGE]
 
-SPHERO_TAGS = ['SB-CEB2', 'SB-B5A9', 'SB-BD0A', 'SB-1840']
-
+SPHERO_TAGS = ['SB-E274', 'SB-B11D']
+INITIAL_POSITIONS = [(0,0), (0,2)]
 

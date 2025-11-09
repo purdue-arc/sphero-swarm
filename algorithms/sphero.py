@@ -9,6 +9,8 @@ class Sphero:
         self.id = id
         self.x = x
         self.y = y
+        self.true_x = x
+        self.true_y = y
         self.target_x = target_x if target_x is not None else x
         self.target_y = target_y if target_y is not None else y
         self.previous_direction = previous_direction
@@ -77,7 +79,6 @@ class Sphero:
         Returns:
             None
         """
-
         self.update_direction(direction=direction)
         self.update_target()
 
@@ -158,3 +159,31 @@ class Sphero:
 # Rewrite Driver code to call algoritms code
 # Change simulation UI to have background as grid
 # TODO: Documentation needed for using the driver 
+
+class LinkedSphero:
+    def __init__(self, sphero):
+        self.sphero = sphero
+        self.id = sphero.id
+        self.x = sphero.x
+        self.y = sphero.y
+        self.color = sphero.color
+    
+    @property
+    def target_x(self):
+        return self.sphero.target_x
+
+    @property
+    def target_y(self):
+        return self.sphero.target_y
+    
+    @property
+    def speed(self):
+        return self.sphero.speed
+    
+    @property
+    def direction(self):
+        return self.sphero.direction
+    
+    def __str__(self):
+        return f"pos: {self.x}, {self.y}, id: {self.id}, direction: {self.direction}, target pos: {self.target_x}, {self.target_y}"
+    
