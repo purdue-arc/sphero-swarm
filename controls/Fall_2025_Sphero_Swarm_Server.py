@@ -22,6 +22,21 @@ import time
 # these for interfile communication, pickle turns objects into byte streams
 import pickle
 import socket
+import logging
+
+# import the EKF helper functions (sample_and_append) from the Data_Collection package
+try:
+    from Data_Collection.EFK_test import sample_and_append, reset_output_files
+except Exception:
+    # fall back to import via relative path if package import not available
+    logging.debug("Could not import Data_Collection.EFK_test via package import; will import by path")
+    import importlib.util
+    from pathlib import Path
+    spec = importlib.util.spec_from_file_location("EFK_test", str(Path(__file__).resolve().parent / 'Data_Collection' / 'EFK_test.py'))
+    EFK_mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(EFK_mod)
+    sample_and_append = getattr(EFK_mod, 'sample_and_append')
+    reset_output_files = getattr(EFK_mod, 'reset_output_files')
 
 def generate_dict_map():
     try:
@@ -250,6 +265,38 @@ def terminate_multi_ball(sb_list):
             print("KeyboardInterrupt caught, please do not terminate prematurely")
             continue
 
+def get_kalman_filtering(sb_list):
+    # initialize rotation index (no file reset here — reset at session start)
+    if '_KF_NEXT_IDX' not in globals():
+        globals()['_KF_NEXT_IDX'] = 0
+
+    n = len(sb_list)
+    if n == 0:
+        return None
+
+    start = globals()['_KF_NEXT_IDX'] % n
+    chosen = None
+    chosen_idx = None
+    # find next sphero
+    for offset in range(n):
+        i = (start + offset) % n
+        if sb_list[i] is not None:
+            chosen = sb_list[i]
+            chosen_idx = i
+            break
+    globals()['_KF_NEXT_IDX'] = (start + 1) % n
+
+    if chosen is None:
+        return None
+
+    # call helper to sample and append one row
+    try:
+        sample_and_append(chosen, chosen_idx)
+        return chosen_idx
+    except Exception:
+        logging.exception("get_kalman_filtering: failed to sample sphero %s", chosen_idx)
+        return None
+
 def main():
     # set up the global kill flag which is used to tell the system to close out after this command
     global KILL_FLAG
@@ -276,6 +323,12 @@ def main():
     sb_list = [None] * len(toys_addresses)
 
     try: 
+        # Reset output files once at session start so we overwrite previous runs
+        try:
+            reset_output_files()
+        except Exception:
+            logging.exception("Failed to reset output files at session start")
+
         connect_multi_ball(toys_addresses, sb_list, 10)
 
         for sb in sb_list:
@@ -303,8 +356,10 @@ def main():
                 # run_multi_command is done in main thread
                 run_multi_command(sb_list, commands_array.pop(0))
                 num_commands_run = num_commands_run + 1
+                get_kalman_filtering(sb_list=sb_list)  
             else:
                 time.sleep(0.1)
+
 
     finally:
         # raise kill flag in case anything is still going
