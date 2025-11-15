@@ -10,6 +10,14 @@ import cv2
 import argparse
 import json
 
+
+ARENA_WIDTH_INCH = 100
+ARENA_HEIGHT_INCH = 100
+
+ROLL_STRAIGHT_INCH = 11.85
+GRID_HEIGHT = 7
+GRID_WIDTH = 7
+
 from pupil_apriltags import Detector # for april tag detection
 import numpy as np
 detector = Detector()
@@ -22,6 +30,7 @@ parser.add_argument('--nogui', '-n', action='store_true', help="Run the Sphero S
 parser.add_argument('--locked', '-l', action='store_true', help="Freeze the initial Sphero ID assignments. No new IDs will be assigned after the first frame.")
 parser.add_argument('--model', '-m', type=str, default="./models/bestv3.pt", help="Path to the YOLO model file to use for object detection (default: %(default)s).")
 parser.add_argument('--debug', '-d', action='store_true', help="Activates debug mode (aka prints out all the spheres)")
+parser.add_argument('--grid', '-g', action='store_true', help="Shows the grid when april tag field is seen")
 
 group = parser.add_mutually_exclusive_group()
 group.add_argument('--video', '-v', type=str, help="Use provided video path as input stream")
@@ -51,6 +60,43 @@ def pixel_to_grid_coords(pixel_x, pixel_y):
     return (pixel_x, pixel_y)
 # 
 
+def draw_grid(frame, top_left, bottom_right):
+    """
+    Draw a grid and diagonals within the rectangle defined by top_left and bottom_right.
+    Grid spacing is ROLL_STRAIGHT_INCH (in pixels, converted from inches),
+    but the number of lines will not exceed GRID_WIDTH and GRID_HEIGHT.
+    """
+    if not args.grid:
+        return frame
+
+    x0, y0 = top_left
+    x1, y1 = bottom_right
+
+    # Determine number of grid lines based on spacing, but clamp to max GRID_WIDTH/GRID_HEIGHT
+    num_lines_x = min(int(ARENA_WIDTH_INCH / ROLL_STRAIGHT_INCH), GRID_WIDTH)
+    num_lines_y = min(int(ARENA_HEIGHT_INCH / ROLL_STRAIGHT_INCH), GRID_HEIGHT)
+
+    # Draw vertical lines
+    for i in range(num_lines_x + 1):
+        x = int(x0 + i * ROLL_STRAIGHT_INCH)
+        cv2.line(frame, (x, y0), (x, y1), (200, 200, 200), 1)
+    
+    # Draw horizontal lines
+    for j in range(num_lines_y + 1):
+        y = int(y0 + j * ROLL_STRAIGHT_INCH)
+        cv2.line(frame, (x0, y), (x1, y), (200, 200, 200), 1)
+
+    # Draw diagonals within each grid cell
+    for i in range(num_lines_x):
+        for j in range(num_lines_y):
+            x_start = int(x0 + i * ROLL_STRAIGHT_INCH)
+            y_start = int(y0 + j * ROLL_STRAIGHT_INCH)
+            x_end = int(x0 + (i+1) * ROLL_STRAIGHT_INCH)
+            y_end = int(y0 + (j+1) * ROLL_STRAIGHT_INCH)
+            cv2.line(frame, (x_start, y_start), (x_end, y_end), (150, 150, 255), 1)
+
+    return frame
+
 def process_apriltags(frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     results = detector.detect(gray)
@@ -69,23 +115,24 @@ def process_apriltags(frame):
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
         tag_points[tag_id] = corners
 
-    # Optional perspective correction if 4 tags detected
     warped = None
     if len(tag_points) == 4:
         ids = sorted(tag_points.keys())
         custom_points = []
         for i, tid in enumerate(ids):
             corners = tag_points[tid]
-            if i == 0: custom_points.append(tuple(corners[1]))
-            elif i == 1: custom_points.append(tuple(corners[0]))
-            elif i == 2: custom_points.append(tuple(corners[2]))
-            elif i == 3: custom_points.append(tuple(corners[3]))
+            if i == 0: custom_points.append(tuple(corners[1]))  # top-left
+            elif i == 1: custom_points.append(tuple(corners[0]))  # top-right
+            elif i == 2: custom_points.append(tuple(corners[2]))  # bottom-left
+            elif i == 3: custom_points.append(tuple(corners[3]))  # bottom-right
 
         custom_points = np.array(custom_points, dtype=np.float32)
         size = 500
         dst_pts = np.array([[0,0],[size,0],[0,size],[size,size]], dtype=np.float32)
         M = cv2.getPerspectiveTransform(custom_points, dst_pts)
         warped = cv2.warpPerspective(frame, M, (size, size))
+
+        warped = draw_grid(warped, (0,0), (size, size))
 
     return warped if warped is not None else frame
 
