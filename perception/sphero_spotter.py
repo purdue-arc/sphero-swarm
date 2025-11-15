@@ -30,10 +30,10 @@ group.add_argument('--webcam', '-w', action='store_true', help="Use webcam as in
 args = parser.parse_args()
 
 # CONSTANTS
-GRID_DIM_X = 12 # TODO actually like make these real. right now they are all made up 
+GRID_DIM_X = 12 # TODO finalize dimensions
 GRID_DIM_Y = 10
-frame_dim_x = 1080
-frame_dim_y = 1440
+frame_dim_x = 100000
+frame_dim_y = 100000
 
 # Global array of SpheroCoordinates
 spheros = {}
@@ -62,14 +62,17 @@ def process_apriltags(frame):
         cX, cY = int(r.center[0]), int(r.center[1])
 
         # Draw tag outline and ID
+        '''
         for j in range(4):
             cv2.line(frame, tuple(corners[j]), tuple(corners[(j + 1) % 4]), (0, 255, 0), 2)
         cv2.circle(frame, (cX, cY), 4, (0, 0, 255), -1)
         cv2.putText(frame, f"ID: {tag_id}", (cX - 20, cY - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+        '''
         tag_points[tag_id] = corners
 
     # Optional perspective correction if 4 tags detected
+    print(len(tag_points))
     warped = None
     if len(tag_points) == 4:
         ids = sorted(tag_points.keys())
@@ -195,6 +198,7 @@ def calculateFrame(frame):
                 disp_id = None
 
         class_name = model.names[cls_id]
+        '''
         cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
         cv2.circle(frame, (int(cx), int(cy)), 3, (0, 255, 0), -1)
         if disp_id is not None:
@@ -204,6 +208,7 @@ def calculateFrame(frame):
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2, cv2.LINE_AA)
             if args.debug:
                 print(f"ID {disp_id} | {class_name} | Center: ({int(cx)}, {int(cy)})")
+        '''
 
     if not args.nogui:
         cv2.imshow("Sphero IDs", frame)
@@ -243,7 +248,7 @@ if __name__ == '__main__':
                 outputQueues = {}
 
                 cam = pipeline.create(dai.node.Camera).build()
-                rgb_output = cam.requestOutput((1920, 1080), type=dai.ImgFrame.Type.RGB888p)
+                rgb_output = cam.requestOutput((600, 500), type=dai.ImgFrame.Type.RGB888p)
                 outputQueues["RGB"] = rgb_output.createOutputQueue()
 
                 pipeline.start()
