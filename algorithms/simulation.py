@@ -1,7 +1,7 @@
 import pygame
-from .constants import *
-from .algorithm import Algorithm
-from .sphero import LinkedSphero
+from constants import *
+from algorithm import Algorithm
+from sphero import LinkedSphero
 
 # run with python -m algorithms.simulation
 

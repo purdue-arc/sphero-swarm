@@ -20,10 +20,10 @@ position_change = {
 N_SPHEROS = 2
 
 # the number of nodes on the grid widthwise
-GRID_WIDTH = 3
+GRID_WIDTH = 6
 
 # the number of nodes on the grid heightwise
-GRID_HEIGHT = 3
+GRID_HEIGHT = 6
 
 # the pixel distance between two nodes 
 SIM_DIST = 50
