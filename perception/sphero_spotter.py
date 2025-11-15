@@ -34,6 +34,8 @@ INFER_SIZE = 640            # run YOLO on this size (lower = faster)
 APRILTAG_FREQ = 5          # run april tags every N frames (set to 1 to run every frame)
 GUI_FPS = 10               # how often to update imshow (frames per second)
 FRAME_QUEUE_MAX = 2        # small queue to avoid backlog; drops oldest frames when full
+CAMERA_WIDTH = 1280         # OAK-D camera width (reduced from 1920 for wider field of view)
+CAMERA_HEIGHT = 720         # OAK-D camera height (reduced from 1080 for wider field of view)
 
 detector = Detector()
 
@@ -55,6 +57,45 @@ def pixel_to_grid_coords(pixel_x, pixel_y):
 def format_sphero_json(spheroCoord):
     x, y = pixel_to_grid_coords(spheroCoord.x_coordinate, spheroCoord.y_coordinate)
     return {"ID": spheroCoord.ID, "X": x, "Y": y}
+
+ARENA_WIDTH_INCH = 59
+ARENA_HEIGHT_INCH = 49
+ROLL_STRAIGHT_INCH = 12.67
+GRID_WIDTH = GRID_HEIGHT = 7
+
+def draw_grid(frame, top_left, bottom_right):
+    """
+    Draw a grid and diagonals within the rectangle defined by top_left and bottom_right.
+    Grid spacing is ROLL_STRAIGHT_INCH (in pixels, converted from inches),
+    but the number of lines will not exceed GRID_WIDTH and GRID_HEIGHT.
+    """
+    x0, y0 = top_left
+    x1, y1 = bottom_right
+
+    # Determine number of grid lines based on spacing, but clamp to max GRID_WIDTH/GRID_HEIGHT
+    num_lines_x = min(int(ARENA_WIDTH_INCH / ROLL_STRAIGHT_INCH), GRID_WIDTH)
+    num_lines_y = min(int(ARENA_HEIGHT_INCH / ROLL_STRAIGHT_INCH), GRID_HEIGHT)
+
+    # Draw vertical lines
+    for i in range(num_lines_x + 1):
+        x = int(x0 + i * ROLL_STRAIGHT_INCH)
+        cv2.line(frame, (x, y0), (x, y1), (200, 200, 200), 1)
+    
+    # Draw horizontal lines
+    for j in range(num_lines_y + 1):
+        y = int(y0 + j * ROLL_STRAIGHT_INCH)
+        cv2.line(frame, (x0, y), (x1, y), (200, 200, 200), 1)
+
+    # Draw diagonals within each grid cell
+    for i in range(num_lines_x):
+        for j in range(num_lines_y):
+            x_start = int(x0 + i * ROLL_STRAIGHT_INCH)
+            y_start = int(y0 + j * ROLL_STRAIGHT_INCH)
+            x_end = int(x0 + (i+1) * ROLL_STRAIGHT_INCH)
+            y_end = int(y0 + (j+1) * ROLL_STRAIGHT_INCH)
+            cv2.line(frame, (x_start, y_start), (x_end, y_end), (150, 150, 255), 1)
+
+    return frame
 
 def process_apriltags(frame, downscale=2):
     """
@@ -97,7 +138,11 @@ def process_apriltags(frame, downscale=2):
         dst_pts = np.array([[0,0],[size,0],[0,size],[size,size]], dtype=np.float32)
         M = cv2.getPerspectiveTransform(custom_points, dst_pts)
         warped = cv2.warpPerspective(frame, M, (size, size))
-        return warped
+        top_left = (0, 0)
+        bottom_right = (warped.shape[1] - 1, warped.shape[0] - 1)
+
+        grid = draw_grid(warped, top_left, bottom_right)
+        return grid
     return frame
 
 # Listener thread — unchanged except use spheros_lock when reading
@@ -142,7 +187,7 @@ def capture_thread_fn(frame_queue, stop_event, stream):
         with dai.Pipeline(device) as pipeline:
             outputQueues = {}
             cam = pipeline.create(dai.node.Camera).build()
-            rgb_output = cam.requestOutput((1920, 1080), type=dai.ImgFrame.Type.RGB888p)
+            rgb_output = cam.requestOutput((CAMERA_WIDTH, CAMERA_HEIGHT), type=dai.ImgFrame.Type.RGB888p)
             outputQueues["RGB"] = rgb_output.createOutputQueue()
             pipeline.start()
             while pipeline.isRunning() and not stop_event.is_set():
