@@ -1,5 +1,6 @@
 # Sphero Kalman Filter Data
 # sphero_idx is the first column to attribute rows to a sphero index in sb_list
 sphero_idx,"timestamp (monotonic, s)",seq,dt_s,theta (rad),roll (deg),pitch (deg),vel_x (mm/s),vel_y (mm/s),v_forward (m/s),gyro_z (rad/s),accel_x (m/s^2),accel_y (m/s^2),accel_z (m/s^2)
+0,294293.715296,0,0.000000,0.026273,1.716485,-4.654003,-0.000423,-0.001290,-0.000000,0.000000,0.293824,0.813048,9.916829
 0,301793.640000,0,0.000000,0.100684,-1.587784,0.725631,0.228571,-2.456176,-0.000019,0.078035,-0.184530,-0.404990,10.039133
 1,301825.250000,0,0.000000,0.004337,1.442953,6.196101,-0.074801,-0.490687,-0.000077,-0.030197,0.093293,-1.159607,9.982644

@@ -16,6 +16,7 @@ from spherov2.commands.drive import DriveFlags
 import threading
 # instructions for the purposes of organization
 from .Instruction import Instruction
+from .Instruction import Instruction
 
 import time
 
