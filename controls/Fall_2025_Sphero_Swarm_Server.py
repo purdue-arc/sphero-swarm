@@ -388,4 +388,5 @@ def test_controls():
         terminate_multi_ball(sb_list)
         
 if __name__ == "__main__":
-    test_controls()
+    #test_controls()
+    run_server(['SB-E274', 'SB-B11D'])
