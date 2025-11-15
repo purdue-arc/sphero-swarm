@@ -27,7 +27,7 @@ if str(package_root) not in sys.path:
 from algorithms.algorithm import Algorithm
 from algorithms.constants import *
 from algorithms.sphero import LinkedSphero
-from algorithms.simulation import moving_sphero_to_target
+from algorithms.simulation import draw_sphero, moving_sphero_to_target
 
 
 # ---------------------------------------------------------------------------
@@ -135,8 +135,6 @@ class StepSimulationTest:
         self.margin_right = 20
         self.margin_bottom = 20
         self.min_info_width = 260
-        self.grid_width = grid_width
-        self.grid_height = grid_height
         self.sim_surface = pygame.Surface((SIM_WIDTH, SIM_HEIGHT))
         self.surface: pygame.Surface = pygame.display.set_mode((1, 1))
         self.info_surface: pygame.Surface = pygame.Surface((1, 1))
@@ -149,17 +147,11 @@ class StepSimulationTest:
         self.font_id = pygame.font.Font(None, 22)
         self.line_height = self.font_small.get_linesize()
 
-        converted_initial_positions = None
-        if initial_positions:
-            converted_initial_positions = [
-                self._display_to_algo_point(pos) for pos in initial_positions
-            ]
-
         self.algorithm = Algorithm(
             grid_width=grid_width,
             grid_height=grid_height,
             n_spheros=N_SPHEROS,
-            initial_positions=converted_initial_positions,
+            initial_positions=initial_positions,
         )
         self.linked_spheros: List[LinkedSphero] = [
             LinkedSphero(sphero) for sphero in self.algorithm.spheros
@@ -178,18 +170,6 @@ class StepSimulationTest:
         self._log_initial_state()
         initial_overlay = self._collect_overlay_lines()
         self._layout_surfaces(initial_overlay)
-
-    def _algo_to_display_coords(self, x: float, y: float) -> Tuple[float, float]:
-        return x, (self.grid_height - 1) - y
-    
-    def _display_to_algo_point(self, point: Tuple[int, int]) -> Tuple[int, int]:
-        x, y = point
-        if not (0 <= x < self.grid_width) or not (0 <= y < self.grid_height):
-            raise ValueError(
-                f"Initial position {point} is out of bounds for a {self.grid_width}x{self.grid_height} grid."
-            )
-        algo_y = self.grid_height - 1 - y
-        return int(x), int(algo_y)
 
     def _layout_surfaces(self, overlay_lines: List[str]) -> None:
         """
@@ -295,9 +275,8 @@ class StepSimulationTest:
             target_pos = sphero.compute_target_position(algo_direction)
             reserved_by = self.reserved_targets.get(target_pos)
             if reserved_by and reserved_by != group_label:
-                display_target = self._algo_to_display_coords(*target_pos)
                 self.error_message = (
-                    f"{group_label}: target {display_target} already reserved by {reserved_by}."
+                    f"{group_label}: target {target_pos} already reserved by {reserved_by}."
                 )
                 return
             targets.append(target_pos)
@@ -423,23 +402,16 @@ class StepSimulationTest:
         self.sim_surface.fill(WHITE)
         draw_test_grid(self.sim_surface)
         for linked in self.linked_spheros:
-            self._draw_sphero_circle(linked)
+            draw_sphero(self.sim_surface, linked)
             self._draw_sphero_label(linked)
         self.surface.blit(self.sim_surface, self.grid_margin)
         self._draw_overlay(overlay_lines)
         pygame.display.flip()
 
-    def _draw_sphero_circle(self, sphero: LinkedSphero) -> None:
-        display_x, display_y = self._algo_to_display_coords(sphero.x, sphero.y)
-        center_x = int(round(display_x * SIM_DIST))
-        center_y = int(round(display_y * SIM_DIST))
-        pygame.draw.circle(self.sim_surface, sphero.color, (center_x, center_y), SPHERO_SIM_RADIUS)
-
     def _draw_sphero_label(self, sphero: LinkedSphero) -> None:
-        display_x, display_y = self._algo_to_display_coords(sphero.x, sphero.y)
         label_surface = self.font_id.render(str(sphero.id), True, BLACK)
-        center_x = int(round(display_x * SIM_DIST))
-        center_y = int(round(display_y * SIM_DIST))
+        center_x = int(round(sphero.x * SIM_DIST))
+        center_y = int(round(sphero.y * SIM_DIST))
         label_rect = label_surface.get_rect(center=(center_x, center_y))
         self.sim_surface.blit(label_surface, label_rect)
 
@@ -480,12 +452,8 @@ class StepSimulationTest:
 
         lines.append("Positions (current -> target):")
         for linked in self.linked_spheros:
-            disp_x, disp_y = self._algo_to_display_coords(linked.x, linked.y)
-            target_disp_x, target_disp_y = self._algo_to_display_coords(
-                linked.target_x, linked.target_y
-            )
             lines.append(
-                f"  S{linked.id}: ({disp_x:.2f}, {disp_y:.2f}) -> ({target_disp_x:.0f}, {target_disp_y:.0f})"
+                f"  S{linked.id}: ({linked.x:.2f}, {linked.y:.2f}) -> ({linked.target_x}, {linked.target_y})"
             )
 
         return lines
@@ -524,10 +492,7 @@ class StepSimulationTest:
     def _print_positions(self) -> None:
         print("Current positions:")
         for sphero in self.algorithm.spheros:
-            disp_x, disp_y = self._algo_to_display_coords(sphero.x, sphero.y)
-            print(
-                f"  S{sphero.id}: ({disp_x}, {disp_y}) direction={sphero.direction}"
-            )
+            print(f"  S{sphero.id}: ({sphero.x}, {sphero.y}) direction={sphero.direction}")
 
     def _print_groups(self, groups: List[Dict[str, object]]) -> None:
         print("Bonding groups:")
