@@ -167,7 +167,7 @@ class Algorithm:
                         if not possible_centers:
                             possible_directions.remove(direction)
 
-        return (possible_directions if possible_directions else []), (possible_directions if possible_directions else [])
+        return (possible_directions if possible_directions else []), (possible_centers if possible_centers else [])
     
     def find_bonded_group_move(self, bonded_group): # -> int
         """
