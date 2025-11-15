@@ -15,7 +15,7 @@ from spherov2.commands.drive import DriveFlags
 # threading to allow for multiple balls at moving
 import threading
 # instructions for the purposes of organization
-from Instruction import Instruction
+from .Instruction import Instruction
 
 import time
 
@@ -38,21 +38,11 @@ except Exception:
     sample_and_append = getattr(EFK_mod, 'sample_and_append')
     reset_output_files = getattr(EFK_mod, 'reset_output_files')
 
-def generate_dict_map():
-    try:
-        ret_dict = dict([])
-        with open("controls/name_to_location_dict.csv", "r") as file:
-            # purposefully purge first line
-            line = file.readline()
-            while (True):
-                line = file.readline()
-                if (not line):
-                    break
-                cleaned_line = line.strip().split(", ")
-                ret_dict.update({cleaned_line[0] : int(cleaned_line[1])})
-        return ret_dict
-    except:
-        raise RuntimeError("Dictionary method failed! Exiting code.")
+def generate_dict_map(sorted_names):
+    mapping = dict([])
+    for i in range(0, len(sorted_names), 1):
+        mapping.update({sorted_names[i] : i})
+    return mapping
 
 # find avaliable toys in an area, and then if not all balls connected
 # after a set number of attempts, this raises an error
@@ -135,9 +125,9 @@ def command_gathering(valid_sphero_ids, command_array_2d):
     print("Waiting for connection to client...")
     # conn is the object required for comm with the other files
     conn, address = s.accept()
-    # given this is the first and only connection to be made for now, 
-    # can immediately send relevant information
+    # given this is the first and only connection to be made for now, can immediately send relevant information
     conn.send(pickle.dumps(valid_sphero_ids))
+    # will need two in actuality... - one for the center and the other for algo
 
     global KILL_FLAG
     while (KILL_FLAG == 0):
@@ -226,16 +216,15 @@ def run_multi_command(sb_list, commands):
         threads.append(thread)
         thread.start()
 
-    while True:
-        # resync the system now
-        try:
-            for thread in threads:
-                thread.join(timeout=None)
-            break
-        except KeyboardInterrupt:
-            print("Terminating sequence... please don't interupt again") 
-            KILL_FLAG = 1
-            continue
+    try:
+        while (not all([not thread.is_alive() for thread in threads])):
+            time.sleep(0.01)
+    except KeyboardInterrupt:
+        print("Terminating commmands...")
+        KILL_FLAG = 1
+
+    for thread in threads:
+        thread.join(timeout=None)
 
 # terminate ball to free it for future use
 def terminate_ball(sb):
@@ -297,26 +286,17 @@ def get_kalman_filtering(sb_list):
         logging.exception("get_kalman_filtering: failed to sample sphero %s", chosen_idx)
         return None
 
-def main():
+def run_server(ball_names):
     # set up the global kill flag which is used to tell the system to close out after this command
     global KILL_FLAG
     KILL_FLAG = 0
-
-    # id's in order: 3, 1, 5, 4, 0
-    ball_names = ["SB-B5A9", "SB-1840", "SB-BD0A", "SB-CEB2", "SB-76B3"]
     
-    name_to_location_dict = generate_dict_map()
-    valid_sphero_ids = []
-    for ball_name in ball_names:
-        valid_sphero_ids.append(name_to_location_dict[ball_name])
-    # sorted in ascending order
-    valid_sphero_ids.sort(key = lambda ball_id : ball_id)
-    print("ID's linked to initial ball names provided, sorted: {}".format(valid_sphero_ids))
+    name_to_location_dict = generate_dict_map(ball_names)
 
     # find the addresses to connect with
     toys_addresses = find_balls(ball_names, 5)
 
-    # then sort the addresses to match csv ordering
+    # then sort the addresses to match given order, due to system complexities
     address_sort(toys_addresses, name_to_location_dict)
 
     # sb list has length of the number of valid ids
@@ -334,19 +314,10 @@ def main():
         for sb in sb_list:
             print(check_voltage(sb))
 
-        # server commands array
-        '''
         commands_array = []
         # set up server at this point in thread...
-        cmd_gather_thread = threading.Thread(target=command_gathering, args=[valid_sphero_ids, commands_array])
+        cmd_gather_thread = threading.Thread(target=command_gathering, args=[ball_names, commands_array])
         cmd_gather_thread.start()
-        '''
-
-        # manual testing
-        # 0, 1, 3, 4, 5
-        # grey, white, red, green, blue
-        commands_array = [[Instruction(0, 0, 0, 0, 0), Instruction(1, 0, 255, 255, 255), Instruction(3, 0, 255, 0, 0), Instruction(4, 0, 0, 255, 0), Instruction(5, 0, 0, 0, 255)],
-                          [Instruction(0, 1, 10, 300), Instruction(1, 2, 360, 300), Instruction(3, 3, 300), None, None]]
         
         num_commands_run = 1
         while (KILL_FLAG == 0):
@@ -360,6 +331,55 @@ def main():
             else:
                 time.sleep(0.1)
 
+    finally:
+        # raise kill flag in case anything is still going
+        KILL_FLAG = 1
+        # always attempt to disconnect after connecting to avoid manual resets
+        terminate_multi_ball(sb_list)
+
+def test_controls():
+    # set up the global kill flag which is used to tell the system to close out after this command
+    global KILL_FLAG
+    KILL_FLAG = 0
+
+    ball_names = ["SB-B11D", "SB-CEB2", "SB-1840", "SB-76B3", "SB-E274"]
+    
+    name_to_location_dict = generate_dict_map(ball_names)
+
+    # find the addresses to connect with
+    toys_addresses = find_balls(ball_names, 5)
+
+    # then sort the addresses to match given order, due to system complexities
+    address_sort(toys_addresses, name_to_location_dict)
+
+    # sb list has length of the number of valid ids
+    sb_list = [None] * len(toys_addresses)
+
+    try: 
+        # Reset output files once at session start so we overwrite previous runs
+        try:
+            reset_output_files()
+        except Exception:
+            logging.exception("Failed to reset output files at session start")
+
+        connect_multi_ball(toys_addresses, sb_list, 10)
+
+        for sb in sb_list:
+            print(check_voltage(sb))
+
+        # manual testing
+        # grey, white, red, green, blue
+        commands_array = [[Instruction(0, 0, 0, 0, 0), Instruction(1, 0, 255, 255, 255), Instruction(2, 0, 255, 0, 0), Instruction(3, 0, 0, 255, 0), Instruction(4, 0, 0, 0, 255)],
+                          [Instruction(0, 1, 10, 30), Instruction(1, 2, 360, 30), Instruction(2, 3, 30), None, None]]
+        
+        num_commands_run = 1
+        while (KILL_FLAG == 0 and len(commands_array) != 0):
+            print(commands_array)
+            print("Running command {}".format(num_commands_run))
+            # run_multi_command is done in main thread
+            run_multi_command(sb_list, commands_array.pop(0))
+            num_commands_run = num_commands_run + 1
+            get_kalman_filtering(sb_list=sb_list)             
 
     finally:
         # raise kill flag in case anything is still going
@@ -368,4 +388,4 @@ def main():
         terminate_multi_ball(sb_list)
         
 if __name__ == "__main__":
-    main()
+    test_controls()
