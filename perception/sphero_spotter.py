@@ -28,6 +28,7 @@ parser.add_argument('--latency', '-t', action='store_true', help="Prints the lat
 group = parser.add_mutually_exclusive_group()
 group.add_argument('--video', '-v', type=str, help="Use provided video path as input stream")
 group.add_argument('--webcam', '-w', action='store_true', help="Use webcam as input stream")
+group.add_argument('--grid', '-g', action='store_true', help="Shows the grid overlay")
 
 args = parser.parse_args()
 
@@ -52,6 +53,60 @@ def pixel_to_grid_coords(pixel_x, pixel_y):
     pass
     return (pixel_x, pixel_y)
 # 
+
+ARENA_WIDTH_INCH = 59
+ARENA_HEIGHT_INCH = 49
+ROLL_STRAIGHT_INCH = 12.67
+GRID_WIDTH = GRID_HEIGHT = 7
+
+def draw_grid(frame, top_left, bottom_right):
+    if not args.grid:
+        return frame
+
+    x0, y0 = top_left
+    x1, y1 = bottom_right
+
+    # Arena pixel size
+    arena_w_px = x1 - x0
+    arena_h_px = y1 - y0
+
+    # Convert inches → pixels
+    pixels_per_inch_x = arena_w_px / ARENA_WIDTH_INCH
+    pixels_per_inch_y = arena_h_px / ARENA_HEIGHT_INCH
+
+    # Grid cell size in pixels
+    cell_w = ROLL_STRAIGHT_INCH * pixels_per_inch_x
+    cell_h = ROLL_STRAIGHT_INCH * pixels_per_inch_y
+
+    # Determine number of lines (still clamped)
+    num_lines_x = min(int(ARENA_WIDTH_INCH / ROLL_STRAIGHT_INCH), GRID_WIDTH)
+    num_lines_y = min(int(ARENA_HEIGHT_INCH / ROLL_STRAIGHT_INCH), GRID_HEIGHT)
+
+    # Vertical lines
+    for i in range(num_lines_x + 1):
+        x = int(x0 + i * cell_w)
+        cv2.line(frame, (x, y0), (x, y1), (0, 255, 0), 1)
+    
+    # Horizontal lines
+    for j in range(num_lines_y + 1):
+        y = int(y0 + j * cell_h)
+        cv2.line(frame, (x0, y), (x1, y),  (0, 255, 0), 1)
+
+    # Diagonals
+    for i in range(num_lines_x):
+        for j in range(num_lines_y):
+            x_start = int(x0 + i * cell_w)
+            y_start = int(y0 + j * cell_h)
+            x_end   = int(x0 + (i+1) * cell_w)
+            y_end   = int(y0 + (j+1) * cell_h)
+
+            # First diagonal: top-left → bottom-right
+            cv2.line(frame, (x_start, y_start), (x_end, y_end), (0, 255, 0), 1)
+
+            # Second diagonal: bottom-left → top-right
+            cv2.line(frame, (x_start, y_end), (x_end, y_start), (0, 255, 0), 1)
+
+    return frame
 
 def process_apriltags(frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -91,7 +146,11 @@ def process_apriltags(frame):
         dst_pts = np.array([[0,0],[size,0],[0,size],[size,size]], dtype=np.float32)
         M = cv2.getPerspectiveTransform(custom_points, dst_pts)
         warped = cv2.warpPerspective(frame, M, (size, size))
+        top_left = (0, 0)
+        bottom_right = (warped.shape[1] - 1, warped.shape[0] - 1)
 
+        grid = draw_grid(warped, top_left, bottom_right)
+        return grid
     return warped if warped is not None else frame
 
 def initialize_spheros():
