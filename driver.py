@@ -18,6 +18,10 @@ if __name__ == "__main__":
     sphero_tag = SPHERO_TAGS
     initial_positions = INITIAL_POSITIONS
 
+    '''
+    call name_to_location = controls.Fall_2025_Sphero_Swarm_Server.generate_dict_map()
+    '''
+
     algorithm = Algorithm(grid_width=GRID_WIDTH,
                             grid_height=GRID_HEIGHT,
                             n_spheros=len(sphero_tag),
