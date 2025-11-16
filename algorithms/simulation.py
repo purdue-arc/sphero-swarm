@@ -2,6 +2,7 @@ import pygame
 from constants import *
 from algorithm import Algorithm
 from sphero import LinkedSphero
+from math import atan, sin, cos
 
 # run with python -m algorithms.simulation
 
@@ -66,8 +67,23 @@ def moving_sphero_to_target(sphero):
         sphero.x = sphero.target_x
         sphero.y = sphero.target_y
         return False
-    sphero.x += position_change[sphero.direction][0] * (sphero.speed / SIM_DIST)
-    sphero.y += position_change[sphero.direction][1] * (sphero.speed / SIM_DIST)
+    
+
+    if (sphero.direction % 1 == 0): # Translation
+        sphero.x += position_change[sphero.direction][0] * (sphero.speed / SIM_DIST)
+        sphero.y += position_change[sphero.direction][1] * (sphero.speed / SIM_DIST)
+    else: # Rotation
+        x_rel = sphero.x - sphero.center_x
+        y_rel = sphero.y - sphero.center_y
+
+        if x_rel != 0:
+            angle = atan(y_rel / x_rel) + sphero.direction
+        else:
+            angle = (pi / 2) * (1 - (y_rel / abs(y_rel))) + sphero.direction
+
+        sphero.x += cos(angle) * (sphero.speed / SIM_DIST) * sphero.radius
+        sphero.y += sin(angle) * (sphero.speed / SIM_DIST) * sphero.radius
+
     return True
 
 def teleport_sphero_to_target(sphero):

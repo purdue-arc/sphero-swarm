@@ -13,6 +13,9 @@ class Sphero:
         self.true_y = y
         self.target_x = target_x if target_x is not None else x
         self.target_y = target_y if target_y is not None else y
+        self.center_x = x
+        self.center_y = y
+        self.radius = 0
         self.previous_direction = previous_direction
         self.direction = direction
         self.speed = speed
@@ -22,7 +25,10 @@ class Sphero:
         if (self.id != center.id):
             x_rel = self.x - center.x
             y_rel = self.y - center.y
-            angle = atan(y_rel / x_rel) + direction
+            if x_rel != 0:
+                angle = atan(y_rel / x_rel) + direction
+            else:
+                angle = (pi / 2) * (1 - (y_rel / abs(y_rel))) + direction
             target_x = int(cos(angle) * sqrt((x_rel ** 2) + (y_rel ** 2))) + center.x
             target_y = int(sin(angle) * sqrt((x_rel ** 2) + (y_rel ** 2))) + center.y
             radius = sqrt(x_rel ** 2 + y_rel ** 2)
@@ -42,7 +48,7 @@ class Sphero:
         else:
             return self.compute_rotation_target(direction, center)
 
-    def update_target(self):
+    def update_target(self, center):
         """
         Update our sphero's target position given our current direction
 
@@ -53,7 +59,10 @@ class Sphero:
             None
         """
 
-        self.target_x, self.target_y, self.radius = self.compute_target_position(direction=self.direction,center=self)     
+        self.target_x, self.target_y, self.radius = self.compute_target_position(direction=self.direction,center=center)   
+        if center:
+            self.center_x = center.x
+            self.center_y = center.y  
 
     def update_direction(self, direction):
         """
@@ -69,7 +78,7 @@ class Sphero:
         self.previous_direction = self.direction
         self.direction = direction
 
-    def update_movement(self, direction):
+    def update_movement(self, direction, center):
         """
         Update a spheros direction and target position given a direction
 
@@ -80,7 +89,7 @@ class Sphero:
             None
         """
         self.update_direction(direction=direction)
-        self.update_target()
+        self.update_target(center)
 
     def get_direction_change(self):
         """
@@ -160,12 +169,17 @@ class Sphero:
 # Change simulation UI to have background as grid
 # TODO: Documentation needed for using the driver 
 
+#TODO Make into an inheritance class
+
 class LinkedSphero:
     def __init__(self, sphero):
         self.sphero = sphero
         self.id = sphero.id
         self.x = sphero.x
         self.y = sphero.y
+        self.center_x = sphero.center_x
+        self.center_y = sphero.center_y
+        self.radius = sphero.radius
         self.color = sphero.color
     
     @property

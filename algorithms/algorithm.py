@@ -141,7 +141,7 @@ class Algorithm:
         return (not self.nodes[target_x][target_y] or
                 self.swarm.is_bonded(id1=id, id2=self.nodes[target_x][target_y]))
 
-    def find_valid_move(self, sphero, possible_directions, possible_centers, bonded_group): # -> List[int]
+    def find_valid_move(self, sphero, possible_directions, all_possible_centers, bonded_group): # -> List[int]
         """
         Find a valid direction for a sphero given a list of possible directions
 
@@ -153,19 +153,21 @@ class Algorithm:
         Returns:
             (List[int]): a list of all valid directions for the given sphero
         """
+
         for direction in possible_directions[:]:
             if direction % 1 == 0:
                 if not self.is_valid_move(direction=direction, sphero=sphero, bonded_group=bonded_group):
                     possible_directions.remove(direction)
-                else:
-                    for id in possible_centers:
-                        print(f"id: {id}; Possible centers: {possible_centers}")
-                        center = self.find_sphero(id)
-                        #print(str(center) + "\n")
-                        if not self.is_valid_move(direction=direction, sphero=sphero, center=center, bonded_group=bonded_group):
-                            possible_centers.remove(center)
-                        if not possible_centers:
-                            possible_directions.remove(direction)
+            else:
+                possible_centers = all_possible_centers[:]
+                for id in possible_centers:
+                    print(f"id: {id}; Possible centers: {possible_centers}")
+                    center = self.find_sphero(id)
+                    #print(str(center) + "\n")
+                    if not self.is_valid_move(direction=direction, sphero=sphero, center=center, bonded_group=bonded_group):
+                        possible_centers.remove(id)
+                    if not possible_centers:
+                        possible_directions.remove(direction)
 
         return (possible_directions if possible_directions else []), (possible_centers if possible_centers else [])
     
@@ -181,15 +183,17 @@ class Algorithm:
         """
 
         possible_directions = ALL_DIRECTIONS.copy()
-        possible_centers = bonded_group
+        possible_centers = bonded_group[:]
         direction = None
         center = None
         print(f"Bonded Group: {bonded_group}")
         for id in bonded_group:
             sphero = self.find_sphero(id)
-            possible_directions, possible_centers = self.find_valid_move(sphero=sphero, possible_directions=possible_directions, possible_centers=possible_centers, bonded_group=bonded_group)
+            possible_directions, possible_centers = self.find_valid_move(sphero=sphero, possible_directions=possible_directions, all_possible_centers=possible_centers, bonded_group=bonded_group)
         direction = random.choice(possible_directions) if possible_directions else 0
-        return direction
+        center = self.find_sphero(random.choice(possible_centers) if possible_centers else 0)
+        print(f"Direction: {direction}\n")
+        return direction, center
     
     def update_nodes(self, sphero):
         """
@@ -203,6 +207,7 @@ class Algorithm:
         """
         
         self.nodes[sphero.x][sphero.y] = 0
+        print(f"Target x: {sphero.target_x}")
         self.nodes[sphero.target_x][sphero.target_y] = sphero.id
     
     def update_bonded_group_move(self, bonded_group):
@@ -216,11 +221,11 @@ class Algorithm:
             None
         """
         
-        direction = self.find_bonded_group_move(bonded_group=bonded_group)
+        direction, center = self.find_bonded_group_move(bonded_group=bonded_group)
         for id in bonded_group:
             sphero = self.find_sphero(id)
             if sphero is not None:
-                sphero.update_movement(direction=direction)
+                sphero.update_movement(direction=direction, center=center)
                 self.update_nodes(sphero=sphero)
             else:
                 # Should never happen
@@ -252,14 +257,14 @@ class Algorithm:
         """
 
         # check all surrounding spheros
-        for direction in range(1, DIRECTIONS - 1):
+        for direction in range(1, DIRECTIONS - 3):
 
             if direction % 1 == 0:
                 adj_x, adj_y, radius = sphero.compute_target_position(direction=direction)
             else:
                 for sphero_id in Swarm.find_bonding_group(sphero.id):
                     center = self.find_sphero(sphero_id)
-                    adj_x, adj_y, radius = sphero.compute_target_position(direction=direction, center=center)
+                    adj_x, adj_y, radius = sphero.compute_target_position(direction=direction)
 
             # if the surrounding position is in bounds
             if self.in_bounds(adj_x, adj_y):
