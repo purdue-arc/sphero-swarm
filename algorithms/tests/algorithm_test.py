@@ -4,8 +4,7 @@ from sphero import Sphero
 from constants import *
 from typing import List, Tuple
 
-@pytest.fixture
-def algorithm(
+def create_algorithm(
     grid_width: int = 5,
     grid_height: int = 5,
     n_spheros: int = 2,
@@ -19,11 +18,23 @@ def algorithm(
                      initial_positions=initial_positions,
                      )
 
-def test_first_move_set(algorithm):
-    positions_directions = [
-        (0, 0, 1, 1),
-        (2, 0, 2, 8),
-    ]
+def test_is_valid_move(
+    algorithm: Algorithm = None,
+    direction: int = None,
+    sphero: Sphero = None,
+    is_valid: bool = True
+):
+    assert algorithm.is_valid_move(direction=direction, sphero=sphero) == is_valid
+
+def test_moveset(
+    initial_positions: List[Tuple[int, int]],
+    directions: List[List[int]]
+):
+    algorithm = create_algorithm(initial_positions=initial_positions)
+
+    for sphero_directions in directions:
+        for direction in sphero_directions:
+            test_is_valid_move(algorithm=algorithm, direction=direction)
     
     # Check target positions
     assert spheros[0].compute_target_position(1) == (0, 1)
