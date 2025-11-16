@@ -105,7 +105,8 @@ if __name__ == "__main__":
 
     algorithm = Algorithm(grid_width=GRID_WIDTH,
                             grid_height=GRID_HEIGHT,
-                            n_spheros=N_SPHEROS)
+                            n_spheros=N_SPHEROS,
+                            initial_positions=INITIAL_POSITIONS)
     for sphero in algorithm.spheros:
         spheros.append(LinkedSphero(sphero))
     
@@ -129,6 +130,9 @@ if __name__ == "__main__":
             for sphero in algorithm.spheros:
                 sphero.x = sphero.target_x
                 sphero.y = sphero.target_y
+                print(str(sphero))
+            
+            print('-'*50)
 
             algorithm.update_grid_bonds()
             algorithm.update_grid_move()

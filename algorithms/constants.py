@@ -54,6 +54,12 @@ GRAY = (150, 150, 150)
 
 COLORS = [BLUE, RED, GREEN, YELLOW, PURPLE, ORANGE]
 
-SPHERO_TAGS = ['SB-E274', 'SB-B11D']
-INITIAL_POSITIONS = [(0,0), (0,2)]
+SPHERO_TAGS = [
+    'SB-B11D',
+    'SB-BD0A',
+    'SB-1840', 
+    'SB-E274', 
+    'SB-CEB2'
+]
+INITIAL_POSITIONS = [(0,0), (0,2), (1, 3), (3, 3), (3, 1)]
 

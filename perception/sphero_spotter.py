@@ -12,6 +12,7 @@ import json
 
 from pupil_apriltags import Detector # for april tag detection
 import numpy as np
+import time
 detector = Detector()
 
 from SpheroCoordinate import SpheroCoordinate
@@ -22,6 +23,7 @@ parser.add_argument('--nogui', '-n', action='store_true', help="Run the Sphero S
 parser.add_argument('--locked', '-l', action='store_true', help="Freeze the initial Sphero ID assignments. No new IDs will be assigned after the first frame.")
 parser.add_argument('--model', '-m', type=str, default="./models/bestv3.pt", help="Path to the YOLO model file to use for object detection (default: %(default)s).")
 parser.add_argument('--debug', '-d', action='store_true', help="Activates debug mode (aka prints out all the spheres)")
+parser.add_argument('--latency', '-t', action='store_true', help="Prints the latency in the camera as well as processing time")
 
 group = parser.add_mutually_exclusive_group()
 group.add_argument('--video', '-v', type=str, help="Use provided video path as input stream")
@@ -30,10 +32,10 @@ group.add_argument('--webcam', '-w', action='store_true', help="Use webcam as in
 args = parser.parse_args()
 
 # CONSTANTS
-GRID_DIM_X = 12 # TODO actually like make these real. right now they are all made up 
+GRID_DIM_X = 12 # TODO finalize dimensions
 GRID_DIM_Y = 10
-frame_dim_x = 1080
-frame_dim_y = 1440
+frame_dim_x = 100000
+frame_dim_y = 100000
 
 # Global array of SpheroCoordinates
 spheros = {}
@@ -62,14 +64,17 @@ def process_apriltags(frame):
         cX, cY = int(r.center[0]), int(r.center[1])
 
         # Draw tag outline and ID
+        '''
         for j in range(4):
             cv2.line(frame, tuple(corners[j]), tuple(corners[(j + 1) % 4]), (0, 255, 0), 2)
         cv2.circle(frame, (cX, cY), 4, (0, 0, 255), -1)
         cv2.putText(frame, f"ID: {tag_id}", (cX - 20, cY - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+        '''
         tag_points[tag_id] = corners
 
     # Optional perspective correction if 4 tags detected
+    print(len(tag_points))
     warped = None
     if len(tag_points) == 4:
         ids = sorted(tag_points.keys())
@@ -195,6 +200,7 @@ def calculateFrame(frame):
                 disp_id = None
 
         class_name = model.names[cls_id]
+        '''
         cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
         cv2.circle(frame, (int(cx), int(cy)), 3, (0, 255, 0), -1)
         if disp_id is not None:
@@ -204,6 +210,7 @@ def calculateFrame(frame):
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2, cv2.LINE_AA)
             if args.debug:
                 print(f"ID {disp_id} | {class_name} | Center: ({int(cx)}, {int(cy)})")
+        '''
 
     if not args.nogui:
         cv2.imshow("Sphero IDs", frame)
@@ -228,8 +235,9 @@ if __name__ == '__main__':
     thread.start()
 
     # TODO start the camera feed, object tracking and updating, all that stuff
-
+    
     try:
+    
         if stream is not None:
             while True:
                 frame = stream.read()
@@ -243,7 +251,7 @@ if __name__ == '__main__':
                 outputQueues = {}
 
                 cam = pipeline.create(dai.node.Camera).build()
-                rgb_output = cam.requestOutput((1920, 1080), type=dai.ImgFrame.Type.RGB888p)
+                rgb_output = cam.requestOutput((600, 500), type=dai.ImgFrame.Type.RGB888p)
                 outputQueues["RGB"] = rgb_output.createOutputQueue()
 
                 pipeline.start()
@@ -252,8 +260,39 @@ if __name__ == '__main__':
                     queue = outputQueues["RGB"]
                     videoIn = queue.get()
                     assert isinstance(videoIn, dai.ImgFrame)
+
+                    # --- LATENCY: Start Measurements (OAK-D) ---
+                    if args.latency:
+                        # 1. Get device capture timestamp (when the image was taken)
+                        capture_timestamp = videoIn.getTimestamp()
+                        
+                        # 2. Get host time *now* (when frame arrived)
+                        host_receive_time = dai.Clock.now()
+                        
+                        # 3. Calculate pipeline latency (device capture -> host receive)
+                        pipeline_latency_ms = (host_receive_time - capture_timestamp).total_seconds() * 1000
+                        
+                        # 4. Start processing timer on host
+                        processing_start_time = time.perf_counter()
+
                     frame = videoIn.getCvFrame()
                     calculateFrame(frame)
+
+                    # --- LATENCY: Stop Measurements (OAK-D) ---
+                    if args.latency:
+                    # 5. End processing timer
+                        processing_end_time = time.perf_counter()
+                        processing_time_ms = (processing_end_time - processing_start_time) * 1000
+
+                        # 6. Get host time *after processing*
+                        host_processed_time = dai.Clock.now()
+                        
+                        # 7. Calculate total end-to-end latency (device capture -> host processing finished)
+                        total_e2e_latency_ms = (host_processed_time - capture_timestamp).total_seconds() * 1000
+                        
+                        # --- Print diagnostics ---
+                        print(f"Pipeline Latency: {pipeline_latency_ms:.2f} ms | Processing Time: {processing_time_ms:.2f} ms | Total E2E Latency: {total_e2e_latency_ms:.2f} ms")
+
 
     except KeyboardInterrupt:
         print("\nShutting down...")
