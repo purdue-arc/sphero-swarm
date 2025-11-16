@@ -24,7 +24,7 @@ parser.add_argument('--latency', '-t', action='store_true', help="Prints the lat
 parser.add_argument('--video', '-v', type=str, help="Use provided video path as input stream")
 parser.add_argument('--webcam', '-w', action='store_true', help="Use webcam as input stream")
 parser.add_argument('--grid', '-g', action='store_true', help="Shows the grid overlay")
-parser.add_argument('--blob', type=str, default="TopDownModel_openvino.blob", help="Path to the OpenVINO .blob file (OAK-D)")
+parser.add_argument('--blob', type=str, default="models/blobls/TopDownModel.blob", help="Path to the OpenVINO .blob file (OAK-D)")
 parser.add_argument('--conf', type=float, default=0.4, help="Confidence threshold for detections")
 parser.add_argument('--max_dist', type=float, default=80.0, help="Max pixel distance to associate detection to existing track")
 
