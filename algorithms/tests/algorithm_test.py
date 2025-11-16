@@ -74,3 +74,8 @@ def test_third_move_set(algorithm):
 
     assert spheros[0].compute_target_position(3) == (2, 2)
     assert spheros[1].compute_target_position(3) == (1, 0)
+
+
+# TODO:
+# Jay: Work on a general test case for the bonding test case for n many spheros and a list of directions and see if the spheros bond correctly. TEST update_sphero_bonds
+#
