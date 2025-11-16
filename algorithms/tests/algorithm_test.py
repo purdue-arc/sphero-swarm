@@ -58,7 +58,10 @@ def test_moveset(
             algorithm.update_grid_move()
             assert algorithm.nodes[target_x][target_y] == (i + 1)
         # make this into a function
-        assert bonded_groups_state[i] == algorithm.swarm.bonded_groups
+        # also update these for loops so it is more clean
+        for j in range(len(algorithm.swarm.bonded_groups)):
+            for k in range(len(algorithm.swarm.bonded_groups[j])):
+                assert bonded_groups_state[i][j][k] == algorithm.swarm.bonded_groups[j][k]
 
 
 # TODO:
