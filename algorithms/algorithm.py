@@ -224,7 +224,7 @@ class Algorithm:
         for bonded_group in self.swarm.bonded_groups:
             self.update_bonded_group_move(bonded_group=bonded_group)
 
-    def update_sphero_bonds(self, sphero): 
+    def update_sphero_bonds(self, sphero) -> bool: 
         """
         Given a sphero, bond to all spheros that can bond to it
 
@@ -232,8 +232,10 @@ class Algorithm:
             sphero: (Sphero) the passed in sphero
 
         Returns:
-            None
+            (bool): Did the sphero bond with at least one neighbor?
         """
+
+        bonded = False
 
         # check all surrounding spheros
         for direction in range(1, DIRECTIONS + 1):
@@ -247,7 +249,8 @@ class Algorithm:
 
                     # bond both spheros if they can bond
                     if sphero.can_bond(adj_sphero=adj_sphero):
-                        self.swarm.combine(id1=sphero.id, id2=adj_id)
+                        bonded = self.swarm.combine(id1=sphero.id, id2=adj_id) or bonded
+        return bonded
     
     def update_grid_bonds(self):
         """
