@@ -21,7 +21,7 @@ from input_streams import WebcamStream, VideoFileStream
 parser = argparse.ArgumentParser(description="Sphero Spotter")
 parser.add_argument('--nogui', '-n', action='store_true', help="Run the Sphero Spotter without opening any GUI windows.")
 parser.add_argument('--locked', '-l', action='store_true', help="Freeze the initial Sphero ID assignments. No new IDs will be assigned after the first frame.")
-parser.add_argument('--model', '-m', type=str, default="./models/bestv3.pt", help="Path to the YOLO model file to use for object detection (default: %(default)s).")
+parser.add_argument('--model', '-m', type=str, default="./models/TopDownModel.pt", help="Path to the YOLO model file to use for object detection (default: %(default)s).")
 parser.add_argument('--debug', '-d', action='store_true', help="Activates debug mode (aka prints out all the spheres)")
 parser.add_argument('--latency', '-t', action='store_true', help="Prints the latency in the camera as well as processing time")
 
@@ -46,20 +46,31 @@ def format_sphero_json(spheroCoord):
     return {"ID": spheroCoord.ID, "X": x, "Y": y}
 
 def pixel_to_grid_coords(pixel_x, pixel_y):
-    '''
-    TODO 
-    @Prithika - create function that takes pixel coords and spits out grid coords based off of our grid size.
-    '''
-    pass
-    return (pixel_x, pixel_y)
+    pixels_per_inch_x = arena_w_px / ARENA_WIDTH_INCH
+    pixels_per_inch_y = arena_h_px / ARENA_HEIGHT_INCH
+
+    cell_w = ROLL_STRAIGHT_INCH * pixels_per_inch_x
+    cell_h = ROLL_STRAIGHT_INCH * pixels_per_inch_y
+
+    grid_x = float(pixel_x / cell_w)
+    grid_y = float(pixel_y / cell_h)
+
+    grid_x = min(grid_x, GRID_WIDTH - 1)
+    grid_y = min(grid_y, GRID_HEIGHT - 1)
+
+    return (grid_x, grid_y)
 # 
 
 ARENA_WIDTH_INCH = 59
 ARENA_HEIGHT_INCH = 49
 ROLL_STRAIGHT_INCH = 12.67
 GRID_WIDTH = GRID_HEIGHT = 7
+arena_w_px = 500
+arena_h_px = 500
 
 def draw_grid(frame, top_left, bottom_right):
+    global arena_h_px, arena_w_px
+
     if not args.grid:
         return frame
 
@@ -129,7 +140,6 @@ def process_apriltags(frame):
         tag_points[tag_id] = corners
 
     # Optional perspective correction if 4 tags detected
-    print(len(tag_points))
     warped = None
     if len(tag_points) == 4:
         ids = sorted(tag_points.keys())
