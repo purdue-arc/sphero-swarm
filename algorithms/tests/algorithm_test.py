@@ -66,3 +66,6 @@ def test_moveset(
 
 # TODO:
 # Jay: Work on a general test case for the bonding test case for n many spheros and a list of directions and see if the spheros bond correctly. TEST update_sphero_bonds
+# Jay: make lines 55-59 one function, 62-64 one function, ideally, if not amek 55-64 one function
+# Jay: have it accept bonded_groups state
+# Jay: find_valid_move and find_bonded_group_move 
