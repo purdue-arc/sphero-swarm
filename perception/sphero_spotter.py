@@ -28,13 +28,16 @@ parser.add_argument('--latency', '-t', action='store_true', help="Prints the lat
 group = parser.add_mutually_exclusive_group()
 group.add_argument('--video', '-v', type=str, help="Use provided video path as input stream")
 group.add_argument('--webcam', '-w', action='store_true', help="Use webcam as input stream")
-group.add_argument('--grid', '-g', action='store_true', help="Shows the grid overlay")
+# (Grid flag is added separately below so it is NOT mutually exclusive with video/webcam)
+
+# `--grid` should NOT be mutually exclusive with `--video` or `--webcam`.
+# Make it an independent flag so users can pass `--video -g` to draw a
+# 500x500 grid on video streams.
+parser.add_argument('--grid', '-g', action='store_true', help="Shows the grid overlay")
 
 args = parser.parse_args()
 
 # CONSTANTS
-GRID_DIM_X = 12 # TODO finalize dimensions
-GRID_DIM_Y = 10
 frame_dim_x = 100000
 frame_dim_y = 100000
 
@@ -90,8 +93,12 @@ def draw_grid(frame, top_left, bottom_right):
     cell_h = ROLL_STRAIGHT_INCH * pixels_per_inch_y
 
     # Determine number of lines (still clamped)
-    num_lines_x = min(int(ARENA_WIDTH_INCH / ROLL_STRAIGHT_INCH), GRID_WIDTH)
-    num_lines_y = min(int(ARENA_HEIGHT_INCH / ROLL_STRAIGHT_INCH), GRID_HEIGHT)
+    '''hi this is alan I'm temporarily making it not accurate to scale
+    so that it will display all of the lines across the screen'''
+    #num_lines_x = min(int(ARENA_WIDTH_INCH / ROLL_STRAIGHT_INCH), GRID_WIDTH)
+    #num_lines_y = min(int(ARENA_HEIGHT_INCH / ROLL_STRAIGHT_INCH), GRID_HEIGHT)
+    num_lines_x = GRID_WIDTH
+    num_lines_y = GRID_HEIGHT
 
     # Vertical lines
     for i in range(num_lines_x + 1):
@@ -152,7 +159,7 @@ def process_apriltags(frame):
             elif i == 3: custom_points.append(tuple(corners[3]))
 
         custom_points = np.array(custom_points, dtype=np.float32)
-        size = 500
+        size = 500 #pixel size of square where frame is fixed to april tags
         dst_pts = np.array([[0,0],[size,0],[0,size],[size,size]], dtype=np.float32)
         M = cv2.getPerspectiveTransform(custom_points, dst_pts)
         warped = cv2.warpPerspective(frame, M, (size, size))
@@ -229,6 +236,19 @@ def calculateFrame(frame):
     global frozen
     # Run YOLOv8 tracking
     frame = process_apriltags(frame)
+    # If we're running with a video input and the grid flag, draw a
+    # fixed 500x500 grid (or clipped to the frame bounds) in the top-left
+    # corner. This ensures the grid size is exactly 500x500 when possible.
+    if args.video and args.grid:
+        fh, fw = frame.shape[:2]
+        # target grid area (width, height)
+        gw, gh = 500, 500
+        # clip to the frame bounds so we don't go out-of-range
+        #br_x = min(gw, fw) - 1
+        #br_y = min(gh, fh) - 1
+        # only draw if there's positive area
+        #if br_x >= 0 and br_y >= 0:
+        frame = draw_grid(frame, (0, 0), (1080, 720))
     results = model.track(frame, tracker="botsort.yaml", persist=True, verbose=False)
     
     if not results or results[0].boxes is None or len(results[0].boxes) == 0:
@@ -269,17 +289,17 @@ def calculateFrame(frame):
                 disp_id = None
 
         class_name = model.names[cls_id]
-        '''
+        # draw bounding boxes 
         cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
         cv2.circle(frame, (int(cx), int(cy)), 3, (0, 255, 0), -1)
         if disp_id is not None:
             spheros[disp_id] = SpheroCoordinate(disp_id, int(cx), int(cy))
-            label = f"{disp_id} {class_name} | Center: ({int(cx)}, {int(cy)})"
+            gx, gy = pixel_to_grid_coords(int(cx), int(cy))
+            label = f"ID {disp_id} | {class_name} | Center: ({int(cx)}, {int(cy)}) | Grid Coords: ({gx:.4f}, {gy:.4f})"
             cv2.putText(frame, label, (int(x1), int(y1) - 6),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2, cv2.LINE_AA)
             if args.debug:
-                print(f"ID {disp_id} | {class_name} | Center: ({int(cx)}, {int(cy)})")
-        '''
+                print(f"ID {disp_id} | {class_name} | Center: ({int(cx)}, {int(cy)}) ")
 
     if not args.nogui:
         cv2.imshow("Sphero IDs", frame)
@@ -303,7 +323,7 @@ if __name__ == '__main__':
     thread = threading.Thread(target=listener, daemon=True)
     thread.start()
 
-    # TODO start the camera feed, object tracking and updating, all that stuff
+    # start the camera feed, object tracking and updating, all that stuff
     
     try:
     
