@@ -152,13 +152,11 @@ def process_apriltags(frame, force_process=False):
         cX, cY = int(r.center[0]), int(r.center[1])
 
         # Draw tag outline and ID
-        '''
         for j in range(4):
             cv2.line(frame, tuple(corners[j]), tuple(corners[(j + 1) % 4]), (0, 255, 0), 2)
         cv2.circle(frame, (cX, cY), 4, (0, 0, 255), -1)
         cv2.putText(frame, f"ID: {tag_id}", (cX - 20, cY - 10),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
-        '''
         tag_points[tag_id] = corners
 
     # Optional perspective correction if 4 tags detected
@@ -335,7 +333,7 @@ def process_frame_async():
                         id_map[tid] = len(id_map)
                 frozen = True
 
-            # Update spheros dictionary
+            # Update spheros dictionary and draw detections on frame
             for (cx, cy, cls_id, x1, y1, x2, y2, tid) in dets:
                 if tid in id_map:
                     disp_id = id_map[tid]
@@ -348,8 +346,15 @@ def process_frame_async():
 
                 if disp_id is not None:
                     spheros[disp_id] = SpheroCoordinate(disp_id, int(cx), int(cy))
+                    
+                    # Draw detection boxes and labels on frame
+                    class_name = model.names[cls_id]
+                    cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+                    cv2.circle(frame, (int(cx), int(cy)), 3, (0, 255, 0), -1)
+                    label = f"{disp_id} {class_name} | Center: ({int(cx)}, {int(cy)})"
+                    cv2.putText(frame, label, (int(x1), int(y1) - 6),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2, cv2.LINE_AA)
                     if args.debug:
-                        class_name = model.names[cls_id]
                         print(f"ID {disp_id} | {class_name} | Center: ({int(cx)}, {int(cy)})")
             
             # Put result in queue (replace if queue is full)
