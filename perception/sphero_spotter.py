@@ -74,6 +74,8 @@ GRID_WIDTH = GRID_HEIGHT = 7
 arena_w_px = 500
 arena_h_px = 500
 
+last_valid_frame = None
+
 def draw_grid(frame, top_left, bottom_right):
     global arena_h_px, arena_w_px
 
@@ -373,6 +375,8 @@ def process_frame_async():
 
 def calculateFrame(frame, frame_timestamp=None):
     """Main frame processing function - now uses async processing"""
+    global last_valid_frame
+    
     # Add frame to processing queue (drop if queue is full = we're behind)
     frame_data = (frame.copy(), frame_timestamp if frame_timestamp else time.time())
     if frame_queue.full():
@@ -388,6 +392,7 @@ def calculateFrame(frame, frame_timestamp=None):
     # Try to get latest result (non-blocking)
     try:
         result_frame, dets, result_timestamp = result_queue.get_nowait()
+        last_valid_frame = result_frame  # Store the last valid processed frame
         
         # Display frame
         if not args.nogui:
@@ -398,9 +403,9 @@ def calculateFrame(frame, frame_timestamp=None):
             if cv2.getWindowProperty("Sphero IDs", cv2.WND_PROP_VISIBLE) < 1:
                 raise SystemExit("Window closed")
     except Empty:
-        # No result yet, show current frame if GUI is enabled
-        if not args.nogui:
-            cv2.imshow("Sphero IDs", frame)
+        # No result yet, show last valid frame if available
+        if not args.nogui and last_valid_frame is not None:
+            cv2.imshow("Sphero IDs", last_valid_frame)
             key = cv2.waitKey(1) & 0xFF
             if key == 27:  # ESC
                 raise SystemExit("Key input clicks")
