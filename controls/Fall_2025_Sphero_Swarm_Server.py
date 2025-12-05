@@ -16,7 +16,6 @@ from spherov2.commands.drive import DriveFlags
 import threading
 # instructions for the purposes of organization
 from .Instruction import Instruction
-from .Instruction import Instruction
 
 import time
 
@@ -123,6 +122,13 @@ def command_gathering(valid_sphero_ids, command_array_2d):
     s.bind(('localhost', port))
     # enables the system to handle up to 5 connections before refusing more
     s.listen(5)
+
+    # insert for buffering 
+    temp_s = socket.socket()
+    # arbitrary non-priv port that isn't the one used by the server
+    temp_port = 4324
+    temp_s.connect(('localhost', temp_port))
+
     print("Waiting for connection to client...")
     # conn is the object required for comm with the other files
     conn, address = s.accept()
@@ -299,6 +305,12 @@ def run_server(ball_names):
 
     # then sort the addresses to match given order, due to system complexities
     address_sort(toys_addresses, name_to_location_dict)
+    valid_sphero_ids = []
+    for ball_name in ball_names:
+        valid_sphero_ids.append(name_to_location_dict[ball_name])
+    # sorted in ascending order
+    valid_sphero_ids.sort(key = lambda ball_id : ball_id)
+    print("ID's linked to initial ball names provided, sorted: {}".format(valid_sphero_ids))
 
     # sb list has length of the number of valid ids
     sb_list = [None] * len(toys_addresses)
@@ -317,7 +329,7 @@ def run_server(ball_names):
 
         commands_array = []
         # set up server at this point in thread...
-        cmd_gather_thread = threading.Thread(target=command_gathering, args=[ball_names, commands_array])
+        cmd_gather_thread = threading.Thread(target=command_gathering, args=[valid_sphero_ids, commands_array])
         cmd_gather_thread.start()
         
         num_commands_run = 1

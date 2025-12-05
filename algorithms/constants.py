@@ -53,7 +53,7 @@ GRAY = (150, 150, 150)
 COLORS = [BLUE, RED, GREEN, YELLOW, PURPLE, ORANGE]
 
 SPHERO_TAGS = [
-    'SB-B11D',
+    'SB-76B3',
     'SB-BD0A',
     'SB-1840', 
     'SB-E274', 

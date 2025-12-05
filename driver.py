@@ -9,7 +9,7 @@ from time import sleep
 import threading
 import pygame
 
-if __name__ == "__main__":
+def main():
     s = socket.socket()
     port = 1235
 
@@ -83,3 +83,6 @@ if __name__ == "__main__":
         running = False
         pygame.quit()
         s.close()
+
+if __name__ == "__main__":
+    main()
