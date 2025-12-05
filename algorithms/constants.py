@@ -54,10 +54,11 @@ COLORS = [BLUE, RED, GREEN, YELLOW, PURPLE, ORANGE]
 
 SPHERO_TAGS = [
     'SB-76B3',
-    'SB-BD0A',
+    'SB-E274',
     'SB-1840', 
-    'SB-E274', 
-    'SB-CEB2'
+    'SB-B11D', 
+    'SB-CEB2',
+    'SB-BD0A',
 ]
 INITIAL_POSITIONS = [(0,0), (0,2), (1, 3), (3, 3), (3, 1)]
 
