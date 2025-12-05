@@ -102,7 +102,7 @@ Wait until the server displays:
 waiting for connection from client
 ```
 
-### Run the Client
+### 3. Run the Client
 - Open a **new terminal**
 - Make sure you are in the **root directory**
 - Run:
