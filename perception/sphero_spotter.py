@@ -24,7 +24,7 @@ from input_streams import WebcamStream, VideoFileStream
 parser = argparse.ArgumentParser(description="Sphero Spotter")
 parser.add_argument('--nogui', '-n', action='store_true', help="Run the Sphero Spotter without opening any GUI windows.")
 parser.add_argument('--locked', '-l', action='store_true', help="Freeze the initial Sphero ID assignments. No new IDs will be assigned after the first frame.")
-parser.add_argument('--model', '-m', type=str, default="./models/TopDownModel.pt", help="Path to the YOLO model file to use for object detection (default: %(default)s).")
+parser.add_argument('--model', '-m', type=str, default="./models/bestv3.pt", help="Path to the YOLO model file to use for object detection (default: %(default)s).")
 parser.add_argument('--debug', '-d', action='store_true', help="Activates debug mode (aka prints out all the spheres)")
 parser.add_argument('--latency', '-t', action='store_true', help="Prints the latency in the camera as well as processing time")
 parser.add_argument('--imgsz', type=int, default=640, help="YOLO inference image size (smaller = faster, default: 640)")
@@ -411,7 +411,6 @@ def calculateFrame(frame, frame_timestamp=None):
                 raise SystemExit("Key input clicks")
             if cv2.getWindowProperty("Sphero IDs", cv2.WND_PROP_VISIBLE) < 1:
                 raise SystemExit("Window closed")
-
 if __name__ == '__main__':
 
     if args.webcam:
