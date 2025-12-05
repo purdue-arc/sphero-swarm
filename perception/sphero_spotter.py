@@ -326,8 +326,6 @@ def process_frame_async():
                     cls_id = int(b.cls[0])
                     dets.append((cx, cy, cls_id, x1, y1, x2, y2, tid))
             
-            # Print number of detected balls
-            print(f"Balls detected: {len(dets)} | Spheros tracked: {len(spheros)}")
 
             if not frozen and dets:
                 dets_sorted = sorted(dets, key=lambda t: (t[0], t[1]))
@@ -432,11 +430,10 @@ if __name__ == '__main__':
                 frame = stream.read()
                 if frame is None:
                     continue
-
                 calculateFrame(frame)
         else:
-            device = dai.Device()
-            with dai.Pipeline(device) as pipeline:
+            dai_device = dai.Device()
+            with dai.Pipeline(dai_device) as pipeline:
                 outputQueues = {}
 
                 cam = pipeline.create(dai.node.Camera).build()
@@ -479,7 +476,7 @@ if __name__ == '__main__':
                         
                         # 7. Calculate total end-to-end latency (device capture -> host queued)
                         total_e2e_latency_ms = (host_queued_time - capture_timestamp).total_seconds() * 1000
-                        
+                    
                         # --- Print diagnostics ---
                         print(f"Pipeline Latency: {pipeline_latency_ms:.2f} ms | Queue Time: {queue_time_ms:.2f} ms | Total E2E Latency (to queue): {total_e2e_latency_ms:.2f} ms")
 
