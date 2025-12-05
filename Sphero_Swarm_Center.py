@@ -1,5 +1,5 @@
-# ongoing work - please do not change it - for the love of all that is decent and working
-# still broken - broadcasting kill flag doesn't seem to be working on an interfile basis
+# still broken - broadcasting kill flag doesn't seem to be working on an interfile basis,
+# but otherwise working
 
 import subprocess
 import threading
