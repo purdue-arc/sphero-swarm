@@ -85,6 +85,31 @@ This section summarizes the purpose, key components, and usage connections of th
 
 ---
 
+
+## Running the Demo
+
+### 1. Update Sphero IDs
+- Change the Sphero IDs in the constants (wherever `SB` is defined) to the IDs of the Spheros being used for the demo.
+
+---
+
+### 2. Run the Server
+```bash
+python3 Fall_2025_Sphero_Swarm_Server.py
+```
+Wait until the server displays: 
+```
+waiting for connection from client
+```
+
+### Run the Client
+- Open a **new terminal**
+- Make sure you are in the **root directory**
+- Run:
+```bash
+python3 driver.py
+
+
 ## IMPORTANT NOTE
 
 x is treated as the height, and y is treated as the width. Where (0,0) is the top left corner of the grid and (HEIGHT - 1, WIDTH - 1) is the bottom right corner. 
