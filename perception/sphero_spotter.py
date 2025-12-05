@@ -166,7 +166,7 @@ def process_apriltags(frame):
 def initialize_spheros():
     '''
     TODO @anthony
-    initializes global sphero object array.
+    initializes global sphero object array,
     Returns number of spheros found.
     '''
     n_found = 0
