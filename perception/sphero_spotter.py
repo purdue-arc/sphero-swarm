@@ -325,6 +325,9 @@ def process_frame_async():
                     cy = 0.5 * (y1 + y2)
                     cls_id = int(b.cls[0])
                     dets.append((cx, cy, cls_id, x1, y1, x2, y2, tid))
+            
+            # Print number of detected balls
+            print(f"Balls detected: {len(dets)} | Spheros tracked: {len(spheros)}")
 
             if not frozen and dets:
                 dets_sorted = sorted(dets, key=lambda t: (t[0], t[1]))
@@ -424,7 +427,6 @@ if __name__ == '__main__':
     processing_thread.start()
     
     try:
-    
         if stream is not None:
             while True:
                 frame = stream.read()
