@@ -3,6 +3,7 @@ from .constants import *
 from .swarm import Swarm
 from .sphero import Sphero
 from typing import cast
+from math import hypot
 
 class Algorithm:
     def __init__(self, grid_width, grid_height, n_spheros,
@@ -247,7 +248,10 @@ class Algorithm:
 
                     # bond both spheros if they can bond
                     if sphero.can_bond(adj_sphero=adj_sphero):
-                        self.swarm.combine(id1=sphero.id, id2=adj_id)
+                        new_group_index = self.swarm.combine(id1=sphero.id, id2=adj_id)
+
+                        # determine new pivot sphero for resulting group
+                        self.swarm.bonded_group_centers[new_group_index] = self.calculate_bonded_group_center(self.swarm.bonded_groups[new_group_index])
     
     def update_grid_bonds(self):
         """
@@ -262,3 +266,42 @@ class Algorithm:
 
         for sphero in self.spheros:
             self.update_sphero_bonds(sphero=sphero)
+
+    def calculate_bonded_group_center(self, group):
+        """
+        Calculate the id of the sphero to be used as the pivot point for the bonded group
+
+        Args:
+            bonded group (swarm.bonded_groups[index])
+
+        Returns:
+            pivot sphero id (sphero.id)
+        """
+
+        total_x = 0
+        total_y = 0
+        n = 0
+
+        for id in group:
+            sphero = self.find_sphero(id)
+            total_x += sphero.x
+            total_y += sphero.y
+            n += 1
+
+        x_avg = total_x / n
+        y_avg = total_y / n
+
+        closest_sphero = 0
+        closest_distance = -1
+
+        for id in group:
+            sphero = self.find_sphero(id)
+
+            distance = hypot(x_avg - sphero.x, y_avg - sphero.y)
+
+            if (closest_distance == -1) or (distance < closest_distance):
+                closest_distance = distance
+                closest_sphero = id
+    
+
+        return closest_sphero

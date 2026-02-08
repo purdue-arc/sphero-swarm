@@ -15,13 +15,13 @@ position_change = {
     8: (-1, 1)
 }
 
-N_SPHEROS = 2
+N_SPHEROS = 4
 
 # the number of nodes on the grid widthwise
-GRID_WIDTH = 4
+GRID_WIDTH = 5
 
 # the number of nodes on the grid heightwise
-GRID_HEIGHT = 4
+GRID_HEIGHT = 5
 
 # the pixel distance between two nodes 
 SIM_DIST = 50
@@ -60,5 +60,5 @@ SPHERO_TAGS = [
     'SB-CEB2',
     'SB-BD0A',
 ]
-INITIAL_POSITIONS = [(0,0), (0,2), (1, 3), (3, 3), (3, 1)]
+INITIAL_POSITIONS = [(0,0), (0,1), (3, 4), (4, 4), (6, 2)]
 
