@@ -57,6 +57,7 @@ def test_moveset(
             algorithm.spheros[i].update_direction(direction=moveset[i][j])
             algorithm.update_grid_move()
             assert algorithm.nodes[target_x][target_y] == (i + 1)
+            algorithm.update_grid_bonds()
         # make this into a function
         # also update these for loops so it is more clean
         for j in range(len(algorithm.swarm.bonded_groups)):
