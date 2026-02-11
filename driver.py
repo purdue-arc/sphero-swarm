@@ -56,7 +56,10 @@ def main():
 
             coordinate_json["spheros"] # contains list of spheros with id, x, and y
 
-            # method that checks for signicant errors above some delta 
+            # method that checks for signicant errors above some delta
+            
+            
+            # algorithm.check_for_errors()
             
 
             algorithm.update_grid_bonds()

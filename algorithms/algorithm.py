@@ -4,6 +4,8 @@ from .swarm import Swarm
 from .sphero import Sphero
 from typing import cast
 
+from algorithms import sphero
+
 class Algorithm:
     def __init__(self, grid_width, grid_height, n_spheros,
                  colors=None, initial_positions=None):
@@ -249,6 +251,17 @@ class Algorithm:
                     if sphero.can_bond(adj_sphero=adj_sphero):
                         self.swarm.combine(id1=sphero.id, id2=adj_id)
     
+    def check_for_errors(self):
+            # this is under the assumption that there is some update method called before this 
+            # that will update sphero.x and sphero.y to the coordinates recieved from perceptions after 
+            # a set of commands is run 
+            # at this stage: target_x and target_y are the previous target positions so optimally x == target_x and y == target_y, but if there are significant errors, then we should update the target position to be the current position
+            for sphero in self.spheros:
+                if abs(sphero.x - sphero.target_x) > EPSILON or abs(sphero.y - sphero.target_y) > EPSILON:
+                    return True
+            return False
+
+
     def update_grid_bonds(self):
         """
         Update the bonds for all spheros
