@@ -47,7 +47,10 @@ def main():
             s.send_string("coords")
             
 
-            # method that checks for signicant errors above some delta 
+            # method that checks for signicant errors above some delta
+            
+            
+            algorithm.check_for_errors()
             
             
             algorithm.update_grid_bonds()
