@@ -50,7 +50,7 @@ def main():
             # method that checks for signicant errors above some delta
             
             
-            algorithm.check_for_errors()
+            # algorithm.check_for_errors()
             
             
             algorithm.update_grid_bonds()
