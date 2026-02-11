@@ -52,8 +52,9 @@ def main():
 
             # prompt socket for coords
             socket.send_string("coords")
-            coordinate_json = socket.recv_json()
-            
+            coordinate_json = socket.recv_json() # type dictionary
+
+            coordinate_json["spheros"] # contains list of spheros with id, x, and y
 
             # method that checks for signicant errors above some delta 
             
