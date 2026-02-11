@@ -139,7 +139,7 @@ class Algorithm:
         return (not self.nodes[target_x][target_y] or
                 self.swarm.is_bonded(id1=id, id2=self.nodes[target_x][target_y]))
 
-    def find_valid_move(self, sphero, possible_directions): # -> List[int]
+    def find_valid_move(self, sphero, possible_directions, ): # -> List[int]
         """
         Find a valid direction for a sphero given a list of possible directions
 
@@ -224,7 +224,7 @@ class Algorithm:
         for bonded_group in self.swarm.bonded_groups:
             self.update_bonded_group_move(bonded_group=bonded_group)
 
-    def update_sphero_bonds(self, sphero): 
+    def update_sphero_bonds(self, sphero, isError): 
         """
         Given a sphero, bond to all spheros that can bond to it
 
@@ -261,4 +261,4 @@ class Algorithm:
         """
 
         for sphero in self.spheros:
-            self.update_sphero_bonds(sphero=sphero)
+            self.update_sphero_bonds(sphero=sphero) # add isError as another parameter to use as a flag
