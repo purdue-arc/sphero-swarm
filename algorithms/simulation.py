@@ -108,7 +108,8 @@ if __name__ == "__main__":
                             n_spheros=N_SPHEROS,
                             initial_positions=INITIAL_POSITIONS)
     for sphero in algorithm.spheros:
-        spheros.append(LinkedSphero(sphero))
+        # spheros.append(LinkedSphero(sphero))
+        spheros.append(sphero) 
     
     running = True
     while running:
@@ -155,7 +156,8 @@ def StartSimulation(algorithm):
     pygame.display.set_caption("sphero-swarm simulation")
 
     for sphero in algorithm.spheros:
-        spheros.append(LinkedSphero(sphero))
+        # spheros.append(LinkedSphero(sphero))
+        spheros.append(sphero) 
     
     running = True
     while running:
