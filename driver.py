@@ -8,12 +8,18 @@ from controls.Instruction import Instruction
 from time import sleep
 import threading
 import pygame
+import zmq # socket to connect to perceptions
+import json
 
 def main():
     s = socket.socket()
     port = 1235
 
     s.connect(('localhost', port))
+
+    context = zmq.Context()
+    socket = context.socket(zmq.REP)
+    socket.connect("tcp://localhost:5555")
 
     sphero_tag = SPHERO_TAGS
     initial_positions = INITIAL_POSITIONS
@@ -40,11 +46,13 @@ def main():
                 sphero.x = sphero.target_x
                 sphero.y = sphero.target_y
 
-            # prompt socket for coordinates 
-            s.send_string("init")
-            reply = s.recv_string()
+            # send initialization message
+            socket.send_string("init")
+            socket.recv_string()
 
-            s.send_string("coords")
+            # prompt socket for coords
+            socket.send_string("coords")
+            coordinate_json = socket.recv_json()
             
 
             # method that checks for signicant errors above some delta
@@ -52,7 +60,7 @@ def main():
             
             # algorithm.check_for_errors()
             
-            
+
             algorithm.update_grid_bonds()
             algorithm.update_grid_move()
 
