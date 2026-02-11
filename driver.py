@@ -39,6 +39,17 @@ def main():
             for sphero in algorithm.spheros:
                 sphero.x = sphero.target_x
                 sphero.y = sphero.target_y
+
+            # prompt socket for coordinates 
+            s.send_string("init")
+            reply = s.recv_string()
+
+            s.send_string("coords")
+            
+
+            # method that checks for signicant errors above some delta 
+            
+            
             algorithm.update_grid_bonds()
             algorithm.update_grid_move()
 
