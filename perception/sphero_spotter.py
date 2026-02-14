@@ -35,6 +35,7 @@ group = parser.add_mutually_exclusive_group()
 group.add_argument('--video', '-v', type=str, help="Use provided video path as input stream")
 group.add_argument('--webcam', '-w', action='store_true', help="Use webcam as input stream")
 group.add_argument('--grid', '-g', action='store_true', help="Shows the grid overlay")
+group.add_argument('--server', '-s', action='store_true', help="Streams video to server")
 
 args = parser.parse_args()
 
