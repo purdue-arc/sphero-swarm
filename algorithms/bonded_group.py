@@ -1,11 +1,71 @@
+from .sphero import Sphero
+import math
+
+
 class BondedGroup:
-    def __init__(self,list_spheros,id):
-        self.group_id = id
-        self.spheros = list_spheros
-        self.center = None
-        self.size = len(list_spheros)
-        self.box = [0,0,0,0]
+    def __init__(self, list_spheros: list[Sphero], id: int):
+        self.group_id = id              # groups have unique ids starting at 0
+        self.spheros = list_spheros     
+        self.size = len(self.spheros)   
+        self.box = [0,0,0,0]            # bounding box dimensions from center. order: U, D, L, R
+
+        self.center = self.find_center() # ID of the center sphero (1, 2, 3, ...)
+
     
+    def find_center(self) -> int:
+        '''
+        Returns the sphero_id of the sphero closest 
+        to the average coordinate of all spheros in this group.
+        '''
+
+        # calculate average position in the group
+        sum_x = 0
+        sum_y = 0
+        for sphero in self.spheros:
+            sum_x += sphero.x
+            sum_y += sphero.y
+
+        average_position = (sum_x / self.size, sum_y / self.size)
+
+        # find the sphero that is closest to this average point
+        closest_sphero = self.spheros[0].id
+        current_position = (self.spheros[0].x, self.spheros[0].y)
+
+        closest_distance = math.dist(average_position, current_position)
+
+        for sphero in self.spheros:
+            current_position = (sphero.x, sphero.y)
+            current_distance = math.dist(current_position, average_position) # current sphero dist to true center
+            if current_distance < closest_distance:
+                closest_sphero = sphero.id
+                closest_distance = current_distance
+        
+        return closest_sphero
+    
+    def update_center(self) -> None:
+        self.center = self.find_center()
+
+    
+    # randomly pick a valid translation or a valid rotation
+    # take out that option from the valid options.
+
+    # reset translation / rotation options
+
+    # check if an inputted translation is valid
+    # def check_movement_direction(self):
+    
+    # def 
+
+    def __str__(self) -> str:
+        '''
+        Returns a string representation of the BondedGroup with all attributes. Thanks Copilot
+        '''
+        sphero_ids = [sphero.id for sphero in self.spheros]
+        return (f"BondedGroup(group_id={self.group_id}, size={self.size}, "
+                f"center_id={self.center}, sphero_ids={sphero_ids}, "
+                f"bounding_box(U,D,L,R)={self.box})")
+
+
 
 
 
