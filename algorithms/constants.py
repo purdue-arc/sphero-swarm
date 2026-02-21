@@ -1,60 +1,85 @@
-MARGIN = 0
-DIRECTIONS = 8
+import json
 
-ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8]
 
-position_change = {
-    0: (0, 0),
-    1: (0, 1),
-    2: (1, 1),
-    3: (1, 0),
-    4: (1, -1),
-    5: (0, -1),
-    6: (-1, -1),
-    7: (-1, 0),
-    8: (-1, 1)
-}
+class Constants:
+    def __init__(self) -> None:
+        # CONSTANTS
+        self.MARGIN = 0
+        self.DIRECTIONS = 8
 
-N_SPHEROS = 2
+        self.ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8]
 
-# the number of nodes on the grid widthwise
-GRID_WIDTH = 4
+        self.position_change = {
+            0: (0, 0),
+            1: (0, 1),
+            2: (1, 1),
+            3: (1, 0),
+            4: (1, -1),
+            5: (0, -1),
+            6: (-1, -1),
+            7: (-1, 0),
+            8: (-1, 1),
+        }
+        self.EPSILON = 0.01
 
-# the number of nodes on the grid heightwise
-GRID_HEIGHT = 4
+        self.BLUE = (0, 0, 255)
+        self.RED = (255, 0, 0)
+        self.GREEN = (0, 255, 0)
+        self.YELLOW = (255, 255, 0)
+        self.PURPLE = (128, 0, 128)
+        self.ORANGE = (255, 165, 0)
 
-# the pixel distance between two nodes 
-SIM_DIST = 50
-FRAMES = 60
+        self.BLACK = (0, 0, 0)
+        self.WHITE = (255, 255, 255)
+        self.GRAY = (150, 150, 150)
 
-SPHERO_SIM_RADIUS = 15
+        self.COLORS = [self.BLUE, self.RED, self.GREEN, self.YELLOW, self.PURPLE, self.ORANGE]
 
-SIM_WIDTH = (GRID_WIDTH-1) * SIM_DIST
-SIM_HEIGHT = (GRID_HEIGHT-1) * SIM_DIST
+        # VARIABLED
+        self.N_SPHEROS = 2
+        self.GRID_WIDTH = 4
+        self.GRID_HEIGHT = 4
+        self.SPHERO_SPEED = 60
+        # 60 * sqrt(2), but adjusted for acceleration. Thanks to jack for testing this
+        self.SPHERO_DIAGONAL_SPEED = 76
 
-EPSILON = 0.01
+        # in seconds
+        self.ROLL_DURATION = 0.8
+        self.TURN_DURATION = 0.5
 
-SPHERO_SPEED = 60
-SPHERO_DIAGONAL_SPEED = 76 # 60 * sqrt(2), but adjusted for acceleration. Thanks to jack for testing this
-ROLL_DURATION = 0.8 # in seconds
-TURN_DURATION = 0.5 # in seconds
+        self.SPHERO_TAGS = [
+            "SB-B11D",
+            "SB-BD0A",
+        ]
+        self.INITIAL_POSITIONS = [(0, 0), (0, 2), (1, 3), (3, 3), (3, 1)]
 
-BLUE = (0, 0, 255)
-RED = (255, 0, 0)
-GREEN = (0, 255, 0)
-YELLOW = (255, 255, 0)
-PURPLE = (128, 0, 128)
-ORANGE = (255, 165, 0)
+    def update_variable_constants(self, json_path: str) -> None:
+        variable_fields = {
+            "N_SPHEROS",
+            "GRID_WIDTH",
+            "GRID_HEIGHT",
+            "SPHERO_SPEED",
+            "SPHERO_DIAGONAL_SPEED",
+            "ROLL_DURATION",
+            "TURN_DURATION",
+            "SPHERO_TAGS",
+            "INITIAL_POSITIONS",
+        }
 
-BLACK = (0, 0, 0)
-WHITE = (255, 255, 255)
-GRAY = (150, 150, 150)
+        with open(json_path, "r", encoding="utf-8") as handle:
+            updates = json.load(handle)
 
-COLORS = [BLUE, RED, GREEN, YELLOW, PURPLE, ORANGE]
+        for key, value in updates.items():
+            if key in variable_fields:
+                setattr(self, key, value)
 
-SPHERO_TAGS = [
-    'SB-B11D', 
-    'SB-BD0A',
-]
-INITIAL_POSITIONS = [(0,0), (0,2), (1, 3), (3, 3), (3, 1)]
 
+constants = Constants()
+
+__all__ = ["Constants", "constants"]
+
+if __name__ == "__main__":
+    test = Constants() 
+    print("sphero speed should be 60: ", test.SPHERO_SPEED)
+    test.update_variable_constants("./documentation/example_constants.json")
+    print("sphero speed (should be 70 not 60): ", test.SPHERO_SPEED) 
