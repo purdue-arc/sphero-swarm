@@ -2,121 +2,106 @@ import random
 from .constants import *
 from .swarm import Swarm
 from .sphero import Sphero
+from .bonded_group import BondedGroup
 from typing import cast
 from math import hypot
 
 class Algorithm:
-    def __init__(self, grid_width, grid_height, n_spheros,
-                 colors=None, initial_positions=None):
+    def __init__(self, grid_width, grid_height, spheros: list[Sphero]):
         
         self.grid_width = grid_width
         self.grid_height = grid_height
 
-        # 2D array representing the nodes of our grid
-        # nodes[i][j] = 0 means no sphero is on the node
-        # nodes[i][j] != 0 means that the sphero with the id of value nodes[i][j] is at that node
-        self.nodes = [ [0 for _ in range(grid_height)] for _ in range(grid_width)] 
-        self.n_spheros = n_spheros
-        self.spheros: list[Sphero] = cast(list[Sphero], [None] * n_spheros)
+        # 2D arrays representing the nodes of our grid
+        # grid[i][j] = 0 means no sphero is on the node
+        # grid[i][j] != 0 means that the sphero with the id of value grid[i][j] is at that node
+        self.current_grid = [ [0 for _ in range(grid_height)] for _ in range(grid_width)] 
+        self.next_grid = [ [0 for _ in range(grid_height)] for _ in range(grid_width)] 
 
-        # generate random initial positions if none passed in
-        if not initial_positions:
-            initial_positions = self.generate_random_grid()
+        self.n_spheros = len(spheros)
 
-        # generate random colors for spheros if none passed in
-        if not colors:
-            colors = self.generate_colors()
-
-        id = 1
-        for (x, y), color in zip(initial_positions, colors):
-            self.spheros[id - 1] = Sphero(id=id, x=x, y=y, color=color, direction=1)
-            self.nodes[x][y] = id
+        # initialize bonded_groups
+        self.bonded_groups = []
+        id = 0
+        for sphero in spheros:
+            self.bonded_groups.append(BondedGroup([sphero], id))
             id += 1
+            
 
-        self.swarm = Swarm(n=n_spheros)
 
-    def generate_colors(self): # -> List[color]
-        """
-        Generate a list of colors, with length equal to the number of spheros
+    def __str__(self) -> str:
+        return_str = 'Algorithm\n'
+        for group in self.bonded_groups:
+            return_str += '\t' + str(group) + '\n'
+        return return_str
 
-        Args:
-            None
 
-        Returns:
-            List[colors]: a list of colors, with length equal to the number of spheros
-        """
+    def move_groups(self):
+        '''
+        for each group: 
+            valid_move = self.find_group_move(group)
+            if valid_move == -1 there are no valid moves, don't do anything
+                we still have to update our stuff tho
+            if valid_move == 1-8 
+                update all necessary attributes for a translation
+            if valid_move == 9 or 10 
+                update all necessary attributes for a rotation
+            
+            Things that will be updated for each move:
+            - next_grid for each sphero in each group
+            - target position for each sphero in each group
+            - direction & previous direction 
 
-        colors = []
-        for i in range(self.n_spheros):
-            colors.append(COLORS[i % len(COLORS)])
-        return colors
+        at the end, call flip() to make current_grid = next_grid and to wipe next_grid
+        '''
 
-    def random_initial_position(self): # -> (int, int)
-        """
-        Generate a random initial position on the grid that is both in bounds and
-        doesn't collide with another sphero
 
-        Args:
-            None
+    def find_group_move(self, group)-> int:
+        '''
+        TODO
 
-        Returns:
-            (int, int): a valid random initial position
-        """
+        randomly select a translation or a rotation from group.valid_moves
+        take out that option from the group.valid_moves
+        check if it's valid 
+            if it's translation, check by calling self.check_translation(move)
+            else do some special stuff for checking rotation of the group TODO @John
+        if it is valid, 
+            reset valid_directions to be 1-10 again and 
+            return the move direction
+        if it isn't, 
+            don't reset valid_directions
+            keep trying to find a valid move
+        if we run out of valid_directions to try
+            reset 
+            return -1
+        '''
 
-        x = random.randint(MARGIN, self.grid_width - MARGIN - 1)
-        y = random.randint(MARGIN, self.grid_height - MARGIN - 1)
-        while self.nodes[x][y]:
-            x = random.randint(MARGIN, self.grid_width - MARGIN - 1)
-            y = random.randint(MARGIN, self.grid_height - MARGIN - 1)
+    def check_translation(self, sphero: Sphero, move: int) -> bool:
+        '''
+        Only to be used for checking translations (moves 1-8)
+        for each sphero in self.spheros, check if the move will:
+            1. go out of bounds
+            2. go where another sphero is in self.next_grid
+        '''   
+        # check for a translation
+        if move in position_change.keys():
+            dx, dy = position_change[move]
 
-        # fill in board with temporary id
-        self.nodes[x][y] = -1
-        return x, y
+            in_bounds = (MARGIN <= sphero.x + dx < self.grid_width - MARGIN and 
+                        MARGIN <= sphero.y + dy < self.grid_height - MARGIN)
+            no_collisions = False # TODO check if the new position 
+            return in_bounds and no_collisions
+        # check for a rotation
+        else:
+            assert False, 'Do not use this function to check rotational moves!'
+    
+    def check_rotation(self, group) -> bool:
+        '''
 
-    def generate_random_grid(self): # -> List[int]
-        """
-        Generate a random set of initial positions for all spheros on the grid
+        '''
+        pass
 
-        Args:
-            None
-        
-        Returns:
-            List[int]: a list of random intiial positions, with length equal to the number of spheros
-        """
 
-        positions = []
-        for _ in range(self.n_spheros):
-            x, y = self.random_initial_position()
-            positions.append((x, y))
-        return positions
-
-    def find_sphero(self, id): # -> Sphero
-        """
-        The sphero object that has the specified id
-
-        Args:
-            id: (int) the sphero's id
-        
-        Returns:
-            (Sphero): the sphero object that has the specified id
-        """
-        if id:
-            return self.spheros[id - 1]
-        return None
-
-    def in_bounds(self, x, y): # -> bool
-        """
-        Determines if the passed in position is in the grid bounaries
-
-        Args:
-            x: (int) passed in x-coordinate 
-            y: (int) passed in y-coordinate
-
-        Returns:
-            (bool): Is the x and y coordinates in the boundaries of the grid?
-        """
-
-        return MARGIN <= x < self.grid_width - MARGIN and MARGIN <= y < self.grid_height - MARGIN
     
     def is_valid_move(self, direction, sphero): # -> bool
         """
@@ -140,21 +125,22 @@ class Algorithm:
         return (not self.nodes[target_x][target_y] or
                 self.swarm.is_bonded(id1=id, id2=self.nodes[target_x][target_y]))
 
-    def find_valid_move(self, sphero, possible_directions): # -> List[int]
-        """
-        Find a valid direction for a sphero given a list of possible directions
 
-        Args:
-            sphero: (Sphero) the passed in sphero
-            possible_directions: (List[int]) a list of possible directions
+    # def find_valid_move(self, sphero, possible_directions): # -> List[int]
+    #     """
+    #     Find a valid direction for a sphero given a list of possible directions
 
-        Returns:
-            (List[int]): a list of all valid directions for the given sphero
-        """
-        for direction in possible_directions[:]:
-            if not self.is_valid_move(direction=direction, sphero=sphero):
-                possible_directions.remove(direction)
-        return possible_directions if possible_directions else []
+    #     Args:
+    #         sphero: (Sphero) the passed in sphero
+    #         possible_directions: (List[int]) a list of possible directions
+
+    #     Returns:
+    #         (List[int]): a list of all valid directions for the given sphero
+    #     """
+    #     for direction in possible_directions[:]:
+    #         if not self.is_valid_move(direction=direction, sphero=sphero):
+    #             possible_directions.remove(direction)
+    #     return possible_directions if possible_directions else []
     
     def find_bonded_group_move(self, bonded_group): # -> int
         """
@@ -176,6 +162,7 @@ class Algorithm:
         direction = random.choice(possible_directions) if possible_directions else 0
         return direction
     
+    # change to flip()
     def update_nodes(self, sphero):
         """
         Update the nodes array with the target position of the sphero
@@ -225,6 +212,7 @@ class Algorithm:
         for bonded_group in self.swarm.bonded_groups:
             self.update_bonded_group_move(bonded_group=bonded_group)
 
+    # change
     def update_sphero_bonds(self, sphero): 
         """
         Given a sphero, bond to all spheros that can bond to it
@@ -267,41 +255,112 @@ class Algorithm:
         for sphero in self.spheros:
             self.update_sphero_bonds(sphero=sphero)
 
-    def calculate_bonded_group_center(self, group):
-        """
-        Calculate the id of the sphero to be used as the pivot point for the bonded group
+# def generate_colors(self): # -> List[color]
+    #     """
+    #     Generate a list of colors, with length equal to the number of spheros
 
-        Args:
-            bonded group (swarm.bonded_groups[index])
+    #     Args:
+    #         None
 
-        Returns:
-            pivot sphero id (sphero.id)
-        """
+    #     Returns:
+    #         List[colors]: a list of colors, with length equal to the number of spheros
+    #     """
 
-        total_x = 0
-        total_y = 0
-        n = 0
+    #     colors = []
+    #     for i in range(self.n_spheros):
+    #         colors.append(COLORS[i % len(COLORS)])
+    #     return colors
 
-        for id in group:
-            sphero = self.find_sphero(id)
-            total_x += sphero.x
-            total_y += sphero.y
-            n += 1
+    # def random_initial_position(self): # -> (int, int)
+    #     """
+    #     Generate a random initial position on the grid that is both in bounds and
+    #     doesn't collide with another sphero
 
-        x_avg = total_x / n
-        y_avg = total_y / n
+    #     Args:
+    #         None
 
-        closest_sphero = 0
-        closest_distance = -1
+    #     Returns:
+    #         (int, int): a valid random initial position
+    #     """
 
-        for id in group:
-            sphero = self.find_sphero(id)
+    #     x = random.randint(MARGIN, self.grid_width - MARGIN - 1)
+    #     y = random.randint(MARGIN, self.grid_height - MARGIN - 1)
+    #     while self.nodes[x][y]:
+    #         x = random.randint(MARGIN, self.grid_width - MARGIN - 1)
+    #         y = random.randint(MARGIN, self.grid_height - MARGIN - 1)
 
-            distance = hypot(x_avg - sphero.x, y_avg - sphero.y)
+    #     # fill in board with temporary id
+    #     self.nodes[x][y] = -1
+    #     return x, y
 
-            if (closest_distance == -1) or (distance < closest_distance):
-                closest_distance = distance
-                closest_sphero = id
+    # def generate_random_grid(self): # -> List[int]
+    #     """
+    #     Generate a random set of initial positions for all spheros on the grid
+
+    #     Args:
+    #         None
+        
+    #     Returns:
+    #         List[int]: a list of random intiial positions, with length equal to the number of spheros
+    #     """
+
+    #     positions = []
+    #     for _ in range(self.n_spheros):
+    #         x, y = self.random_initial_position()
+    #         positions.append((x, y))
+    #     return positions
+
+    # def find_sphero(self, id): # -> Sphero
+    #     """
+    #     The sphero object that has the specified id
+
+    #     Args:
+    #         id: (int) the sphero's id
+        
+    #     Returns:
+    #         (Sphero): the sphero object that has the specified id
+    #     """
+    #     if id:
+    #         return self.spheros[id - 1]
+    #     return None
+
+
+
+    # def calculate_bonded_group_center(self, group):
+    #     """
+    #     Calculate the id of the sphero to be used as the pivot point for the bonded group
+
+    #     Args:
+    #         bonded group (swarm.bonded_groups[index])
+
+    #     Returns:
+    #         pivot sphero id (sphero.id)
+    #     """
+
+    #     total_x = 0
+    #     total_y = 0
+    #     n = 0
+
+    #     for id in group:
+    #         sphero = self.find_sphero(id)
+    #         total_x += sphero.x
+    #         total_y += sphero.y
+    #         n += 1
+
+    #     x_avg = total_x / n
+    #     y_avg = total_y / n
+
+    #     closest_sphero = 0
+    #     closest_distance = -1
+
+    #     for id in group:
+    #         sphero = self.find_sphero(id)
+
+    #         distance = hypot(x_avg - sphero.x, y_avg - sphero.y)
+
+    #         if (closest_distance == -1) or (distance < closest_distance):
+    #             closest_distance = distance
+    #             closest_sphero = id
     
 
-        return closest_sphero
+    #     return closest_sphero

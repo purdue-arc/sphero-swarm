@@ -16,6 +16,8 @@ class Sphero:
         self.speed = speed
         self.color = color
 
+        self.bonding_directions = position_change.values()
+
     def compute_target_position(self, direction): # -> (int, int)
         """
         Compute our sphero's target position given the direction

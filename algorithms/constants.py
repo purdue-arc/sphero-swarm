@@ -1,7 +1,7 @@
 MARGIN = 0
 DIRECTIONS = 8
 
-ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8]
+ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
 position_change = {
     0: (0, 0),
@@ -15,7 +15,7 @@ position_change = {
     8: (-1, 1)
 }
 
-N_SPHEROS = 4
+N_SPHEROS = 5
 
 # the number of nodes on the grid widthwise
 GRID_WIDTH = 5

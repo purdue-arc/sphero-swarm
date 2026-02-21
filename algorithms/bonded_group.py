@@ -1,4 +1,5 @@
 from .sphero import Sphero
+from .constants import *
 import math
 
 
@@ -10,6 +11,8 @@ class BondedGroup:
         self.box = [0,0,0,0]            # bounding box dimensions from center. order: U, D, L, R
 
         self.center = self.find_center() # ID of the center sphero (1, 2, 3, ...)
+        
+        self.valid_moves = ALL_DIRECTIONS.copy()       #  1-10
 
     
     def find_center(self) -> int:
@@ -45,16 +48,7 @@ class BondedGroup:
     def update_center(self) -> None:
         self.center = self.find_center()
 
-    
-    # randomly pick a valid translation or a valid rotation
-    # take out that option from the valid options.
-
-    # reset translation / rotation options
-
-    # check if an inputted translation is valid
-    # def check_movement_direction(self):
-    
-    # def 
+   
 
     def __str__(self) -> str:
         '''
