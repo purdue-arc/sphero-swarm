@@ -147,17 +147,14 @@
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+    background: rgba(0, 0, 0, 0.2);
 }
 
 .positionRow {
     display: grid;
-    grid-template-columns: 90px 1fr 24px 1fr;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem;
-    background: rgba(0, 0, 0, 0.2);
+    padding: 5px 10px;
     border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .positionLabel {
@@ -290,7 +287,6 @@
     }
 }
 
-/* Summary Stats */
 .summaryStats {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -333,24 +329,4 @@
 
 .summaryCard.error .summaryValue {
     color: #ef4444;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .spheroGrid {
-        grid-template-columns: 1fr;
-    }
-    
-    .summaryStats {
-        grid-template-columns: 1fr;
-    }
-    
-    .positionRow {
-        grid-template-columns: 1fr;
-        gap: 0.5rem;
-    }
-    
-    .positionArrow {
-        display: none;
-    }
 }

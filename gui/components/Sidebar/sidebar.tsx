@@ -11,6 +11,7 @@ import {
     faInfoCircle,
     faRobot,
     faCircle,
+    faPowerOff,
 } from "@fortawesome/free-solid-svg-icons";
 
 interface SidebarLink {
@@ -103,7 +104,7 @@ export function Sidebar({
                     </div>
                     <div className={styles.titleContainer}>
                         <h2 className={styles.title}>Sphero Swarm</h2>
-                        <p className={styles.subtitle}>v1.6.7</p>
+                        <p className={styles.subtitle}>v1.0.0</p>
                     </div>
                 </div>
             </div>
@@ -119,9 +120,8 @@ export function Sidebar({
                         {section.links.map((link) => (
                             <button
                                 key={link.code}
-                                className={`${styles.button} ${
-                                    currentView === link.code ? styles.active : ""
-                                }`}
+                                className={`${styles.button} ${currentView === link.code ? styles.active : ""
+                                    }`}
                                 onClick={() => setCurrentView(link.code)}
                                 aria-current={
                                     currentView === link.code ? "page" : undefined
@@ -153,6 +153,13 @@ export function Sidebar({
                         </p>
                     </div>
                 </div>
+                <button
+                    className={styles.quitButton}
+                    onClick={() => window.electronAPI?.quitApp()}
+                >
+                    <FontAwesomeIcon icon={faPowerOff} />
+                    <span>Quit</span>
+                </button>
             </div>
         </aside>
     );

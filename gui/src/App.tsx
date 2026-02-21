@@ -1,6 +1,7 @@
 import styles from './App.module.css'
 import { Sidebar } from "../components/Sidebar/sidebar"
 import { Runner } from "../components/Runner/runner"
+import { Controls } from "../components/Controls/Controls"
 import { Config } from "../components/Config/config"
 import { useState, useEffect } from 'react'
 import type { SpheroConstants, SpheroStatus } from '../types/swarm_types'
@@ -11,6 +12,7 @@ declare global {
       getConstants: any;
       startSpheroSpotter: () => Promise<any>;
       stopSpheroSpotter: () => Promise<any>;
+      quitApp: () => Promise<any>
     };
   }
 }
@@ -81,7 +83,11 @@ function App() {
         )}
 
         {currentView === "configuration" && (
-          <Config constants={constants} />
+          <Config constants={constants} onUpdate={setConstants} />
+        )}
+
+        {currentView === "controls" && (
+          <Controls constants={constants} spheros={spheros} setSpheros={setSpheros} />
         )}
 
         {/* Placeholder views for other sections */}
@@ -96,13 +102,6 @@ function App() {
           <div style={{ padding: '2rem', color: '#ffffff' }}>
             <h1>Algorithms Module</h1>
             <p>Algorithm configuration and testing coming soon...</p>
-          </div>
-        )}
-
-        {currentView === "controls" && (
-          <div style={{ padding: '2rem', color: '#ffffff' }}>
-            <h1>Controls Module</h1>
-            <p>Advanced control system settings coming soon...</p>
           </div>
         )}
 

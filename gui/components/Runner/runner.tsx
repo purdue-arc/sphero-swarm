@@ -106,15 +106,7 @@ export function Runner({
                 </div>
             </div>
 
-            <div className={styles.spheroSection}>
-                <div className={styles.sectionHeader}>
-                    <h2 className={styles.sectionTitle}>
-                        <FontAwesomeIcon icon={faRobot} className={styles.sectionIcon} />
-                        Robot Fleet Status
-                    </h2>
-                </div>
-                <SpheroConnection spheros={spheros} setSpheros={setSpheros} />
-            </div>
+            
         </div>
     );
 }

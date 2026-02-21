@@ -6,7 +6,6 @@ import { spawn, spawnSync } from "child_process";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Helper to find a valid Python executable
 function getPythonExecutable() {
   const versions = ["python3", "python"];
   for (const v of versions) {
@@ -122,11 +121,13 @@ ipcMain.handle('get-constants', async () => {
   }
 });
 
+ipcMain.handle('quit-app', () => {
+  app.quit();
+});
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1000,
-    height: 700,
+    fullscreen: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,

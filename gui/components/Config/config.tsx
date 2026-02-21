@@ -1,8 +1,28 @@
 import { useEffect, useState } from "react";
-import styles from "./config.module.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faSave, faRotateLeft } from "@fortawesome/free-solid-svg-icons";
+import {
+    faSave,
+    faRotateLeft,
+    faPlus,
+    faTrash,
+    faRobot,
+    faTableCells,
+    faGaugeHigh,
+    faLocationDot,
+} from "@fortawesome/free-solid-svg-icons";
 import type { SpheroConstants } from "../../types/swarm_types";
+
+import s from "./config.module.css"
+
+// All known/discoverable Sphero tags — expand as needed
+const KNOWN_TAGS = [
+    'SB-76B3',
+    'SB-E274',
+    'SB-1840',
+    'SB-B11D',
+    'SB-CEB2',
+    'SB-BD0A',
+];
 
 interface ConfigProps {
     constants: SpheroConstants;
@@ -10,382 +30,284 @@ interface ConfigProps {
 }
 
 export function Config({ constants, onUpdate }: ConfigProps) {
-    const [formData, setFormData] = useState<SpheroConstants>(constants);
+    const [form, setForm] = useState<SpheroConstants>(constants);
     const [hasChanges, setHasChanges] = useState(false);
 
     useEffect(() => {
-        setFormData(constants);
+        setForm(constants);
+        setHasChanges(false);
     }, [constants]);
 
-    const handleInputChange = (field: keyof SpheroConstants, value: any) => {
-        setFormData(prev => ({
-            ...prev,
-            [field]: value
-        }));
+    const update = (field: keyof SpheroConstants, value: any) => {
+        setForm(prev => ({ ...prev, [field]: value }));
         setHasChanges(true);
     };
 
-    const handleArrayChange = (field: keyof SpheroConstants, index: number, value: string, subIndex?: number) => {
-        const currentArray = formData[field] as any[];
-        const newArray = [...currentArray];
-        
-        if (subIndex !== undefined) {
-            // For nested arrays like INITIAL_POSITIONS
-            newArray[index] = [...newArray[index]];
-            newArray[index][subIndex] = parseFloat(value) || 0;
+    const updateSpheroRow = (index: number, field: "tag" | "x" | "y", value: any) => {
+        const tags = [...form.SPHERO_TAGS];
+        const positions = form.INITIAL_POSITIONS.map(p => [...p] as [number, number]);
+
+        if (field === "tag") {
+            tags[index] = value;
+        } else if (field === "x") {
+            positions[index][0] = Number(value);
         } else {
-            newArray[index] = value;
+            positions[index][1] = Number(value);
         }
-        
-        setFormData(prev => ({
+
+        setForm(prev => ({ ...prev, SPHERO_TAGS: tags, INITIAL_POSITIONS: positions }));
+        setHasChanges(true);
+    };
+
+    const addSphero = () => {
+        const unusedTag = KNOWN_TAGS.find(t => !form.SPHERO_TAGS.includes(t)) ?? "SB-XXXX";
+        setForm(prev => ({
             ...prev,
-            [field]: newArray
+            N_SPHEROS: prev.N_SPHEROS + 1,
+            SPHERO_TAGS: [...prev.SPHERO_TAGS, unusedTag],
+            INITIAL_POSITIONS: [...prev.INITIAL_POSITIONS, [0, 0]],
         }));
         setHasChanges(true);
     };
 
-    const addArrayItem = (field: keyof SpheroConstants) => {
-        const currentArray = formData[field] as any[];
-        let newItem: any;
-        
-        if (field === 'SPHERO_TAGS') {
-            newItem = 'SB-XXXX';
-        } else if (field === 'INITIAL_POSITIONS') {
-            newItem = [0, 0];
+    const removeSphero = (index: number) => {
+        if (form.SPHERO_TAGS.length <= 1) return;
+        const tags = form.SPHERO_TAGS.filter((_, i) => i !== index);
+        const positions = form.INITIAL_POSITIONS.filter((_, i) => i !== index);
+        setForm(prev => ({
+            ...prev,
+            N_SPHEROS: prev.N_SPHEROS - 1,
+            SPHERO_TAGS: tags,
+            INITIAL_POSITIONS: positions,
+        }));
+        setHasChanges(true);
+    };
+
+    const onNSpherosChange = (val: number) => {
+        const n = Math.max(1, val);
+        const tags = [...form.SPHERO_TAGS];
+        const positions = form.INITIAL_POSITIONS.map(p => [...p] as [number, number]);
+
+        while (tags.length < n) {
+            const unusedTag = KNOWN_TAGS.find(t => !tags.includes(t)) ?? "SB-XXXX";
+            tags.push(unusedTag);
+            positions.push([0, 0]);
         }
-        
-        setFormData(prev => ({
+
+        setForm(prev => ({
             ...prev,
-            [field]: [...currentArray, newItem]
+            N_SPHEROS: n,
+            SPHERO_TAGS: tags.slice(0, n),
+            INITIAL_POSITIONS: positions.slice(0, n),
         }));
         setHasChanges(true);
     };
 
-    const removeArrayItem = (field: keyof SpheroConstants, index: number) => {
-        const currentArray = formData[field] as any[];
-        const newArray = currentArray.filter((_, i) => i !== index);
-        
-        setFormData(prev => ({
-            ...prev,
-            [field]: newArray
-        }));
-        setHasChanges(true);
-    };
+    const save = () => { onUpdate(form); setHasChanges(false); };
+    const reset = () => { setForm(constants); setHasChanges(false); };
 
-    const handleSave = () => {
-        onUpdate(formData);
-        setHasChanges(false);
-    };
+    const rows = Array.from({ length: form.N_SPHEROS }, (_, i) => ({
+        tag: form.SPHERO_TAGS[i] ?? "SB-XXXX",
+        x: form.INITIAL_POSITIONS[i]?.[0] ?? 0,
+        y: form.INITIAL_POSITIONS[i]?.[1] ?? 0,
+    }));
 
-    const handleReset = () => {
-        setFormData(constants);
-        setHasChanges(false);
-    };
+    const availableTagsFor = (currentTag: string) =>
+        KNOWN_TAGS.filter(t => t === currentTag || !form.SPHERO_TAGS.includes(t));
 
     return (
-        <div className={styles.container}>
-            <div className={styles.header}>
+        <div className={s.page}>
+            {/* Header */}
+            <div className={s.header}>
                 <div>
-                    <h1 className={styles.title}>Configuration</h1>
-                    <p className={styles.subtitle}>Adjust swarm parameters and robot settings</p>
+                    <h1 className={s.title}>
+                        {hasChanges && <span className={s.unsavedDot} />}
+                        Configurations
+                    </h1>
                 </div>
-                <div className={styles.headerActions}>
-                    <button
-                        className={`${styles.actionButton} ${styles.resetButton}`}
-                        onClick={handleReset}
-                        disabled={!hasChanges}
-                    >
-                        <FontAwesomeIcon icon={faRotateLeft} className={styles.buttonIcon} />
-                        Reset
+                <div className={s.headerActions}>
+                    <button className={s.actionBtn} onClick={reset} disabled={!hasChanges}>
+                        <FontAwesomeIcon icon={faRotateLeft} />
+                        Discard
                     </button>
-                    <button
-                        className={`${styles.actionButton} ${styles.saveButton}`}
-                        onClick={handleSave}
-                        disabled={!hasChanges}
-                    >
-                        <FontAwesomeIcon icon={faSave} className={styles.buttonIcon} />
-                        Save Changes
+                    <button className={`${s.actionBtn} ${s.actionBtnSave}`} onClick={save} disabled={!hasChanges}>
+                        <FontAwesomeIcon icon={faSave} />
+                        Save
                     </button>
                 </div>
             </div>
 
-            <div className={styles.content}>
-                {/* Grid Configuration */}
-                <section className={styles.section}>
-                    <h2 className={styles.sectionTitle}>Grid Configuration</h2>
-                    <div className={styles.formGrid}>
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>Grid Width (nodes)</label>
-                            <input
-                                type="number"
-                                className={styles.input}
-                                value={formData.GRID_WIDTH}
-                                onChange={(e) => handleInputChange('GRID_WIDTH', parseInt(e.target.value) || 0)}
-                                min="2"
-                            />
-                            <span className={styles.hint}>Number of nodes widthwise</span>
-                        </div>
+            {/* Two-column grid for scalar settings */}
+            <div className={s.grid}>
 
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>Grid Height (nodes)</label>
+                <div className={s.section}>
+                    <div className={s.sectionHead}>
+                        <div className={s.sectionIcon}><FontAwesomeIcon icon={faTableCells} /></div>
+                        <h2 className={s.sectionTitle}>Arena Grid</h2>
+                    </div>
+                    <div className={s.formRow}>
+                        <div className={s.formGroup}>
+                            <label className={s.label}>Width (nodes)</label>
                             <input
-                                type="number"
-                                className={styles.input}
-                                value={formData.GRID_HEIGHT}
-                                onChange={(e) => handleInputChange('GRID_HEIGHT', parseInt(e.target.value) || 0)}
-                                min="2"
+                                type="number" min={2} className={s.input}
+                                value={form.GRID_WIDTH}
+                                onChange={e => update("GRID_WIDTH", parseInt(e.target.value) || 2)}
                             />
-                            <span className={styles.hint}>Number of nodes heightwise</span>
+                            <span className={s.hint}>Columns in the navigation grid</span>
                         </div>
-
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>Node Distance (px)</label>
+                        <div className={s.formGroup}>
+                            <label className={s.label}>Height (nodes)</label>
                             <input
-                                type="number"
-                                className={styles.input}
-                                value={formData.SIM_DIST}
-                                onChange={(e) => handleInputChange('SIM_DIST', parseInt(e.target.value) || 0)}
-                                min="10"
+                                type="number" min={2} className={s.input}
+                                value={form.GRID_HEIGHT}
+                                onChange={e => update("GRID_HEIGHT", parseInt(e.target.value) || 2)}
                             />
-                            <span className={styles.hint}>Pixel distance between nodes</span>
-                        </div>
-
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>Margin</label>
-                            <input
-                                type="number"
-                                className={styles.input}
-                                value={formData.MARGIN}
-                                onChange={(e) => handleInputChange('MARGIN', parseInt(e.target.value) || 0)}
-                                min="0"
-                            />
-                            <span className={styles.hint}>Grid boundary margin</span>
+                            <span className={s.hint}>Rows in the navigation grid</span>
                         </div>
                     </div>
+                </div>
 
-                    <div className={styles.infoBox}>
-                        <div className={styles.infoItem}>
-                            <span className={styles.infoLabel}>Simulation Width:</span>
-                            <span className={styles.infoValue}>{(formData.GRID_WIDTH - 1) * formData.SIM_DIST} px</span>
+                <div className={s.section}>
+                    <div className={s.sectionHead}>
+                        <div className={s.sectionIcon}><FontAwesomeIcon icon={faGaugeHigh} /></div>
+                        <h2 className={s.sectionTitle}>Motion &amp; Timing</h2>
+                    </div>
+                    <div className={s.formRow}>
+                        <div className={s.formGroup}>
+                            <label className={s.label}>Speed</label>
+                            <input
+                                type="number" min={1} max={255} className={s.input}
+                                value={form.SPHERO_SPEED}
+                                onChange={e => update("SPHERO_SPEED", parseInt(e.target.value) || 0)}
+                            />
+                            <span className={s.hint}>Linear speed (1–255)</span>
                         </div>
-                        <div className={styles.infoItem}>
-                            <span className={styles.infoLabel}>Simulation Height:</span>
-                            <span className={styles.infoValue}>{(formData.GRID_HEIGHT - 1) * formData.SIM_DIST} px</span>
+                        <div className={s.formGroup}>
+                            <label className={s.label}>Diagonal Speed</label>
+                            <input
+                                type="number" min={1} max={255} className={s.input}
+                                value={form.SPHERO_DIAGONAL_SPEED}
+                                onChange={e => update("SPHERO_DIAGONAL_SPEED", parseInt(e.target.value) || 0)}
+                            />
+                            <span className={s.hint}>≈ speed × √2, tune for accel</span>
+                        </div>
+                        <div className={s.formGroup}>
+                            <label className={s.label}>Roll Duration (s)</label>
+                            <input
+                                type="number" min={0.1} step={0.05} className={s.input}
+                                value={form.ROLL_DURATION}
+                                onChange={e => update("ROLL_DURATION", parseFloat(e.target.value) || 0)}
+                            />
+                            <span className={s.hint}>Time per one-node roll</span>
+                        </div>
+                        <div className={s.formGroup}>
+                            <label className={s.label}>Turn Duration (s)</label>
+                            <input
+                                type="number" min={0.1} step={0.05} className={s.input}
+                                value={form.TURN_DURATION}
+                                onChange={e => update("TURN_DURATION", parseFloat(e.target.value) || 0)}
+                            />
+                            <span className={s.hint}>Time per 90° heading change</span>
                         </div>
                     </div>
-                </section>
+                </div>
+            </div>
 
-                {/* Robot Configuration */}
-                <section className={styles.section}>
-                    <h2 className={styles.sectionTitle}>Robot Configuration</h2>
-                    <div className={styles.formGrid}>
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>Number of Spheros</label>
+            {/* Full-width Sphero table */}
+            <div className={s.sectionFull}>
+                <div className={s.sectionHead} style={{ justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                        <div className={s.sectionIcon}><FontAwesomeIcon icon={faRobot} /></div>
+                        <h2 className={s.sectionTitle}>Spheros — {form.N_SPHEROS} robot{form.N_SPHEROS !== 1 ? "s" : ""}</h2>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                        <div className={s.formGroup}>
                             <input
-                                type="number"
-                                className={styles.input}
-                                value={formData.N_SPHEROS}
-                                onChange={(e) => handleInputChange('N_SPHEROS', parseInt(e.target.value) || 0)}
-                                min="1"
-                                max="10"
+                                type="number" min={1} max={KNOWN_TAGS.length} className={s.input}
+                                style={{ width: "72px" }}
+                                value={form.N_SPHEROS}
+                                onChange={e => onNSpherosChange(parseInt(e.target.value) || 1)}
+                                title="Number of Spheros"
                             />
-                            <span className={styles.hint}>Total robots in swarm</span>
-                        </div>
-
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>Robot Radius (px)</label>
-                            <input
-                                type="number"
-                                className={styles.input}
-                                value={formData.SPHERO_SIM_RADIUS}
-                                onChange={(e) => handleInputChange('SPHERO_SIM_RADIUS', parseInt(e.target.value) || 0)}
-                                min="5"
-                            />
-                            <span className={styles.hint}>Visual radius in simulation</span>
-                        </div>
-
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>Directions</label>
-                            <input
-                                type="number"
-                                className={styles.input}
-                                value={formData.DIRECTIONS}
-                                onChange={(e) => handleInputChange('DIRECTIONS', parseInt(e.target.value) || 0)}
-                                min="4"
-                                max="8"
-                            />
-                            <span className={styles.hint}>Movement directions (4 or 8)</span>
-                        </div>
-
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>Frames</label>
-                            <input
-                                type="number"
-                                className={styles.input}
-                                value={formData.FRAMES}
-                                onChange={(e) => handleInputChange('FRAMES', parseInt(e.target.value) || 0)}
-                                min="30"
-                            />
-                            <span className={styles.hint}>Simulation frame rate</span>
                         </div>
                     </div>
-                </section>
+                </div>
 
-                {/* Movement Parameters */}
-                <section className={styles.section}>
-                    <h2 className={styles.sectionTitle}>Movement Parameters</h2>
-                    <div className={styles.formGrid}>
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>Speed</label>
-                            <input
-                                type="number"
-                                className={styles.input}
-                                value={formData.SPHERO_SPEED}
-                                onChange={(e) => handleInputChange('SPHERO_SPEED', parseInt(e.target.value) || 0)}
-                                min="1"
-                                max="255"
-                            />
-                            <span className={styles.hint}>Standard movement speed</span>
-                        </div>
-
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>Diagonal Speed</label>
-                            <input
-                                type="number"
-                                className={styles.input}
-                                value={formData.SPHERO_DIAGONAL_SPEED}
-                                onChange={(e) => handleInputChange('SPHERO_DIAGONAL_SPEED', parseInt(e.target.value) || 0)}
-                                min="1"
-                                max="255"
-                            />
-                            <span className={styles.hint}>Diagonal movement speed</span>
-                        </div>
-
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>Roll Duration (s)</label>
-                            <input
-                                type="number"
-                                step="0.1"
-                                className={styles.input}
-                                value={formData.ROLL_DURATION}
-                                onChange={(e) => handleInputChange('ROLL_DURATION', parseFloat(e.target.value) || 0)}
-                                min="0.1"
-                            />
-                            <span className={styles.hint}>Time for one roll action</span>
-                        </div>
-
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>Turn Duration (s)</label>
-                            <input
-                                type="number"
-                                step="0.1"
-                                className={styles.input}
-                                value={formData.TURN_DURATION}
-                                onChange={(e) => handleInputChange('TURN_DURATION', parseFloat(e.target.value) || 0)}
-                                min="0.1"
-                            />
-                            <span className={styles.hint}>Time for one turn action</span>
-                        </div>
-
-                        <div className={styles.formGroup}>
-                            <label className={styles.label}>Epsilon</label>
-                            <input
-                                type="number"
-                                step="0.001"
-                                className={styles.input}
-                                value={formData.EPSILON}
-                                onChange={(e) => handleInputChange('EPSILON', parseFloat(e.target.value) || 0)}
-                                min="0"
-                            />
-                            <span className={styles.hint}>Precision tolerance</span>
-                        </div>
-                    </div>
-                </section>
-
-                {/* Sphero Tags */}
-                <section className={styles.section}>
-                    <div className={styles.sectionHeader}>
-                        <h2 className={styles.sectionTitle}>Sphero Tags</h2>
-                        <button
-                            className={styles.addButton}
-                            onClick={() => addArrayItem('SPHERO_TAGS')}
-                        >
-                            + Add Tag
-                        </button>
-                    </div>
-                    <div className={styles.tagsList}>
-                        {formData.SPHERO_TAGS.map((tag, index) => (
-                            <div key={index} className={styles.tagItem}>
-                                <div className={styles.tagIndex}>{index + 1}</div>
-                                <input
-                                    type="text"
-                                    className={styles.tagInput}
-                                    value={tag}
-                                    onChange={(e) => handleArrayChange('SPHERO_TAGS', index, e.target.value)}
-                                    placeholder="SB-XXXX"
-                                />
-                                <button
-                                    className={styles.removeButton}
-                                    onClick={() => removeArrayItem('SPHERO_TAGS', index)}
-                                    disabled={formData.SPHERO_TAGS.length <= 1}
-                                >
-                                    ×
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                </section>
-
-                {/* Initial Positions */}
-                <section className={styles.section}>
-                    <div className={styles.sectionHeader}>
-                        <h2 className={styles.sectionTitle}>Initial Positions</h2>
-                        <button
-                            className={styles.addButton}
-                            onClick={() => addArrayItem('INITIAL_POSITIONS')}
-                        >
-                            + Add Position
-                        </button>
-                    </div>
-                    <div className={styles.positionsList}>
-                        {formData.INITIAL_POSITIONS.map((position, index) => (
-                            <div key={index} className={styles.positionItem}>
-                                <div className={styles.positionIndex}>Robot {index + 1}</div>
-                                <div className={styles.positionInputs}>
-                                    <div className={styles.coordinateGroup}>
-                                        <label className={styles.coordinateLabel}>X</label>
+                <table className={s.table}>
+                    <thead>
+                        <tr>
+                            <th className={s.th} style={{ width: "48px" }}>#</th>
+                            <th className={s.th}>Tag</th>
+                            <th className={s.th}>
+                                <span style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                                    <FontAwesomeIcon icon={faLocationDot} style={{ fontSize: "0.7rem" }} />
+                                    Initial Position (x, y)
+                                </span>
+                            </th>
+                            <th className={s.th} style={{ width: "40px" }}></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows.map((row, i) => (
+                            <tr key={i}>
+                                <td className={s.td}>
+                                    <span className={s.indexBadge}>{i + 1}</span>
+                                </td>
+                                <td className={s.td}>
+                                    <select
+                                        className={s.select}
+                                        value={row.tag}
+                                        onChange={e => updateSpheroRow(i, "tag", e.target.value)}
+                                    >
+                                        {availableTagsFor(row.tag).length === 0 && (
+                                            <option value={row.tag}>{row.tag}</option>
+                                        )}
+                                        {availableTagsFor(row.tag).map(t => (
+                                            <option key={t} value={t}>{t}</option>
+                                        ))}
+                                    </select>
+                                </td>
+                                <td className={s.td}>
+                                    <div className={s.coordWrap}>
+                                        <span className={s.coordLabel}>X</span>
                                         <input
-                                            type="number"
-                                            className={styles.coordinateInput}
-                                            value={position[0]}
-                                            onChange={(e) => handleArrayChange('INITIAL_POSITIONS', index, e.target.value, 0)}
-                                            min="0"
-                                            max={formData.GRID_WIDTH - 1}
+                                            type="number" min={0} max={form.GRID_WIDTH - 1}
+                                            className={s.coordInput}
+                                            value={row.x}
+                                            onChange={e => updateSpheroRow(i, "x", e.target.value)}
+                                        />
+                                        <span className={s.coordLabel} style={{ marginLeft: "0.5rem" }}>Y</span>
+                                        <input
+                                            type="number" min={0} max={form.GRID_HEIGHT - 1}
+                                            className={s.coordInput}
+                                            value={row.y}
+                                            onChange={e => updateSpheroRow(i, "y", e.target.value)}
                                         />
                                     </div>
-                                    <div className={styles.coordinateGroup}>
-                                        <label className={styles.coordinateLabel}>Y</label>
-                                        <input
-                                            type="number"
-                                            className={styles.coordinateInput}
-                                            value={position[1]}
-                                            onChange={(e) => handleArrayChange('INITIAL_POSITIONS', index, e.target.value, 1)}
-                                            min="0"
-                                            max={formData.GRID_HEIGHT - 1}
-                                        />
-                                    </div>
-                                </div>
-                                <button
-                                    className={styles.removeButton}
-                                    onClick={() => removeArrayItem('INITIAL_POSITIONS', index)}
-                                    disabled={formData.INITIAL_POSITIONS.length <= 1}
-                                >
-                                    ×
-                                </button>
-                            </div>
+                                </td>
+                                <td className={s.td}>
+                                    <button
+                                        className={s.deleteBtn}
+                                        onClick={() => removeSphero(i)}
+                                        disabled={rows.length <= 1}
+                                        title="Remove sphero"
+                                        onMouseEnter={e => (e.currentTarget.style.color = "#ef4444")}
+                                        onMouseLeave={e => (e.currentTarget.style.color = "#64748b")}
+                                    >
+                                        <FontAwesomeIcon icon={faTrash} style={{ fontSize: "0.75rem" }} />
+                                    </button>
+                                </td>
+                            </tr>
                         ))}
-                    </div>
-                </section>
+                    </tbody>
+                </table>
+
+                {rows.length != KNOWN_TAGS.length && (
+                    <button className={`${s.addRowBtn} ${rows.length == KNOWN_TAGS.length ? s.disabledAdd : ''}`} onClick={addSphero} disabled={rows.length == KNOWN_TAGS.length}>
+                        <FontAwesomeIcon icon={faPlus} style={{ fontSize: "0.75rem" }} />
+                        Add Sphero
+                    </button>
+                )}
             </div>
         </div>
     );
