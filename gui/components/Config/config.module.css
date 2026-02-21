@@ -1,0 +1,386 @@
+.container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(135deg, #0a0a0a 0%, #0f0f0f 100%);
+    overflow: hidden;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 2.5rem 2.5rem;
+    border-bottom: 1px solid rgba(127, 92, 204, 0.1);
+    background: linear-gradient(180deg, rgba(26, 26, 26, 0.8) 0%, rgba(21, 21, 21, 0.6) 100%);
+}
+
+.title {
+    color: #ffffff;
+    font-size: 1.875rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    margin: 0 0 0.25rem 0;
+}
+
+.subtitle {
+    color: #a0a0a0;
+    font-size: 0.95rem;
+    margin: 0;
+    font-weight: 400;
+}
+
+.headerActions {
+    display: flex;
+    gap: 1rem;
+}
+
+.actionButton {
+    all: unset;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.875rem 1.5rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1.5px solid transparent;
+}
+
+.actionButton:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none !important;
+}
+
+.saveButton {
+    background: linear-gradient(135deg, rgba(127, 92, 204, 0.15) 0%, rgba(167, 139, 250, 0.1) 100%);
+    color: #a78bfa;
+    border-color: rgba(127, 92, 204, 0.4);
+}
+
+.saveButton:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(127, 92, 204, 0.25) 0%, rgba(167, 139, 250, 0.2) 100%);
+    border-color: rgba(127, 92, 204, 0.6);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(127, 92, 204, 0.2);
+}
+
+.resetButton {
+    background: rgba(255, 255, 255, 0.05);
+    color: #a0a0a0;
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.resetButton:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+    transform: translateY(-2px);
+}
+
+.buttonIcon {
+    font-size: 0.875rem;
+}
+
+.content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 2.5rem;
+    background: linear-gradient(180deg, rgba(26, 26, 26, 0.3) 0%, rgba(15, 15, 15, 0.2) 100%);
+}
+
+.content::-webkit-scrollbar {
+    width: 8px;
+}
+
+.content::-webkit-scrollbar-track {
+    background: rgba(127, 92, 204, 0.03);
+}
+
+.content::-webkit-scrollbar-thumb {
+    background: rgba(127, 92, 204, 0.35);
+    border-radius: 4px;
+}
+
+.content::-webkit-scrollbar-thumb:hover {
+    background: rgba(127, 92, 204, 0.55);
+}
+
+.section {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid rgba(127, 92, 204, 0.1);
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: inset 0 0 20px rgba(127, 92, 204, 0.03);
+}
+
+.sectionHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.75rem;
+}
+
+.sectionTitle {
+    color: #ffffff;
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    margin: 0 0 1.75rem 0;
+}
+
+.sectionHeader .sectionTitle {
+    margin: 0;
+}
+
+.formGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.75rem;
+}
+
+.formGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+}
+
+.label {
+    color: #e0e0e0;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.input {
+    all: unset;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(127, 92, 204, 0.15);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    color: #ffffff;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.input:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(127, 92, 204, 0.25);
+}
+
+.input:focus {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(127, 92, 204, 0.5);
+    box-shadow: 0 0 0 2px rgba(127, 92, 204, 0.1);
+    outline: none;
+}
+
+.hint {
+    color: #a0a0a0;
+    font-size: 0.8rem;
+    font-style: italic;
+}
+
+.infoBox {
+    display: flex;
+    gap: 2rem;
+    margin-top: 1.75rem;
+    padding: 1.25rem 1.5rem;
+    background: rgba(127, 92, 204, 0.08);
+    border: 1px solid rgba(127, 92, 204, 0.2);
+    border-radius: 8px;
+}
+
+.infoItem {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.infoLabel {
+    color: #a0a0a0;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.infoValue {
+    color: #a78bfa;
+    font-size: 0.9rem;
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+}
+
+.addButton {
+    all: unset;
+    padding: 0.625rem 1.25rem;
+    background: linear-gradient(135deg, rgba(127, 92, 204, 0.15) 0%, rgba(167, 139, 250, 0.1) 100%);
+    color: #a78bfa;
+    border: 1.5px solid rgba(127, 92, 204, 0.4);
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.addButton:hover {
+    background: linear-gradient(135deg, rgba(127, 92, 204, 0.25) 0%, rgba(167, 139, 250, 0.2) 100%);
+    border-color: rgba(127, 92, 204, 0.6);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(127, 92, 204, 0.15);
+}
+
+.tagsList,
+.positionsList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+}
+
+.tagItem,
+.positionItem {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.875rem 1rem;
+    background: rgba(127, 92, 204, 0.04);
+    border: 1px solid rgba(127, 92, 204, 0.1);
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.tagItem:hover,
+.positionItem:hover {
+    background: rgba(127, 92, 204, 0.08);
+    border-color: rgba(127, 92, 204, 0.2);
+}
+
+.tagIndex,
+.positionIndex {
+    flex-shrink: 0;
+    width: 65px;
+    color: #a0a0a0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+}
+
+.tagInput {
+    all: unset;
+    flex: 1;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(127, 92, 204, 0.15);
+    border-radius: 8px;
+    padding: 0.625rem 0.875rem;
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-family: 'Courier New', monospace;
+    transition: all 0.2s ease;
+}
+
+.tagInput:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(127, 92, 204, 0.25);
+}
+
+.tagInput:focus {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(127, 92, 204, 0.5);
+    box-shadow: 0 0 0 2px rgba(127, 92, 204, 0.1);
+    outline: none;
+}
+
+.positionInputs {
+    flex: 1;
+    display: flex;
+    gap: 1rem;
+}
+
+.coordinateGroup {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.coordinateLabel {
+    color: #a0a0a0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    width: 1.25rem;
+}
+
+.coordinateInput {
+    all: unset;
+    flex: 1;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(127, 92, 204, 0.15);
+    border-radius: 8px;
+    padding: 0.625rem 0.75rem;
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-family: 'Courier New', monospace;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.coordinateInput:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(127, 92, 204, 0.25);
+}
+
+.coordinateInput:focus {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: rgba(127, 92, 204, 0.5);
+    box-shadow: 0 0 0 2px rgba(127, 92, 204, 0.1);
+    outline: none;
+}
+
+.removeButton {
+    all: unset;
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(248, 113, 113, 0.1) 100%);
+    color: #fca5a5;
+    border: 1.5px solid rgba(239, 68, 68, 0.4);
+    border-radius: 8px;
+    font-size: 1.25rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.removeButton:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.25) 0%, rgba(248, 113, 113, 0.2) 100%);
+    border-color: rgba(239, 68, 68, 0.6);
+    transform: scale(1.05);
+}
+
+.removeButton:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+/* Focus states for accessibility */
+.actionButton:focus-visible,
+.addButton:focus-visible,
+.removeButton:focus-visible {
+    outline: 2px solid #a78bfa;
+    outline-offset: 2px;
+}
+
+.input:focus-visible,
+.tagInput:focus-visible,
+.coordinateInput:focus-visible {
+    outline: 2px solid #a78bfa;
+    outline-offset: -2px;
+}

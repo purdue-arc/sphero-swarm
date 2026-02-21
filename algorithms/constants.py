@@ -53,11 +53,7 @@ GRAY = (150, 150, 150)
 COLORS = [BLUE, RED, GREEN, YELLOW, PURPLE, ORANGE]
 
 SPHERO_TAGS = [
-    'SB-76B3',
-    'SB-E274',
-    'SB-1840', 
     'SB-B11D', 
-    'SB-CEB2',
     'SB-BD0A',
 ]
 INITIAL_POSITIONS = [(0,0), (0,2), (1, 3), (3, 3), (3, 1)]

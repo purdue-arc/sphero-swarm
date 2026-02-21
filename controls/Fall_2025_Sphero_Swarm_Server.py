@@ -17,12 +17,21 @@ import threading
 # instructions for the purposes of organization
 from .Instruction import Instruction
 
+import argparse
 import time
+import asyncio
+import websockets
+import json
 
 # these for interfile communication, pickle turns objects into byte streams
 import pickle
 import socket
 import logging
+
+# For the React App
+parser = argparse.ArgumentParser(description="Sphero Spotter")
+parser.add_argument('--server', '-s', action='store_true', help="Run controls from main GUI.")
+args = parser.parse_args()
 
 # import the EKF helper functions (sample_and_append) from the Data_Collection package
 try:
@@ -46,7 +55,13 @@ def generate_dict_map(sorted_names):
 
 # find avaliable toys in an area, and then if not all balls connected
 # after a set number of attempts, this raises an error
-def find_balls(names, max_attempts):
+def find_balls(names, max_attempts, ws=None, loop=None):
+    if ws:
+        ws_send(loop, ws, {
+            "type": "scan_start",
+            "balls": names
+        })
+
     for attempts in range(0, max_attempts, 1):
         print("Attempts to find Spheros: " + str(attempts + 1))
         # find the toys and print what is found
@@ -57,6 +72,14 @@ def find_balls(names, max_attempts):
             return toys
         else:
             print("Failed to find all Sphero balls, retrying...")
+    
+    if ws:
+        ws_send(loop, ws, {
+            "type": "scan_failed",
+            "balls": names,
+            "reason": "Not all Spheros found"
+        })
+
     # ran out of attempts
     raise RuntimeError("Not all balls found")
 
@@ -68,19 +91,35 @@ def address_sort(addresses, map_to_location):
     print("Sorted Addresses: {}".format(addresses))
 
 # connect a ball and then return the object created to the list
-def connect_ball(toy_address, ret_list, location, max_attempts):
+def connect_ball(toy_address, ret_list, location, max_attempts, ws=None, loop=None):
     attempts = 0
     while (attempts < max_attempts):
         try:
             sb = SpheroEduAPI(toy_address).__enter__()
             ret_list[location] = sb
-            break
+
+            if ws:
+                ws_send(loop, ws, {
+                    "type": "ball_connected",
+                    "ball": str(toy_address),
+                    "index": location
+                })
+
+
+            return
         except:
             attempts += 1
             print("Trying to connect with: {}, attempt {}".format(toy_address, attempts))
             continue
+
+    if ws:
+        ws_send(loop, ws, {
+            "type": "ball_failed",
+            "ball": str(toy_address),
+            "reason": "Connection attempts exceeded"
+        })
      
-def connect_multi_ball(toy_addresses, ret_list, max_attempts):
+def connect_multi_ball(toy_addresses, ret_list, max_attempts, ws=None, loop=None):
     # hopefully fast enough that control c'ing in this time should not be humanly reactable
     print("Connecting to Spheros...") 
 
@@ -89,7 +128,7 @@ def connect_multi_ball(toy_addresses, ret_list, max_attempts):
 
     # connecting to sb section
     for index in range(0, len(toy_addresses), 1):
-        thread = threading.Thread(target=connect_ball, args=[toy_addresses[index], ret_list, index, max_attempts])
+        thread = threading.Thread(target=connect_ball, args=[toy_addresses[index], ret_list, index, max_attempts, ws, loop])
         threads.append(thread)
         thread.start()
     
@@ -293,7 +332,7 @@ def get_kalman_filtering(sb_list):
         logging.exception("get_kalman_filtering: failed to sample sphero %s", chosen_idx)
         return None
 
-def run_server(ball_names):
+def run_server(ball_names, ws=None, loop=None):
     # set up the global kill flag which is used to tell the system to close out after this command
     global KILL_FLAG
     KILL_FLAG = 0
@@ -301,7 +340,7 @@ def run_server(ball_names):
     name_to_location_dict = generate_dict_map(ball_names)
 
     # find the addresses to connect with
-    toys_addresses = find_balls(ball_names, 5)
+    toys_addresses = find_balls(ball_names, 5, ws, loop)
 
     # then sort the addresses to match given order, due to system complexities
     address_sort(toys_addresses, name_to_location_dict)
@@ -322,7 +361,7 @@ def run_server(ball_names):
         except Exception:
             logging.exception("Failed to reset output files at session start")
 
-        connect_multi_ball(toys_addresses, sb_list, 10)
+        connect_multi_ball(toys_addresses, sb_list, 10, ws, loop)
 
         for sb in sb_list:
             print(check_voltage(sb))
@@ -395,11 +434,49 @@ def test_controls():
             get_kalman_filtering(sb_list=sb_list)             
 
     finally:
-        # raise kill flag in case anything is still going
         KILL_FLAG = 1
-        # always attempt to disconnect after connecting to avoid manual resets
         terminate_multi_ball(sb_list)
-        
+
+async def handle_client(websocket):
+    print("Client connected")
+    loop = asyncio.get_running_loop()
+
+    async for message in websocket:
+        data = json.loads(message)
+
+        if data.get("type") == "connect":
+            ball_names = data["spheros"]
+
+            await loop.run_in_executor(
+                None,
+                run_server,
+                ball_names,
+                websocket,
+                loop
+            )
+
+def ws_send(loop, websocket, payload):
+    asyncio.run_coroutine_threadsafe(
+        websocket.send(json.dumps(payload)),
+        loop
+    )
+
+async def start_web_server():
+    """Start the WebSocket server"""
+    host = "localhost"
+    port = 6768
+    print("started webserver")
+    
+    async with websockets.serve(handle_client, host, port):
+        try:
+            while True:
+                await asyncio.sleep(3600)
+        except asyncio.CancelledError:
+            pass
+
 if __name__ == "__main__":
-    #test_controls()
-    run_server(['SB-E274', 'SB-B11D'])
+    if args.server:
+        asyncio.run(start_web_server())
+    else:
+        #test_controls()
+        run_server(['SB-E274', 'SB-B11D'])
