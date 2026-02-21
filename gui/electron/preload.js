@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("stop-sphero-spotter"),
   getConstants: () =>
     ipcRenderer.invoke('get-constants'),
+  saveConstants: (constants) =>
+    ipcRenderer.invoke('save-constants', constants),
   quitApp: () => 
     ipcRenderer.invoke('quit-app')
 });

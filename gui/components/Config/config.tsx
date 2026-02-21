@@ -103,7 +103,11 @@ export function Config({ constants, onUpdate }: ConfigProps) {
         setHasChanges(true);
     };
 
-    const save = () => { onUpdate(form); setHasChanges(false); };
+    const save = async () => { 
+        onUpdate(form);
+        await window.electronAPI.saveConstants(form);
+        setHasChanges(false);
+    };
     const reset = () => { setForm(constants); setHasChanges(false); };
 
     const rows = Array.from({ length: form.N_SPHEROS }, (_, i) => ({

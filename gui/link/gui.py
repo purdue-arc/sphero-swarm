@@ -2,9 +2,8 @@ import sys
 
 sys.path.append('../../algorithms')
 
-import constants
+from constants import constants
 import json
-import sys
 
 def export_to_json():
     """Export all constants to a JSON-serializable dictionary"""
@@ -16,11 +15,6 @@ def export_to_json():
         "N_SPHEROS": constants.N_SPHEROS,
         "GRID_WIDTH": constants.GRID_WIDTH,
         "GRID_HEIGHT": constants.GRID_HEIGHT,
-        "SIM_DIST": constants.SIM_DIST,
-        "FRAMES": constants.FRAMES,
-        "SPHERO_SIM_RADIUS": constants.SPHERO_SIM_RADIUS,
-        "SIM_WIDTH": constants.SIM_WIDTH,
-        "SIM_HEIGHT": constants.SIM_HEIGHT,
         "EPSILON": constants.EPSILON,
         "SPHERO_SPEED": constants.SPHERO_SPEED,
         "SPHERO_DIAGONAL_SPEED": constants.SPHERO_DIAGONAL_SPEED,
@@ -28,7 +22,7 @@ def export_to_json():
         "TURN_DURATION": constants.TURN_DURATION,
         "COLORS": {
             "BLUE": constants.BLUE,
-            "RED":constants. RED,
+            "RED": constants.RED,
             "GREEN": constants.GREEN,
             "YELLOW": constants.YELLOW,
             "PURPLE": constants.PURPLE,

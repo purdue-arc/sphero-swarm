@@ -1,4 +1,5 @@
 import json
+import os
 
 
 class Constants:
@@ -35,12 +36,10 @@ class Constants:
 
         self.COLORS = [self.BLUE, self.RED, self.GREEN, self.YELLOW, self.PURPLE, self.ORANGE]
 
-        # VARIABLED
         self.N_SPHEROS = 2
         self.GRID_WIDTH = 4
         self.GRID_HEIGHT = 4
         self.SPHERO_SPEED = 60
-        # 60 * sqrt(2), but adjusted for acceleration. Thanks to jack for testing this
         self.SPHERO_DIAGONAL_SPEED = 76
 
         # in seconds
@@ -52,8 +51,12 @@ class Constants:
             "SB-BD0A",
         ]
         self.INITIAL_POSITIONS = [(0, 0), (0, 2), (1, 3), (3, 3), (3, 1)]
+        
+        # Automatically load from constants.json if it exists
+        self._load_constants_from_file()
 
-    def update_variable_constants(self, json_path: str) -> None:
+    def _load_constants_from_file(self) -> None:
+        """Automatically load variable constants from constants.json if it exists."""
         variable_fields = {
             "N_SPHEROS",
             "GRID_WIDTH",
@@ -66,20 +69,29 @@ class Constants:
             "INITIAL_POSITIONS",
         }
 
-        with open(json_path, "r", encoding="utf-8") as handle:
-            updates = json.load(handle)
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        constants_path = os.path.join(current_dir, "../constants.json")
 
-        for key, value in updates.items():
-            if key in variable_fields:
-                setattr(self, key, value)
+        if not os.path.exists(constants_path):
+            return
+
+        try:
+            with open(constants_path, "r", encoding="utf-8") as handle:
+                updates = json.load(handle)
+
+            for key, value in updates.items():
+                if key in variable_fields:
+                    setattr(self, key, value)
+        except (json.JSONDecodeError, IOError) as e:
+            print(f"Warning: Could not load constants.json: {e}")
 
 
 constants = Constants()
 
-__all__ = ["Constants", "constants"]
+# __all__ = ["Constants", "constants"]
 
-if __name__ == "__main__":
-    test = Constants() 
-    print("sphero speed should be 60: ", test.SPHERO_SPEED)
-    test.update_variable_constants("./documentation/example_constants.json")
-    print("sphero speed (should be 70 not 60): ", test.SPHERO_SPEED) 
+# if __name__ == "__main__":
+#     test = Constants() 
+#     print("sphero speed should be 60: ", test.SPHERO_SPEED)
+#     test.update_variable_constants("./documentation/example_constants.json")
+#     print("sphero speed (should be 70 not 60): ", test.SPHERO_SPEED) 

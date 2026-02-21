@@ -125,6 +125,19 @@ ipcMain.handle('quit-app', () => {
   app.quit();
 });
 
+ipcMain.handle('save-constants', async (event, constants) => {
+  try {
+    const fs = await import('fs/promises');
+    const constantsPath = path.join(__dirname, '../constants.json');
+    await fs.writeFile(constantsPath, JSON.stringify(constants, null, 2));
+    console.log('Constants saved to:', constantsPath);
+    return { status: 'saved' };
+  } catch (error) {
+    console.error('Error saving constants:', error);
+    throw error;
+  }
+});
+
 function createWindow() {
   const win = new BrowserWindow({
     fullscreen: true,

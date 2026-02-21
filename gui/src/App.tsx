@@ -12,7 +12,8 @@ declare global {
       getConstants: any;
       startSpheroSpotter: () => Promise<any>;
       stopSpheroSpotter: () => Promise<any>;
-      quitApp: () => Promise<any>
+      quitApp: () => Promise<any>;
+      saveConstants: (form:any) => Promise<any>;
     };
   }
 }
