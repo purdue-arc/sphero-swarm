@@ -86,8 +86,6 @@ class Algorithm:
 
             else: # valid_move is 9 or 10, aka a rotation.
                 '''
-                TODO @Alan @John
-
                 check if the move is valid by "boxing out" the rotation area.
                     check if anything in the 'box' is an ID not belonging to the group
                     check if anything in the 'box' will go out of bounds of the grid    
@@ -97,8 +95,38 @@ class Algorithm:
                     fill in next_grid spots
                     update prev direction, direction.
                 '''
+
+                # Calculate the area to block
+                rotated_box = group.rotate_box(group.box, valid_move)
+
+                # Block out box for collisions
+                for x in range(group.find_sphero(group.center).x - rotated_box[3], group.find_sphero(group.center).x + rotated_box[1]):
+                    for y in range(group.find_sphero(group.center).y - rotated_box[2], group.find_sphero(group.center).y + rotated_box[0]):
+                        self.next_grid[x][y] = -1
+
+                # Move the spheros
+                for sphero in group.spheros:
+                    
+                    # Calculate target position
+                    if valid_move == 9: # Clockwise
+                        sphero.target_x = sphero.y
+                        sphero.target_y = sphero.x * (-1)
+                    else: # Counterclockwise
+                        sphero.target_x = sphero.y * (-1)
+                        sphero.target_y = sphero.x
+
+                    # fill in next_grid spots
+                    self.next_grid[sphero.target_x][sphero.target_y] = sphero.id
+
+                    # update prev direction, direction
+                    sphero.update_direction(valid_move)
+
+                    # Update box
+                    group.box = rotated_box
+
         
         # all groups are moved. only thing left to do is flip the grids to get ready for the next iteration.
+        self.purge_grid(self.next_grid)
         self.current_grid = self.next_grid.copy()
         self.next_grid.clear()
 
@@ -108,7 +136,7 @@ class Algorithm:
         take out that option from the group.valid_moves
         check if it's valid 
             if it's translation, check by calling self.check_translation(move)
-            else do some special stuff for checking rotation of the group TODO @John
+            else do some special stuff for checking rotation of the group
         if it is valid, 
             return the move direction
         if it isn't, 
@@ -134,8 +162,6 @@ class Algorithm:
                 if valid_move:
                     return cur_direction
             else: # it's a rotation, check rotation validity
-                assert False, 'rotation checking not implemented yet (delete this line when ur done)'
-                # TODO implement check_rotation() @John
                 valid_move = self.check_rotation(group, cur_direction)
 
     def check_translation(self, sphero: Sphero, move: int) -> bool:
@@ -168,9 +194,29 @@ class Algorithm:
     
     def check_rotation(self, group: BondedGroup, move: int) -> bool:
         '''
-        TODO @John, for a group, check if the rotation is valid. 
+        Check if a rotation is valid
         '''
-        assert move == 9 or move == 10, 'Do not use this function to check translational moves!'
+        center_x = group.find_sphero(group.center).x
+        center_y = group.find_sphero(group.center).y
+        rotated_box = group.rotate_box(group.box, move)
+
+        # Check if entire box is in bounds
+        # Not sure if this is correct with the coordinate system
+        in_bounds = (MARGIN <= center_x - rotated_box[3] and center_x + rotated_box[1] <= self.grid_width - MARGIN and 
+                        MARGIN <= center_y - rotated_box[0] and center_y + rotated_box[2] <= self.grid_height - MARGIN)
+        
+        if in_bounds:
+
+            # Check if entire box is unoccupied
+            for x in range(group.find_sphero(group.center).x - rotated_box[3], group.find_sphero(group.center).x + rotated_box[1]):
+                for y in range(group.find_sphero(group.center).y - rotated_box[2], group.find_sphero(group.center).y + rotated_box[0]):
+                    if self.next_grid[x][y] != 0:
+                        return False
+                    
+            return True
+        
+        else:
+            return False
 
 
 
@@ -424,3 +470,9 @@ class Algorithm:
     
 
     #     return closest_sphero
+
+    def purge_grid(grid):
+        for x in range(GRID_WIDTH):
+            for y in range(GRID_HEIGHT):
+                if grid[x][y] == -1:
+                    grid[x][y] = 0
