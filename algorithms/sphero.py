@@ -4,7 +4,12 @@ class Sphero:
     def __init__(self, id, x, y,
                  target_x=None, target_y=None,
                  previous_direction=0, direction=0, speed=1, color=BLACK):
+        # attributes
         self.id = id
+        self.speed = speed
+        self.color = color
+
+        # position values
         self.x = x
         self.y = y
         self.true_x = x
@@ -13,10 +18,9 @@ class Sphero:
         self.target_y = target_y if target_y is not None else y
         self.previous_direction = previous_direction
         self.direction = direction
-        self.speed = speed
-        self.color = color
 
-        self.bonding_directions = position_change.values()
+        # bonding rules. CHANGE THIS if you need to change the bonding rules
+        self.bonding_directions = list(position_change.values())[1:] #the default: spheros can bond in all 8 directions.
 
     def compute_target_position(self, direction): # -> (int, int)
         """

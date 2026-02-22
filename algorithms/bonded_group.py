@@ -48,7 +48,8 @@ class BondedGroup:
     def update_center(self) -> None:
         self.center = self.find_center()
 
-   
+    def reset_valid_moves(self) -> None:
+        self.valid_moves = ALL_DIRECTIONS.copy()
 
     def __str__(self) -> str:
         '''

@@ -13,4 +13,4 @@ spheros = [a, b, c]
 algorithm = Algorithm(10, 10, spheros)
 #print(str(algorithm))
 
-print(position_change.values())
+print(list(position_change.values())[1:])

@@ -54,9 +54,12 @@ class Algorithm:
 
         at the end, call flip() to make current_grid = next_grid and to wipe next_grid
         '''
+        for group in self.bonded_groups:
+            valid_move = self.find_group_move(group)
+            # TODO Alan
 
 
-    def find_group_move(self, group)-> int:
+    def find_group_move(self, group: BondedGroup)-> int:
         '''
         TODO
 
@@ -75,6 +78,26 @@ class Algorithm:
             reset 
             return -1
         '''
+        #reset the group valid moves
+        group.reset_valid_moves()
+
+        while True:
+
+            cur_direction = random.choice(group.valid_moves)
+            group.valid_moves.remove(cur_direction)
+
+            if cur_direction <= 8: # if it's a translation, check
+                valid_move = True
+                for sphero in group.spheros:
+                    if not self.check_translation(sphero, cur_direction):
+                        valid_move = False
+                if valid_move:
+                    return cur_direction
+
+            else: # it's a rotation, check rotation validity
+                assert False, 'rotation checking not implemented yet (delete this line when ur done)'
+                # TODO implement check_rotation() @John
+                valid_move = self.check_rotation(group, cur_direction)
 
     def check_translation(self, sphero: Sphero, move: int) -> bool:
         '''
@@ -89,43 +112,22 @@ class Algorithm:
 
             in_bounds = (MARGIN <= sphero.x + dx < self.grid_width - MARGIN and 
                         MARGIN <= sphero.y + dy < self.grid_height - MARGIN)
-            no_collisions = False # TODO check if the new position 
+
+            no_collisions = self.next_grid[sphero.x + dx][sphero.y + dy]
             return in_bounds and no_collisions
         # check for a rotation
         else:
             assert False, 'Do not use this function to check rotational moves!'
     
-    def check_rotation(self, group) -> bool:
+    def check_rotation(self, group: BondedGroup, move: int) -> bool:
         '''
-
+        TODO @John, for a group, check if the rotation is valid. 
         '''
-        pass
+        assert move == 9 or move == 10, 'Do not use this function to check translational moves!'
 
 
-    
-    def is_valid_move(self, direction, sphero): # -> bool
-        """
-        Determine if the direction passed in is a valid direction for the sphero
 
-        Args:
-            direction: (int) value between 0 to DIRECTIONS
-            sphero: (Sphero) the passed in sphero
-        
-        Returns:
-            (bool): Is the direction passed in a valid direction for the sphero?
-        """
-
-        id = sphero.id
-        target_x, target_y = sphero.compute_target_position(direction=direction)
-        if not self.in_bounds(target_x, target_y):
-            return False
-        
-        # the direction is valid if the node has no sphero or
-        # the node has a sphero which is apart of the same bonding group
-        return (not self.nodes[target_x][target_y] or
-                self.swarm.is_bonded(id1=id, id2=self.nodes[target_x][target_y]))
-
-
+   
     # def find_valid_move(self, sphero, possible_directions): # -> List[int]
     #     """
     #     Find a valid direction for a sphero given a list of possible directions
@@ -142,25 +144,26 @@ class Algorithm:
     #             possible_directions.remove(direction)
     #     return possible_directions if possible_directions else []
     
-    def find_bonded_group_move(self, bonded_group): # -> int
-        """
-        Find a valid direction for the bonded group
 
-        Args:
-            bonded_group: (List[int]) an array of sphero ids apart of the same bonded group
+    # def find_bonded_group_move(self, bonded_group): # -> int
+    #     """
+    #     Find a valid direction for the bonded group
 
-        Returns:
-            (int): a valid direction for the bonded group
-        """
+    #     Args:
+    #         bonded_group: (List[int]) an array of sphero ids apart of the same bonded group
 
-        possible_directions = ALL_DIRECTIONS.copy()
-        direction = None
-        for id in bonded_group:
-            sphero = self.find_sphero(id)
-            possible_directions = self.find_valid_move(sphero=sphero,
-                                                        possible_directions=possible_directions)
-        direction = random.choice(possible_directions) if possible_directions else 0
-        return direction
+    #     Returns:
+    #         (int): a valid direction for the bonded group
+    #     """
+
+    #     possible_directions = ALL_DIRECTIONS.copy()
+    #     direction = None
+    #     for id in bonded_group:
+    #         sphero = self.find_sphero(id)
+    #         possible_directions = self.find_valid_move(sphero=sphero,
+    #                                                     possible_directions=possible_directions)
+    #     direction = random.choice(possible_directions) if possible_directions else 0
+    #     return direction
     
     # change to flip()
     def update_nodes(self, sphero):
