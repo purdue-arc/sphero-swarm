@@ -1,7 +1,7 @@
 import pygame
 from .constants import *
 from .algorithm import Algorithm
-from .sphero import Sphero
+from .sphero import Sphero, LinkedSphero
 
 # run with python -m algorithms.simulation
 
@@ -113,18 +113,20 @@ if __name__ == "__main__":
         colors.append(COLORS[i % len(COLORS)])
  
     # generate random initial positions if none passed in
-    spheros = []
+
+    algorithm_spheros = []
+    spheros = [] # put the Linked Spheros in here
+
     id = 1
     for (x, y), color in zip(initial_positions, colors):
-        spheros.append(Sphero(id=id, x=x, y=y, color=color))
+        algorithm_spheros.append(Sphero(id=id, x=x, y=y, color=color))
         id += 1
 
     algorithm = Algorithm(grid_width=GRID_WIDTH,
                             grid_height=GRID_HEIGHT,
-                            n_spheros=N_SPHEROS,
-                            initial_positions=INITIAL_POSITIONS)
-    for sphero in algorithm.spheros:
-        spheros.append(LinkedSphero(sphero))
+                            spheros=algorithm_spheros)
+    for sphero in algorithm_spheros:
+       spheros.append(LinkedSphero(sphero))
     
     running = True
     while running:
@@ -143,15 +145,14 @@ if __name__ == "__main__":
 
         # if all spheros reached their target, bond spheros and find new directions
         if spheros_reached_target:
-            for sphero in algorithm.spheros:
-                sphero.x = sphero.target_x
-                sphero.y = sphero.target_y
-                print(str(sphero))
-            
-            print('-'*50)
+            # update sphero positions to simulate they reached their target
+            algorithm.reset_sphero_positions()
 
-            algorithm.update_grid_bonds()
-            algorithm.update_grid_move()
+            # bond
+            algorithm.bond_groups()  # formerly used algorithm.update_grid_bonds()
+
+            # move
+            algorithm.move_groups() # formerly used algorithm.update_grid_move()
         
         # Draw the spheros
         for sphero in spheros:

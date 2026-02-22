@@ -56,9 +56,10 @@ class BondedGroup:
         Returns a string representation of the BondedGroup with all attributes. Thanks Copilot
         '''
         sphero_ids = [sphero.id for sphero in self.spheros]
-        return (f"BondedGroup(group_id={self.group_id}, size={self.size}, "
-                f"center_id={self.center}, sphero_ids={sphero_ids}, "
-                f"bounding_box(U,D,L,R)={self.box})")
+        return (f"BondedGroup(group_id={self.group_id}, size={self.size}, \n"
+                f"center_id={self.center}, sphero_ids={sphero_ids}, \n"
+                f"bounding_box(U,D,L,R)={self.box}), \n"
+                f"valid_moves={self.valid_moves}")
 
 
 

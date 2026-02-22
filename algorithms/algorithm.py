@@ -36,11 +36,20 @@ class Algorithm:
         return return_str
 
 
+    def bond_groups(self):
+        '''
+        TODO @Alan
+        for each group
+            for each sphero
+                check in each sphero's valid directions
+        '''
+        pass
+
     def move_groups(self):
         '''
         for each group: 
             valid_move = self.find_group_move(group)
-            if valid_move == -1 there are no valid moves, don't do anything
+            if valid_move == 0 there are no valid moves, don't do anything
                 we still have to update our stuff tho
             if valid_move == 1-8 
                 update all necessary attributes for a translation
@@ -52,38 +61,69 @@ class Algorithm:
             - target position for each sphero in each group
             - direction & previous direction 
 
-        at the end, call flip() to make current_grid = next_grid and to wipe next_grid
+        at the end, make current_grid = next_grid and to wipe next_grid
         '''
+        # move each group
         for group in self.bonded_groups:
-            valid_move = self.find_group_move(group)
-            # TODO Alan
 
+            # find a valid move for the group
+            valid_move = self.find_group_move(group) # will return a valid move for group, error checking done
+
+            if valid_move >= 0 and valid_move <= 8: # for staying still (0) / translation (1 to 8)
+
+                dx, dy = position_change[valid_move]
+
+                for sphero in group.spheros:
+                    # set the target
+                    sphero.target_x = sphero.x + dx
+                    sphero.target_y = sphero.y + dy
+
+                    # fill in next_grid spots
+                    self.next_grid[sphero.target_x][sphero.target_y] = sphero.id
+
+                    # update prev direction, direction
+                    sphero.update_direction(valid_move)
+
+            else: # valid_move is 9 or 10, aka a rotation.
+                '''
+                TODO @Alan @John
+
+                check if the move is valid by "boxing out" the rotation area.
+                    check if anything in the 'box' is an ID not belonging to the group
+                    check if anything in the 'box' will go out of bounds of the grid    
+
+                for each sphero
+                    matrix transform to get new target position
+                    fill in next_grid spots
+                    update prev direction, direction.
+                '''
+        
+        # all groups are moved. only thing left to do is flip the grids to get ready for the next iteration.
+        self.current_grid = self.next_grid.copy()
+        self.next_grid.clear()
 
     def find_group_move(self, group: BondedGroup)-> int:
         '''
-        TODO
-
         randomly select a translation or a rotation from group.valid_moves
         take out that option from the group.valid_moves
         check if it's valid 
             if it's translation, check by calling self.check_translation(move)
             else do some special stuff for checking rotation of the group TODO @John
         if it is valid, 
-            reset valid_directions to be 1-10 again and 
             return the move direction
         if it isn't, 
-            don't reset valid_directions
             keep trying to find a valid move
         if we run out of valid_directions to try
             reset 
-            return -1
+            return 0 (don't move)
         '''
         #reset the group valid moves
         group.reset_valid_moves()
 
         while True:
-
+            print(group.valid_moves)
             cur_direction = random.choice(group.valid_moves)
+            print('chose: ', cur_direction)
             group.valid_moves.remove(cur_direction)
 
             if cur_direction <= 8: # if it's a translation, check
@@ -93,7 +133,6 @@ class Algorithm:
                         valid_move = False
                 if valid_move:
                     return cur_direction
-
             else: # it's a rotation, check rotation validity
                 assert False, 'rotation checking not implemented yet (delete this line when ur done)'
                 # TODO implement check_rotation() @John
@@ -106,15 +145,23 @@ class Algorithm:
             1. go out of bounds
             2. go where another sphero is in self.next_grid
         '''   
-        # check for a translation
+        # make sure it's a translation
         if move in position_change.keys():
             dx, dy = position_change[move]
 
             in_bounds = (MARGIN <= sphero.x + dx < self.grid_width - MARGIN and 
                         MARGIN <= sphero.y + dy < self.grid_height - MARGIN)
 
-            no_collisions = self.next_grid[sphero.x + dx][sphero.y + dy]
-            return in_bounds and no_collisions
+            target_node_id = 99999
+            if in_bounds:
+                target_node_id = self.next_grid[sphero.x + dx][sphero.y + dy]
+                # if there is nothing on the target node, target_node_id will be 0.
+
+            print('target_node_id = ', target_node_id)
+            no_collisions = (target_node_id == 0)
+            #print(f'is {move} valid:  {in_bounds and }')
+            print(f'in_bounds  {in_bounds}')
+            return in_bounds and (target_node_id == 0)
         # check for a rotation
         else:
             assert False, 'Do not use this function to check rotational moves!'
@@ -126,6 +173,16 @@ class Algorithm:
         assert move == 9 or move == 10, 'Do not use this function to check translational moves!'
 
 
+
+    def reset_sphero_positions(self) -> None:
+        '''
+        for each sphero, set its x and y to its target_x and target_y values. 
+        this simulates 'moving' the sphero to its target.
+        '''
+        for group in self.bonded_groups:
+            for sphero in group.spheros:
+                sphero.x = sphero.target_x
+                sphero.y = sphero.target_y
 
    
     # def find_valid_move(self, sphero, possible_directions): # -> List[int]
