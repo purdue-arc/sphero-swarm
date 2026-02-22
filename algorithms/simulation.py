@@ -66,8 +66,11 @@ def moving_sphero_to_target(sphero):
         sphero.x = sphero.target_x
         sphero.y = sphero.target_y
         return False
+    if sphero.direction > 8:
+        print(f"Direction: {sphero.direction}\tx pos change: {position_change[sphero.direction][0]}")
     sphero.x += position_change[sphero.direction][0] * (sphero.speed / SIM_DIST)
     sphero.y += position_change[sphero.direction][1] * (sphero.speed / SIM_DIST)
+
     return True
 
 def teleport_sphero_to_target(sphero):

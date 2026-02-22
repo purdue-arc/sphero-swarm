@@ -135,8 +135,11 @@ class Algorithm:
 
             # find a valid move for the group
             valid_move = self.find_group_move(group) # will return a valid move for group, error checking done
+            print(f"Group: {group.group_id}\tDirection: {valid_move}")
 
             if valid_move >= 0 and valid_move <= 8: # for staying still (0) / translation (1 to 8)
+
+                # print("Translation")
 
                 dx, dy = position_change[valid_move]
 
@@ -162,6 +165,8 @@ class Algorithm:
                     fill in next_grid spots
                     update prev direction, direction.
                 '''
+
+                print("Rotation")
 
                 # Calculate the area to block
                 center_x = self.find_sphero(group.center).x
@@ -217,9 +222,9 @@ class Algorithm:
         group.reset_valid_moves()
 
         while len(group.valid_moves) > 0:
-            print(group.valid_moves)
+            #print(group.valid_moves)
             cur_direction = random.choice(group.valid_moves)
-            print('chose: ', cur_direction)
+            #print('chose: ', cur_direction)
             group.valid_moves.remove(cur_direction)
 
             if cur_direction <= 8: # if it's a translation, check
@@ -227,10 +232,12 @@ class Algorithm:
                 for sphero in group.spheros:
                     if not self.check_translation(sphero, cur_direction):
                         valid_move = False
-                if valid_move:
-                    return cur_direction
+                
             else: # it's a rotation, check rotation validity
                 valid_move = self.check_rotation(group, cur_direction)
+
+            if valid_move:
+                return cur_direction
         
         # no valid directions! don't move.
         return 0
