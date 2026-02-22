@@ -1,9 +1,8 @@
 import os
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
 
-import threading                
+import threading
 import zmq                      # for socket to connect to algs
-import depthai as dai           # for camera connection
 from queue import Queue, Empty
 from collections import deque
 
@@ -442,6 +441,7 @@ if __name__ == '__main__':
                     continue
                 calculateFrame(frame)
         else:
+            import depthai as dai
             dai_device = dai.Device()
             with dai.Pipeline(dai_device) as pipeline:
                 outputQueues = {}
