@@ -164,11 +164,13 @@ class Algorithm:
                 '''
 
                 # Calculate the area to block
+                center_x = self.find_sphero(group.center).x
+                center_y = self.find_sphero(group.center).y
                 rotated_box = group.rotate_box(group.box, valid_move)
 
                 # Block out box for collisions
-                for x in range(group.find_sphero(group.center).x - rotated_box[3], group.find_sphero(group.center).x + rotated_box[1]):
-                    for y in range(group.find_sphero(group.center).y - rotated_box[2], group.find_sphero(group.center).y + rotated_box[0]):
+                for x in range(center_x - rotated_box[3], center_x + rotated_box[1]):
+                    for y in range(center_y - rotated_box[2], center_y + rotated_box[0]):
                         self.next_grid[x][y] = -1
 
                 # Move the spheros
@@ -176,11 +178,11 @@ class Algorithm:
                     
                     # Calculate target position
                     if valid_move == 9: # Clockwise
-                        sphero.target_x = sphero.y
-                        sphero.target_y = sphero.x * (-1)
+                        sphero.target_x = (sphero.y - center_y) + center_x
+                        sphero.target_y = (sphero.x - center_x) * (-1) + center_y
                     else: # Counterclockwise
-                        sphero.target_x = sphero.y * (-1)
-                        sphero.target_y = sphero.x
+                        sphero.target_x = (sphero.y - center_y) * (-1) + center_x
+                        sphero.target_y = (sphero.x - center_x) + center_y
 
                     # fill in next_grid spots
                     self.next_grid[sphero.target_x][sphero.target_y] = sphero.id
