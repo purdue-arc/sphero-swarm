@@ -9,11 +9,13 @@ import type { SpheroConstants, SpheroStatus } from '../types/swarm_types'
 declare global {
   interface Window {
     electronAPI: {
+      appRenderComplete: () => Promise<any>;
+      signalAppReady(): unknown
       getConstants: any;
       startSpheroSpotter: () => Promise<any>;
       stopSpheroSpotter: () => Promise<any>;
       quitApp: () => Promise<any>;
-      saveConstants: (form:any) => Promise<any>;
+      saveConstants: (form: any) => Promise<any>;
     };
   }
 }
@@ -22,6 +24,7 @@ function App() {
   const [currentView, setCurrentView] = useState<string>("dashboard")
   const [constants, setConstants] = useState<SpheroConstants | null>(null);
   const [spheros, setSpheros] = useState<SpheroStatus[]>([])
+  const [authReady, setAppReady] = useState(false);
 
   useEffect(() => {
     // Load constants from Python via Electron
@@ -29,8 +32,13 @@ function App() {
       try {
         const data = await window.electronAPI.getConstants();
         setConstants(data);
+        setAppReady(true);
+        // Signal to splash that render is complete, showing the button
+        window.electronAPI.appRenderComplete();
       } catch (err) {
         console.error("Failed to load constants:", err);
+        setAppReady(true);
+        window.electronAPI.appRenderComplete();
       }
     }
 
@@ -42,16 +50,16 @@ function App() {
       return;
 
     setSpheros(
-        constants.SPHERO_TAGS.map((tag, i) => ({
-            id: tag,
-            connection: "not-attempted",
-            actualPosition: [0, 0],
-            expectedPosition: constants.INITIAL_POSITIONS[i],
-        }))
+      constants.SPHERO_TAGS.map((tag, i) => ({
+        id: tag,
+        connection: "not-attempted",
+        actualPosition: [0, 0],
+        expectedPosition: constants.INITIAL_POSITIONS[i],
+      }))
     );
   }, [constants])
 
-  if (constants == null) {
+  if (constants == null || !authReady) {
     return (
       <div style={{
         display: 'flex',
@@ -73,8 +81,8 @@ function App() {
 
   return (
     <div className={styles.mainBody}>
-      <Sidebar 
-        currentView={currentView} 
+      <Sidebar
+        currentView={currentView}
         setCurrentView={setCurrentView}
         connectedRobots={connectedRobots}
       />

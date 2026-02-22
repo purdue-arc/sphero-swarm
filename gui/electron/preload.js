@@ -10,5 +10,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
   saveConstants: (constants) =>
     ipcRenderer.invoke('save-constants', constants),
   quitApp: () => 
-    ipcRenderer.invoke('quit-app')
+    ipcRenderer.invoke('quit-app'),
+  onSplashProgress: (callback) => {
+    ipcRenderer.on("splash-progress", (_event, pct) => callback(pct));
+  },
+  appRenderComplete: () =>
+    ipcRenderer.invoke("app-render-complete"),
+  signalAppReady: () =>
+    ipcRenderer.invoke("app-ready"),
+  splashButtonClicked: () =>
+    ipcRenderer.invoke("splash-button-clicked"),
 });
