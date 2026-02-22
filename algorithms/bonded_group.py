@@ -54,7 +54,7 @@ class BondedGroup:
         
         return closest_sphero
     
-    def rotate_box(box, direction):
+    def rotate_box(self, box, direction):
         '''
         Returns a box list rotated according to the inputted direction
         (9 = clockwise; 10 = counterclockwise)

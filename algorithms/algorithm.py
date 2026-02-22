@@ -541,7 +541,7 @@ class Algorithm:
 
     #     return closest_sphero
 
-    def purge_grid(grid):
+    def purge_grid(self, grid):
         for x in range(GRID_WIDTH):
             for y in range(GRID_HEIGHT):
                 if grid[x][y] == -1:
