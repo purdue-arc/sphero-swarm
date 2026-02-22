@@ -149,10 +149,11 @@ if __name__ == "__main__":
             algorithm.reset_sphero_positions()
 
             # bond
-            algorithm.bond_groups()  # formerly used algorithm.update_grid_bonds()
+            algorithm.bond_all_groups()  # formerly used algorithm.update_grid_bonds()
+            print(str(algorithm))
 
             # move
-            algorithm.move_groups() # formerly used algorithm.update_grid_move()
+            algorithm.move_all_groups() # formerly used algorithm.update_grid_move()
         
         # Draw the spheros
         for sphero in spheros:

@@ -5,7 +5,7 @@ import math
 
 class BondedGroup:
     def __init__(self, list_spheros: list[Sphero], id: int):
-        self.group_id = id              # groups have unique ids starting at 0
+        self.group_id = id              # groups have unique ids starting at 1
         self.spheros = list_spheros     
         self.size = len(self.spheros)   
         self.box = [0,0,0,0]            # bounding box dimensions from center. order: U, D, L, R
