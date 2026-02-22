@@ -14,7 +14,16 @@ class BondedGroup:
         
         self.valid_moves = ALL_DIRECTIONS.copy()       #  1-10
 
-    
+    def find_sphero(self, id):
+        '''
+        Returns the sphero object that mathches the inputted id
+        '''
+        for sphero in self.spheros:
+            if sphero.id == id:
+                return sphero
+            
+        print(f"Sphero {id} not in group {self.group_id}")
+
     def find_center(self) -> int:
         '''
         Returns the sphero_id of the sphero closest 
@@ -44,6 +53,16 @@ class BondedGroup:
                 closest_distance = current_distance
         
         return closest_sphero
+    
+    def rotate_box(box, direction):
+        '''
+        Returns a box list rotated according to the inputted direction
+        (9 = clockwise; 10 = counterclockwise)
+        '''
+        if direction == 9:
+            return [box[3], box[0], box[1], box[2]]
+        else:
+            return [box[1], box[2], box[3], box[0]]
     
     def update_center(self) -> None:
         self.center = self.find_center()
