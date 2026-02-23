@@ -23,6 +23,36 @@ class BondedGroup:
                 return sphero
             
         print(f"Sphero {id} not in group {self.group_id}")
+        return None
+
+    def update_sphero_membership(self) -> None:
+        '''
+        gives all spheros this group's group_id, recalculates size, center, box dimensions
+        '''
+        for sphero in self.spheros:
+            sphero.group_id = self.group_id
+        
+        # recalculate group 1 size
+        self.size = len(self.spheros)
+
+        # recalculate group 1 center
+        self.update_center()
+ 
+        # recalculate group 1 box FIXME we need to figure out box dimensions
+        center_sphero = self.find_sphero(self.center)
+        max_x = center_sphero.x
+        max_y = center_sphero.y
+        min_x = center_sphero.x
+        min_y = center_sphero.y
+        for sphero in self.spheros:
+            max_x = max(max_x, sphero.x)
+            max_y = max(max_y, sphero.y)
+            min_x = min(min_x, sphero.x)
+            min_y = min(min_y, sphero.y)
+        self.box[0] = center_sphero.y - min_y # up  TODO we have to discuss which direction is up lol
+        self.box[1] = max_y - center_sphero.y # down    
+        self.box[2] = max_x - center_sphero.y # left
+        self.box[3] = center_sphero.x - min_x # right
 
     def find_center(self) -> int:
         '''
@@ -75,10 +105,10 @@ class BondedGroup:
         Returns a string representation of the BondedGroup with all attributes. Thanks Copilot
         '''
         sphero_ids = [sphero.id for sphero in self.spheros]
-        return (f"BondedGroup(group_id={self.group_id}, size={self.size}, \n"
-                f"center_id={self.center}, sphero_ids={sphero_ids}, \n"
-                f"bounding_box(U,D,L,R)={self.box}), \n"
-                f"valid_moves={self.valid_moves}")
+        return (f"\tBondedGroup(group_id={self.group_id}, size={self.size}, \n"
+                f"\tcenter_id={self.center}, sphero_ids={sphero_ids}, \n"
+                f"\tbounding_box(U,D,L,R)={self.box}), \n"
+                f"\tvalid_moves={self.valid_moves}\n")
 
 
 

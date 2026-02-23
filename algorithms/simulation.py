@@ -152,8 +152,8 @@ if __name__ == "__main__":
             algorithm.reset_sphero_positions()
 
             # bond
-            #algorithm.bond_all_groups()  # formerly used algorithm.update_grid_bonds()
-            #print(str(algorithm))
+            algorithm.bond_all_groups()  # formerly used algorithm.update_grid_bonds()
+            print(str(algorithm))
 
             # move
             algorithm.move_all_groups() # formerly used algorithm.update_grid_move()

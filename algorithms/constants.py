@@ -1,8 +1,8 @@
 MARGIN = 0
 DIRECTIONS = 8
 
-ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]   # WITH rotation
-#ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8]          # NO rotation
+#ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]   # WITH rotation
+ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8]          # NO rotation
 
 position_change = {
     0: (0, 0),
@@ -16,13 +16,13 @@ position_change = {
     8: (-1, 1)
 }
 
-N_SPHEROS = 5
+N_SPHEROS = 2
 
 # the number of nodes on the grid widthwise
-GRID_WIDTH = 6
+GRID_WIDTH = 4
 
 # the number of nodes on the grid heightwise
-GRID_HEIGHT = 5
+GRID_HEIGHT = 4
 
 # the pixel distance between two nodes 
 SIM_DIST = 50
@@ -46,7 +46,6 @@ GREEN = (0, 255, 0)
 YELLOW = (255, 255, 0)
 PURPLE = (128, 0, 128)
 ORANGE = (255, 165, 0)
-
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 GRAY = (150, 150, 150)
@@ -61,5 +60,5 @@ SPHERO_TAGS = [
     'SB-CEB2',
     'SB-BD0A',
 ]
-INITIAL_POSITIONS = [(0,0), (0,1), (3, 4), (4, 4), (4, 2)]
+INITIAL_POSITIONS = [(0,0), (0,3)]#, (3, 4), (4, 4), (4, 1)]
 
