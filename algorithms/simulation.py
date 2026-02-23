@@ -153,7 +153,7 @@ if __name__ == "__main__":
 
             # bond
             algorithm.bond_all_groups()  # formerly used algorithm.update_grid_bonds()
-            print(str(algorithm))
+            #print(str(algorithm))
 
             # move
             algorithm.move_all_groups() # formerly used algorithm.update_grid_move()

@@ -69,11 +69,11 @@ class Algorithm:
 
                     if not neighbor_sphero:
                         continue
-                    print('in bounds, neighbor_spheros exist')
+                    #print('in bounds, neighbor_spheros exist')
 
                     # the neighboring sphero belongs to another group; we have to bond
                     if neighbor_sphero.group_id != sphero.group_id:
-                        print(f'bond {sphero} with {neighbor_sphero}')
+                        #print(f'bond {sphero} with {neighbor_sphero}')
                         self.bond_two_groups(sphero.group_id, neighbor_sphero.group_id)
     
     def bond_two_groups(self, group_1_id, group_2_id) -> BondedGroup:
@@ -96,12 +96,11 @@ class Algorithm:
         # update spheros group_id in group 1
         group_1.update_sphero_membership()
 
-        # reset everything in group 2 
-        group_2.spheros = []
-        group_2.size = 0
-        group_2.box = [0,0,0,0]
-        group_2.center = -1
-
+        # reset everything in group 2. this is not really necessary since we remove group_2 from the list
+        # group_2.spheros = []
+        # group_2.size = -1
+        # group_2.box = [0,0,0,0]
+        # group_2.center = -1
         self.bonded_groups.remove(group_2)
     
     def find_sphero(self, id: int) -> Sphero:
@@ -155,7 +154,7 @@ class Algorithm:
 
             if valid_move >= 0 and valid_move <= 8: # for staying still (0) / translation (1 to 8)
 
-                # print("Translation")
+                print("Translation")
 
                 dx, dy = position_change[valid_move]
 
