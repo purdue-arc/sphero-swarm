@@ -81,7 +81,7 @@ class Algorithm:
         gives all of group 2's spheros to group 1
         returns group 1
         '''
-        print('bonding ', group_1_id, group_2_id)
+        # print('bonding ', group_1_id, group_2_id)
         group_1 = self.find_group(group_1_id)
         group_2 = self.find_group(group_2_id)
         assert group_1 and group_2, 'should be valid group ids passed into bond_two_groups!!!'
@@ -154,7 +154,7 @@ class Algorithm:
 
             if valid_move >= 0 and valid_move <= 8: # for staying still (0) / translation (1 to 8)
 
-                print("Translation")
+                print(f"Group: {group.group_id}\tDirection: {valid_move}\tTranslation")
 
                 dx, dy = position_change[valid_move]
 
@@ -181,11 +181,13 @@ class Algorithm:
                     update prev direction, direction.
                 '''
 
-                print("Rotation")
+                print(f"Group: {group.group_id}\tDirection: {valid_move}\tRotation")
+
+                center = self.find_sphero(group.center)
 
                 # Calculate the area to block
-                center_x = self.find_sphero(group.center).x
-                center_y = self.find_sphero(group.center).y
+                center_x = center.x
+                center_y = center.y
                 rotated_box = group.rotate_box(group.box, valid_move)
 
                 # Block out box for collisions

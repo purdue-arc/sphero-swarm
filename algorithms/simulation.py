@@ -2,6 +2,7 @@ import pygame
 from .constants import *
 from .algorithm import Algorithm
 from .sphero import Sphero, LinkedSphero
+from math import hypot, atan, asin, cos, sin, pi
 
 # run with python -m algorithms.simulation
 
@@ -66,10 +67,61 @@ def moving_sphero_to_target(sphero):
         sphero.x = sphero.target_x
         sphero.y = sphero.target_y
         return False
-    if sphero.direction > 8:
-        print(f"Direction: {sphero.direction}\tx pos change: {position_change[sphero.direction][0]}")
-    sphero.x += position_change[sphero.direction][0] * (sphero.speed / SIM_DIST)
-    sphero.y += position_change[sphero.direction][1] * (sphero.speed / SIM_DIST)
+    if sphero.direction <= 8:
+        # print(f"Direction: {sphero.direction}\tx pos change: {position_change[sphero.direction][0]}")
+        sphero.x += position_change[sphero.direction][0] * (sphero.speed / SIM_DIST)
+        sphero.y += position_change[sphero.direction][1] * (sphero.speed / SIM_DIST)
+    else:
+        
+        
+
+        step_length = (sphero.speed / SIM_DIST)
+
+        center = algorithm.find_sphero(algorithm.find_group(sphero.group_id).center)
+        dx_center = sphero.x - center.x
+        dy_center = sphero.y - center.y
+        dist_center = hypot(dx_center, dy_center)
+
+        # Attempted solution, currently doesn't work
+        # TODO: Try to fix this solution
+        # if sphero is not center:
+        #     if dx_center != 0:
+        #         current_angle = atan(dy_center / dx_center)
+        #     else:
+        #         current_angle = (pi / 2) * (dy_center / abs(dy_center))
+
+        #     delta_angle = asin(step_length / (2 * dist_center))
+
+        #     if sphero.direction == 9:
+        #         middle_angle = current_angle - delta_angle
+        #         heading_x = -sin(middle_angle)
+        #         heading_y = cos(middle_angle)
+        #     else:
+        #         middle_angle = current_angle + delta_angle
+        #         heading_x = sin(middle_angle)
+        #         heading_y = -cos(middle_angle)
+
+        
+        # else:
+        #     ux = 0
+        #     uy = 0
+
+
+
+        # This version spins, but doesn't stop
+        ux = dx_center / dist_center
+        uy = dy_center / dist_center
+
+        if sphero.direction == 9:
+            heading_x = -uy
+            heading_y = ux
+        else:
+            heading_x = uy
+            heading_y = -ux
+
+        sphero.x += heading_x * dist_center * step_length
+        sphero.y += heading_y * dist_center * step_length
+
 
     return True
 

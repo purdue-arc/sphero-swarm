@@ -179,6 +179,10 @@ class LinkedSphero:
     def direction(self):
         return self.sphero.direction
     
+    @property
+    def group_id(self):
+        return self.sphero.group_id
+    
     def __str__(self):
         return f"pos: {self.x}, {self.y}, id: {self.id}, direction: {self.direction}, target pos: {self.target_x}, {self.target_y}"
     
