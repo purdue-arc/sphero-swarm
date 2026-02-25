@@ -1,5 +1,5 @@
 import random
-from .constants import *
+from .constants import constants
 from .swarm import Swarm
 from .sphero import Sphero
 from typing import cast
@@ -47,7 +47,7 @@ class Algorithm:
 
         colors = []
         for i in range(self.n_spheros):
-            colors.append(COLORS[i % len(COLORS)])
+            colors.append(constants.COLORS[i % len(constants.COLORS)])
         return colors
 
     def random_initial_position(self): # -> (int, int)
@@ -62,11 +62,11 @@ class Algorithm:
             (int, int): a valid random initial position
         """
 
-        x = random.randint(MARGIN, self.grid_width - MARGIN - 1)
-        y = random.randint(MARGIN, self.grid_height - MARGIN - 1)
+        x = random.randint(constants.MARGIN, self.grid_width - constants.MARGIN - 1)
+        y = random.randint(constants.MARGIN, self.grid_height - constants.MARGIN - 1)
         while self.nodes[x][y]:
-            x = random.randint(MARGIN, self.grid_width - MARGIN - 1)
-            y = random.randint(MARGIN, self.grid_height - MARGIN - 1)
+            x = random.randint(constants.MARGIN, self.grid_width - constants.MARGIN - 1)
+            y = random.randint(constants.MARGIN, self.grid_height - constants.MARGIN - 1)
 
         # fill in board with temporary id
         self.nodes[x][y] = -1
@@ -115,7 +115,8 @@ class Algorithm:
             (bool): Is the x and y coordinates in the boundaries of the grid?
         """
 
-        return MARGIN <= x < self.grid_width - MARGIN and MARGIN <= y < self.grid_height - MARGIN
+        return (constants.MARGIN <= x < self.grid_width - constants.MARGIN and
+                constants.MARGIN <= y < self.grid_height - constants.MARGIN)
     
     def is_valid_move(self, direction, sphero): # -> bool
         """
@@ -166,7 +167,7 @@ class Algorithm:
             (int): a valid direction for the bonded group
         """
 
-        possible_directions = ALL_DIRECTIONS.copy()
+        possible_directions = constants.ALL_DIRECTIONS.copy()
         direction = None
         for id in bonded_group:
             sphero = self.find_sphero(id)
@@ -236,7 +237,7 @@ class Algorithm:
         """
 
         # check all surrounding spheros
-        for direction in range(1, DIRECTIONS + 1):
+        for direction in range(1, constants.DIRECTIONS + 1):
             adj_x, adj_y = sphero.compute_target_position(direction=direction)
 
             # if the surrounding position is in bounds

@@ -2,7 +2,7 @@ import pickle
 import socket
 import math
 from algorithms.algorithm import Algorithm
-from algorithms.constants import *
+from algorithms.constants import constants
 from algorithms.simulation import StartSimulation, spheros, teleport_sphero_to_target
 from controls.Instruction import Instruction
 from time import sleep
@@ -15,15 +15,15 @@ def main():
 
     s.connect(('localhost', port))
 
-    sphero_tag = SPHERO_TAGS
-    initial_positions = INITIAL_POSITIONS
+    sphero_tag = constants.SPHERO_TAGS
+    initial_positions = constants.INITIAL_POSITIONS
 
     '''
     call name_to_location = controls.Fall_2025_Sphero_Swarm_Server.generate_dict_map()
     '''
 
-    algorithm = Algorithm(grid_width=GRID_WIDTH,
-                            grid_height=GRID_HEIGHT,
+    algorithm = Algorithm(grid_width=constants.GRID_WIDTH,
+                            grid_height=constants.GRID_HEIGHT,
                             n_spheros=len(sphero_tag),
                             initial_positions=initial_positions)
     print("init success")
@@ -47,16 +47,16 @@ def main():
 
             for sphero in algorithm.spheros:
                 direction_change = sphero.get_direction_change()
-                rotate_instruction = Instruction(sphero.id, 2, 45 * direction_change, TURN_DURATION)
+                rotate_instruction = Instruction(sphero.id, 2, 45 * direction_change, constants.TURN_DURATION)
                 rotate_instructions.append(rotate_instruction)
 
-                speed = SPHERO_SPEED
+                speed = constants.SPHERO_SPEED
 
                 # If we are going diagonal, adjust speed by a factor of sqrt(2). thanks pythagoras
                 if sphero.direction > 0 and sphero.direction % 2 == 0:
-                    speed = SPHERO_DIAGONAL_SPEED
+                    speed = constants.SPHERO_DIAGONAL_SPEED
 
-                roll_instruction = Instruction(sphero.id, 1, speed, ROLL_DURATION)
+                roll_instruction = Instruction(sphero.id, 1, speed, constants.ROLL_DURATION)
                 print(str(sphero))
                 roll_instructions.append(roll_instruction)
 
