@@ -20,6 +20,24 @@ export function Controls({
 }) {
     const { connectState, startConnection, connectedCount, pendingCount, failedCount } = useSpheroConnection(spheros, setSpheros);
 
+    // helper that opens a short-lived socket to the control server and sends a JSON
+    const sendControlCommand = (cmd: object) => {
+        const ws = new WebSocket("ws://localhost:6768");
+        ws.onopen = () => {
+            ws.send(JSON.stringify(cmd));
+            ws.close();
+        };
+    };
+
+    const handleRehome = () => {
+        sendControlCommand({ type: "rehome" });
+    };
+
+    const handleDisconnect = (id: string) => {
+        sendControlCommand({ type: "disconnect", ball: id });
+        setSpheros(prev => prev.map(s => s.id === id ? { ...s, connection: "not-attempted" } : s));
+    };
+
     return (
         <>
             <div className={styles.spheroSection}>
@@ -36,9 +54,16 @@ export function Controls({
                     pendingCount={pendingCount}
                     failedCount={failedCount}
                 />
+                <button
+                    className={styles.rehomeButton}
+                    onClick={handleRehome}
+                    disabled={connectedCount === 0}
+                >
+                    Re‑home All
+                </button>
             </div>
             <div className={styles.spheroSection}>
-                <SpheroConnectionList spheros={spheros} />
+                <SpheroConnectionList spheros={spheros} onDisconnect={handleDisconnect} />
             </div>
         </>
     )

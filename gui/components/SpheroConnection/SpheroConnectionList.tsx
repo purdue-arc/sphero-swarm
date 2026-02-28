@@ -5,8 +5,10 @@ import styles from "./SpheroConnection.module.css";
 
 export function SpheroConnectionList({
     spheros,
+    onDisconnect,
 }: {
     spheros: SpheroStatus[];
+    onDisconnect?: (id: string) => void;
 }) {
     const getConnectionLabel = (connection: string) => {
         switch (connection) {
@@ -73,6 +75,14 @@ export function SpheroConnectionList({
                         </div>
 
                     </div>
+                    {onDisconnect && sphero.connection === "connected" && (
+                        <button
+                            className={styles.disconnectButton}
+                            onClick={() => onDisconnect(sphero.id)}
+                        >
+                            Disconnect
+                        </button>
+                    )}
                 </div>
             ))}
         </div>

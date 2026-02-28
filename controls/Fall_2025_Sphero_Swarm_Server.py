@@ -28,6 +28,10 @@ import pickle
 import socket
 import logging
 
+# queue used for control messages from the GUI (rehome/disconnect etc)
+from queue import Queue, Empty
+control_cmd_queue: Queue[dict] = Queue()
+
 # For the React App
 parser = argparse.ArgumentParser(description="Sphero Spotter")
 parser.add_argument('--server', '-s', action='store_true', help="Run controls from main GUI.")
@@ -344,12 +348,9 @@ def run_server(ball_names, ws=None, loop=None):
 
     # then sort the addresses to match given order, due to system complexities
     address_sort(toys_addresses, name_to_location_dict)
-    valid_sphero_ids = []
-    for ball_name in ball_names:
-        valid_sphero_ids.append(name_to_location_dict[ball_name])
-    # sorted in ascending order
-    valid_sphero_ids.sort(key = lambda ball_id : ball_id)
-    print("ID's linked to initial ball names provided, sorted: {}".format(valid_sphero_ids))
+    # create a parallel sorted list of names matching the order of toys_addresses
+    names_in_order = sorted(ball_names, key=lambda n: name_to_location_dict[n])
+    print("Names linked to initial ball names provided, sorted: {}".format(names_in_order))
 
     # sb list has length of the number of valid ids
     sb_list = [None] * len(toys_addresses)
@@ -373,6 +374,33 @@ def run_server(ball_names, ws=None, loop=None):
         
         num_commands_run = 1
         while (KILL_FLAG == 0):
+            # process any control commands coming from the GUI
+            try:
+                ctrl = control_cmd_queue.get_nowait()
+            except Empty:
+                ctrl = None
+
+            if ctrl is not None:
+                ctype = ctrl.get("type")
+                if ctype == "rehome":
+                    for sb in sb_list:
+                        if sb is not None:
+                            try:
+                                sb.set_heading(0)
+                            except Exception:
+                                pass
+                elif ctype == "disconnect":
+                    ball = ctrl.get("ball")
+                    if ball is not None:
+                        try:
+                            idx = names_in_order.index(ball)
+                            if sb_list[idx] is not None:
+                                terminate_ball(sb_list[idx])
+                                sb_list[idx] = None
+                        except ValueError:
+                            pass
+                # other command types can be added here
+
             if (len(commands_array) != 0):
                 print(commands_array)
                 print("Running command {}".format(num_commands_run))
@@ -443,8 +471,9 @@ async def handle_client(websocket):
 
     async for message in websocket:
         data = json.loads(message)
+        typ = data.get("type")
 
-        if data.get("type") == "connect":
+        if typ == "connect":
             ball_names = data["spheros"]
 
             await loop.run_in_executor(
@@ -454,6 +483,12 @@ async def handle_client(websocket):
                 websocket,
                 loop
             )
+        else:
+            # other messages are control commands; enqueue for the running server
+            try:
+                control_cmd_queue.put_nowait(data)
+            except Exception:
+                pass
 
 def ws_send(loop, websocket, payload):
     asyncio.run_coroutine_threadsafe(

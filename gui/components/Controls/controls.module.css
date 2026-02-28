@@ -7,6 +7,25 @@
     margin: 50px;
 }
 
+.rehomeButton {
+    all: unset;
+    display: inline-block;
+    margin-top: 1rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 8px;
+    background: rgba(52, 211, 153, 0.15);
+    color: #34d399;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+.rehomeButton:hover:not(:disabled) {
+    background: rgba(52, 211, 153, 0.25);
+}
+.rehomeButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
 .spheroGrid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
