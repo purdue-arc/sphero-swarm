@@ -4,8 +4,10 @@ import { Runner } from "../components/Runner/runner"
 import { Controls } from "../components/Controls/Controls"
 import { Config } from "../components/Config/config"
 import { Simulation } from "../components/Simulation/simulation"
+import { Perception } from "../components/Perception/perception"
+
 import { useState, useEffect } from 'react'
-import type { SpheroConstants, SpheroStatus } from '../types/swarm_types'
+import type { SpheroConstants, SpheroStatus, PerceptionConfig } from '../types/swarm_types'
 
 declare global {
   interface Window {
@@ -13,7 +15,7 @@ declare global {
       appRenderComplete: () => Promise<any>;
       signalAppReady(): unknown
       getConstants: any;
-      startSpheroSpotter: () => Promise<any>;
+      startSpheroSpotter: (config?: PerceptionConfig) => Promise<any>;
       stopSpheroSpotter: () => Promise<any>;
       quitApp: () => Promise<any>;
       saveConstants: (form: any) => Promise<any>;
@@ -105,10 +107,7 @@ function App() {
 
         {/* Placeholder views for other sections */}
         {currentView === "perception" && (
-          <div style={{ padding: '2rem', color: '#ffffff' }}>
-            <h1>Perception Module</h1>
-            <p>Detailed perception controls and monitoring coming soon...</p>
-          </div>
+          <Perception />
         )}
 
         {currentView === "algorithms" && (

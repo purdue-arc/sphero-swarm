@@ -1,9 +1,8 @@
 import os
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
 
-import threading                
+import threading
 import zmq                      # for socket to connect to algs
-import depthai as dai           # for camera connection
 from queue import Queue, Empty
 from collections import deque
 
@@ -79,6 +78,11 @@ arena_h_px = 500
 
 last_valid_frame = None
 
+# Status tracking for GUI telemetry
+last_apriltag_count = 0
+zmq_bound = False
+last_latency = None
+
 def draw_grid(frame, top_left, bottom_right):
     global arena_h_px, arena_w_px
 
@@ -131,7 +135,7 @@ def draw_grid(frame, top_left, bottom_right):
     return frame
 
 def process_apriltags(frame, force_process=False):
-    global april_tag_frame_counter, last_warped_frame, last_warp_matrix
+    global april_tag_frame_counter, last_warped_frame, last_warp_matrix, last_apriltag_count
     
     # Only process April tags periodically to reduce latency
     if not force_process:
@@ -149,6 +153,7 @@ def process_apriltags(frame, force_process=False):
     # Process April tags (full detection)
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     results = detector.detect(gray)
+    last_apriltag_count = len(results)
     tag_points = {}
 
     for r in results:
@@ -203,8 +208,8 @@ def listener():
     '''
     This function is started in a thread and concurrently listens for requests from Algorithm team's side.
 
-    Algorithm team will send a request containing "init" and we will wait for that. we will send back a message saying 
-    "connected" and then start listening for strings saying "coords". When we receive a string 
+    Algorithm team will send a request containing "init" and we will wait for that. we will send back a message saying
+    "connected" and then start listening for strings saying "coords". When we receive a string
     containing "exit", the listener will stop.
 
     We receive:             | We send back:
@@ -215,10 +220,12 @@ def listener():
 
 
     '''
+    global zmq_bound
     # connect to the socket
     context = zmq.Context()
     socket = context.socket(zmq.REP)
     socket.bind("tcp://*:5555")
+    zmq_bound = True
     print('sphero_spotter: socket bind success')
 
 
@@ -363,6 +370,32 @@ def process_frame_async():
                     if args.debug:
                         print(f"ID {disp_id} | {class_name} | Center: ({int(cx)}, {int(cy)})")
             
+            # Push telemetry to GUI via server
+            if args.server:
+                status_spheros = []
+                for (cx, cy, cls_id, x1, y1, x2, y2, tid) in dets:
+                    if tid in id_map:
+                        disp_id = id_map[tid]
+                        gx, gy = pixel_to_grid_coords(cx, cy)
+                        status_spheros.append({
+                            "id": disp_id,
+                            "px": int(cx), "py": int(cy),
+                            "gx": round(gx, 2), "gy": round(gy, 2),
+                        })
+                server.feed_status({
+                    "type": "status",
+                    "ts": time.time(),
+                    "input_source": _input_source,
+                    "device": device,
+                    "model": os.path.basename(args.model),
+                    "id_mode": "locked" if args.locked else "dynamic",
+                    "apriltag_count": last_apriltag_count,
+                    "perspective_calibrated": last_warp_matrix is not None,
+                    "zmq_bound": zmq_bound,
+                    "spheros": status_spheros,
+                    "latency": last_latency,
+                })
+
             # Put result in queue (replace if queue is full)
             result_data = (frame, dets, frame_timestamp)
             if result_queue.full():
@@ -419,6 +452,8 @@ def calculateFrame(frame, frame_timestamp=None):
                 raise SystemExit("Window closed")
 if __name__ == '__main__':
 
+    _input_source = "webcam" if args.webcam else ("video" if args.video else "oakd")
+
     if args.webcam:
         stream = WebcamStream(args.webcam)
     elif args.video:
@@ -442,6 +477,7 @@ if __name__ == '__main__':
                     continue
                 calculateFrame(frame)
         else:
+            import depthai as dai
             dai_device = dai.Device()
             with dai.Pipeline(dai_device) as pipeline:
                 outputQueues = {}
@@ -489,6 +525,11 @@ if __name__ == '__main__':
                     
                         # --- Print diagnostics ---
                         print(f"Pipeline Latency: {pipeline_latency_ms:.2f} ms | Queue Time: {queue_time_ms:.2f} ms | Total E2E Latency (to queue): {total_e2e_latency_ms:.2f} ms")
+                        last_latency = {
+                            "pipeline_ms": round(pipeline_latency_ms, 2),
+                            "queue_ms": round(queue_time_ms, 2),
+                            "e2e_ms": round(total_e2e_latency_ms, 2),
+                        }
 
 
     except KeyboardInterrupt:

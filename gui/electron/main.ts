@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 import path from "path";
+import os from "os";
 import { fileURLToPath } from "url";
 import { spawn, spawnSync } from "child_process";
 
@@ -7,15 +8,30 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 function getPythonExecutable() {
-  const versions = ["python3", "python"];
-  for (const v of versions) {
-    const result = spawnSync(v, ["--version"]);
+  const home = os.homedir();
+  const candidates = [
+    // PATH-based lookups (uses shell so conda/pyenv/brew envs are found)
+    "python3",
+    "python",
+    // macOS Homebrew (Apple Silicon)
+    "/opt/homebrew/bin/python3",
+    // macOS Homebrew (Intel)
+    "/usr/local/bin/python3",
+    // conda (common install locations)
+    `${home}/miniconda3/bin/python3`,
+    `${home}/anaconda3/bin/python3`,
+    `${home}/miniforge3/bin/python3`,
+    // pyenv shims
+    `${home}/.pyenv/shims/python3`,
+  ];
+  for (const v of candidates) {
+    const result = spawnSync(v, ["--version"], { shell: false });
     if (result.status === 0) {
       console.log(`Using Python executable: ${v}`);
       return v;
     }
   }
-  throw new Error("Python not found in PATH");
+  throw new Error("Python not found. Install Python 3 via Homebrew (brew install python) or conda.");
 }
 
 function getConfig() {
@@ -40,11 +56,39 @@ function getConfig() {
 
 let spheroProcess: any = null;
 
-function startSpheroSpotter() {
+const DEFAULT_PERCEPTION_CONFIG = {
+  inputSource: "webcam",
+  model: "./models/bestv3.pt",
+  conf: 0.25,
+  imgsz: 640,
+  grid: false,
+  locked: false,
+  latency: false,
+};
+
+function startSpheroSpotter(config: any = {}) {
   if (spheroProcess) { console.log("Sphero Spotter already running"); return; }
+  const cfg = { ...DEFAULT_PERCEPTION_CONFIG, ...config };
   const pythonExec = getPythonExecutable();
   const moduleFolder = path.join(__dirname, "../../perception");
-  spheroProcess = spawn(pythonExec, ["sphero_spotter.py", "-w", "-s"], { cwd: moduleFolder, stdio: "pipe" });
+
+  const pyArgs = ["sphero_spotter.py", "-s"]; // -s = WebSocket server mode
+
+  if (cfg.inputSource === "webcam") {
+    pyArgs.push("-w");
+  } else if (cfg.inputSource === "video" && cfg.videoPath) {
+    pyArgs.push("-v", cfg.videoPath);
+  }
+  // oakd = no flag needed
+
+  pyArgs.push("-m", cfg.model);
+  pyArgs.push("--conf", String(cfg.conf));
+  pyArgs.push("--imgsz", String(cfg.imgsz));
+  if (cfg.grid)    pyArgs.push("-g");
+  if (cfg.locked)  pyArgs.push("-l");
+  if (cfg.latency) pyArgs.push("-t");
+
+  spheroProcess = spawn(pythonExec, pyArgs, { cwd: moduleFolder, stdio: "pipe" });
   spheroProcess.stderr.on("data", (data: any) => { console.error(`Python error: ${data.toString()}`); });
   spheroProcess.on("close", (code: any, signal: any) => {
     console.log(`Sphero Spotter exited (code=${code}, signal=${signal})`);
@@ -61,7 +105,7 @@ function stopSpheroSpotter(force = false) {
   return true;
 }
 
-ipcMain.handle("start-sphero-spotter", async () => { startSpheroSpotter(); return { status: "started" }; });
+ipcMain.handle("start-sphero-spotter", async (_event, config) => { startSpheroSpotter(config); return { status: "started" }; });
 ipcMain.handle("stop-sphero-spotter", async () => { stopSpheroSpotter(); return { status: "stopped" }; });
 ipcMain.handle("get-constants", async () => {
   try { return await getConfig(); }

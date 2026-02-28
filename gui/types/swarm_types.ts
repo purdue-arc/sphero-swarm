@@ -1,3 +1,14 @@
+export interface PerceptionConfig {
+  inputSource: "webcam" | "oakd" | "video";
+  videoPath?: string;
+  model: string;
+  conf: number;
+  imgsz: number;
+  grid: boolean;
+  locked: boolean;
+  latency: boolean;
+}
+
 export interface SpheroConstants {
   MARGIN: number;
   DIRECTIONS: number;
