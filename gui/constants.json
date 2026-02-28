@@ -49,11 +49,11 @@
       1
     ]
   },
-  "N_SPHEROS": 4,
+  "N_SPHEROS": 3,
   "GRID_WIDTH": 4,
   "GRID_HEIGHT": 4,
   "EPSILON": 0.01,
-  "SPHERO_SPEED": 60,
+  "SPHERO_SPEED": 66,
   "SPHERO_DIAGONAL_SPEED": 76,
   "ROLL_DURATION": 0.8,
   "TURN_DURATION": 0.5,
@@ -139,8 +139,7 @@
   "SPHERO_TAGS": [
     "SB-B11D",
     "SB-BD0A",
-    "SB-76B3",
-    "SB-E274"
+    "SB-76B3"
   ],
   "INITIAL_POSITIONS": [
     [
@@ -162,10 +161,6 @@
     [
       3,
       1
-    ],
-    [
-      0,
-      0
     ],
     [
       0,

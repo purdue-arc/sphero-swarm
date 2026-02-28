@@ -1,8 +1,8 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld("electronAPI", {
-  startSpheroSpotter: () =>
-    ipcRenderer.invoke("start-sphero-spotter"),
+  startSpheroSpotter: (config) =>
+    ipcRenderer.invoke("start-sphero-spotter", config),
   stopSpheroSpotter: () =>
     ipcRenderer.invoke("stop-sphero-spotter"),
   getConstants: () =>
