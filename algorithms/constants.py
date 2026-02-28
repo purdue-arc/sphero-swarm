@@ -42,7 +42,6 @@ class Constants:
         self.SPHERO_SPEED = 60
         self.SPHERO_DIAGONAL_SPEED = 76
 
-        # in seconds
         self.ROLL_DURATION = 0.8
         self.TURN_DURATION = 0.5
 
@@ -52,7 +51,6 @@ class Constants:
         ]
         self.INITIAL_POSITIONS = [(0, 0), (0, 2), (1, 3), (3, 3), (3, 1)]
         
-        # Automatically load from constants.json if it exists
         self._load_constants_from_file()
 
     def _load_constants_from_file(self) -> None:
@@ -84,7 +82,6 @@ class Constants:
                     setattr(self, key, value)
         except (json.JSONDecodeError, IOError) as e:
             print(f"Warning: Could not load constants.json: {e}")
-
 
 constants = Constants()
 

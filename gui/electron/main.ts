@@ -75,7 +75,7 @@ ipcMain.handle("splash-button-clicked", () => {
 ipcMain.handle("save-constants", async (_event, constants) => {
   try {
     const fs = await import("fs/promises");
-    const constantsPath = path.join(__dirname, "../constants.json");
+    const constantsPath = path.join(__dirname, "../../constants.json");
     await fs.writeFile(constantsPath, JSON.stringify(constants, null, 2));
     return { status: "saved" };
   } catch (error) { console.error("Error saving constants:", error); throw error; }

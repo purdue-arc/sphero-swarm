@@ -3,6 +3,7 @@ import { Sidebar } from "../components/Sidebar/sidebar"
 import { Runner } from "../components/Runner/runner"
 import { Controls } from "../components/Controls/Controls"
 import { Config } from "../components/Config/config"
+import { Simulation } from "../components/Simulation/simulation"
 import { useState, useEffect } from 'react'
 import type { SpheroConstants, SpheroStatus } from '../types/swarm_types'
 
@@ -27,7 +28,6 @@ function App() {
   const [authReady, setAppReady] = useState(false);
 
   useEffect(() => {
-    // Load constants from Python via Electron
     async function loadConstants() {
       try {
         const data = await window.electronAPI.getConstants();
@@ -99,6 +99,10 @@ function App() {
           <Controls constants={constants} spheros={spheros} setSpheros={setSpheros} />
         )}
 
+        {currentView === "simulation" && (
+          <Simulation constants={constants} spheros={spheros} setSpheros={setSpheros} />
+        )}
+
         {/* Placeholder views for other sections */}
         {currentView === "perception" && (
           <div style={{ padding: '2rem', color: '#ffffff' }}>
@@ -111,13 +115,6 @@ function App() {
           <div style={{ padding: '2rem', color: '#ffffff' }}>
             <h1>Algorithms Module</h1>
             <p>Algorithm configuration and testing coming soon...</p>
-          </div>
-        )}
-
-        {currentView === "simulation" && (
-          <div style={{ padding: '2rem', color: '#ffffff' }}>
-            <h1>Simulation Environment</h1>
-            <p>Virtual testing environment coming soon...</p>
           </div>
         )}
 
