@@ -51,6 +51,10 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
     const [connected, setConnected] = useState(false);
     const [paused, setPaused] = useState(false);    
     const [running, setRunning] = useState(false);  
+    const [currentEditPath, setEditPath] = useState<number[]>([]);
+    const [editBall, setEditBall] = useState(false);
+    const [selectedEditBallId, setSelectedEditBallId] = useState<number | null>(null);
+    const [isPathDrawing, setIsPathDrawing] = useState(false);
     const [speed, setSpeed] = useState(4);                // current delay value
     const [useControls, setUseControls] = useState(false); // whether GUI commands are respected
 
@@ -63,10 +67,17 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
     const gridRef = useRef({ width: 10, height: 10 });
 
     const [, forceRender] = useState(0);
+    const { width: COLS, height: ROWS } = gridSize;
 
-    const wsRef = useRef<WebSocket | null>(null);          // keep socket for sending commands
+    const wsRef = useRef<WebSocket | null>(null);
+    const svgRef = useRef<SVGSVGElement | null>(null);
 
     const nodeIndex = useCallback((x: number, y: number, gw: number) => y * gw + x, []);
+
+    const nodeCoords = useCallback((index: number, gw: number) => ({
+        x: index % gw,
+        y: Math.floor(index / gw),
+    }), []);
 
     const sendCommand = useCallback((cmd: object) => {
         const ws = wsRef.current;
@@ -83,6 +94,79 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
         const row = Math.floor(index / gw);
         return { x: PADDING + col * xStep, y: PADDING + row * yStep };
     }, []);
+
+    const getNodeFromPointer = useCallback((clientX: number, clientY: number) => {
+        if (COLS <= 1 || ROWS <= 1) return null;
+        const svg = svgRef.current;
+        if (!svg) return null;
+
+        const rect = svg.getBoundingClientRect();
+        if (!rect.width || !rect.height) return null;
+
+        const x = ((clientX - rect.left) / rect.width) * VIEW_SIZE;
+        const y = ((clientY - rect.top) / rect.height) * VIEW_SIZE;
+
+        const xStep = (VIEW_SIZE - PADDING * 2) / (COLS - 1);
+        const yStep = (VIEW_SIZE - PADDING * 2) / (ROWS - 1);
+
+        const col = Math.round((x - PADDING) / xStep);
+        const row = Math.round((y - PADDING) / yStep);
+
+        if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return null;
+
+        const idx = nodeIndex(col, row, COLS);
+        const pos = getNodePos(idx, COLS, ROWS);
+        const threshold = Math.max(12, Math.min(xStep, yStep) * 0.45);
+
+        return Math.hypot(pos.x - x, pos.y - y) <= threshold ? idx : null;
+    }, [COLS, ROWS, getNodePos, nodeIndex]);
+
+    const appendPathNode = useCallback((idx: number) => {
+        setEditPath(prev => {
+            if (prev.length && prev[prev.length - 1] === idx) return prev;
+            return [...prev, idx];
+        });
+    }, []);
+
+    const handleSvgPointerDown = (evt: React.PointerEvent<SVGSVGElement>) => {
+        if (!paused || !editBall || selectedEditBallId === null) return;
+        const idx = getNodeFromPointer(evt.clientX, evt.clientY);
+        if (idx === null) return;
+        evt.preventDefault();
+        evt.currentTarget.setPointerCapture(evt.pointerId);
+        setIsPathDrawing(true);
+        appendPathNode(idx);
+    };
+
+    const handleSvgPointerMove = (evt: React.PointerEvent<SVGSVGElement>) => {
+        if (!isPathDrawing || !paused || !editBall || selectedEditBallId === null) return;
+        const idx = getNodeFromPointer(evt.clientX, evt.clientY);
+        if (idx === null) return;
+        appendPathNode(idx);
+    };
+
+    const endPathDraw = (evt?: React.PointerEvent<SVGSVGElement>) => {
+        if (evt && evt.currentTarget.hasPointerCapture(evt.pointerId)) {
+            evt.currentTarget.releasePointerCapture(evt.pointerId);
+        }
+        setIsPathDrawing(false);
+    };
+
+    const handleBallPointerDown = (ball: Ball, evt: React.PointerEvent<SVGGElement>) => {
+        if (!paused || !editBall) return;
+        evt.preventDefault();
+        evt.stopPropagation();
+
+        setSelectedEditBallId(ball.id);
+        setEditPath([ball.targetNode]);
+
+        const idx = getNodeFromPointer(evt.clientX, evt.clientY);
+        if (idx !== null && idx !== ball.targetNode) {
+            setEditPath([ball.targetNode, idx]);
+        }
+
+        setIsPathDrawing(true);
+    };
 
     // ── WebSocket ──────────────────────────────────────────────────────────
 
@@ -249,7 +333,6 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
 
     // ── Derived render values ──────────────────────────────────────────────
 
-    const { width: COLS, height: ROWS } = gridSize;
     const balls = Array.from(ballsRef.current.values());
 
     function ballPos(ball: Ball) {
@@ -261,6 +344,7 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
 
     const handleStart = () => {
         sendCommand({ type: "start" });
+        sendCommand({ type: "speed", value: speed });
         setRunning(true);
         setPaused(false);
     };
@@ -269,6 +353,10 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
         sendCommand({ type: "reset" });
         setRunning(false);
         setPaused(false);
+        setEditBall(false);
+        setSelectedEditBallId(null);
+        setEditPath([]);
+        setIsPathDrawing(false);
         // clear animation state and bonds but keep speed slider value
         ballsRef.current.clear();
         bondLinesRef.current = [];
@@ -283,6 +371,25 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
         sendCommand({ type: "speed", value: val });
     };
 
+    const handleEditBall = () => {
+        if (!paused) return;
+
+        if (!editBall) {
+            sendCommand({ type: "edit_ball" });
+            setSelectedEditBallId(null);
+            setEditPath([]);
+            setIsPathDrawing(false);
+        } else {
+            const payloadPath = currentEditPath.map(idx => nodeCoords(idx, COLS));
+            sendCommand({ type: "done_ball", ball_id: selectedEditBallId, path: payloadPath });
+            setSelectedEditBallId(null);
+            setEditPath([]);
+            setIsPathDrawing(false);
+        }
+
+        setEditBall(prev => !prev);
+    };
+
     const toggleUseControls = () => {
         const next = !useControls;
         setUseControls(next);
@@ -290,6 +397,10 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
         if (!next) {
             setRunning(false);
             setPaused(false);
+            setEditBall(false);
+            setSelectedEditBallId(null);
+            setEditPath([]);
+            setIsPathDrawing(false);
         }
     };
 
@@ -306,10 +417,15 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
                     </div>
                 )}
             <svg
+                ref={svgRef}
                 className={styles.gridSvg}
                 width="100%"
                 height="100%"
                 viewBox={`0 0 ${VIEW_SIZE} ${VIEW_SIZE}`}
+                onPointerDown={handleSvgPointerDown}
+                onPointerMove={handleSvgPointerMove}
+                onPointerUp={endPathDraw}
+                onPointerLeave={endPathDraw}
             >
                 <defs>
                     {balls.map(ball => (
@@ -359,9 +475,36 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
 
                 {Array.from({ length: ROWS * COLS }).map((_, i) => {
                     const { x, y } = getNodePos(i, COLS, ROWS);
+                    const inEditPath = currentEditPath.includes(i);
                     return (
                         <circle key={`node-${i}`} cx={x} cy={y} r={NODE_RADIUS}
-                            className={styles.gridNode} filter="url(#node-glow)" />
+                            className={`${styles.gridNode} ${inEditPath ? styles.gridNodePath : ""}`}
+                            filter="url(#node-glow)" />
+                    );
+                })}
+
+                {editBall && currentEditPath.length > 1 && (
+                    <polyline
+                        points={currentEditPath
+                            .map(idx => {
+                                const { x, y } = getNodePos(idx, COLS, ROWS);
+                                return `${x},${y}`;
+                            })
+                            .join(" ")}
+                        className={styles.editPathLine}
+                    />
+                )}
+
+                {editBall && currentEditPath.map((idx, i) => {
+                    const { x, y } = getNodePos(idx, COLS, ROWS);
+                    return (
+                        <circle
+                            key={`edit-path-node-${idx}-${i}`}
+                            cx={x}
+                            cy={y}
+                            r={i === 0 ? 5 : 4}
+                            className={styles.editPathNode}
+                        />
                     );
                 })}
 
@@ -369,7 +512,12 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
                 {balls.map(ball => {
                     const { cx, cy } = ballPos(ball);
                     return (
-                        <g key={ball.id} className={styles.ball} filter={`url(#glow-${ball.id})`}>
+                        <g
+                            key={ball.id}
+                            className={`${styles.ball} ${editBall && selectedEditBallId === ball.id ? styles.ballSelected : ""}`}
+                            filter={`url(#glow-${ball.id})`}
+                            onPointerDown={(evt) => handleBallPointerDown(ball, evt)}
+                        >
                             {/* Outer glow halo */}
                             <circle cx={cx} cy={cy} r={BALL_RADIUS + 5}
                                 fill={ball.glowColor} opacity={0.15} />
@@ -441,11 +589,20 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
                     <button
                         className={`${styles.sidebarButton} ${paused ? styles.play : styles.pause}`}
                         onClick={togglePause}
-                        disabled={!running}
+                        disabled={!running || editBall}
                     >
                         <FontAwesomeIcon icon={paused ? faPlay : faPause} />
                         {paused ? " Resume" : " Pause"}
                     </button>
+                    {paused && (
+                        <button
+                            className={`${styles.sidebarButton} ${editBall ? styles.finish : styles.edit}`}
+                            onClick={handleEditBall}
+                            disabled={!connected || !running}
+                        >
+                            ✎ {editBall ? "Finish" : "Edit Ball"}
+                        </button>
+                    )}
                 </div>
 
                 <div className={styles.sidebarDivider} />
