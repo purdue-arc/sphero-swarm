@@ -14,6 +14,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onSplashProgress: (callback) => {
     ipcRenderer.on("splash-progress", (_event, pct) => callback(pct));
   },
+  startControls: () =>
+    ipcRenderer.invoke("start-controls"),
   appRenderComplete: () =>
     ipcRenderer.invoke("app-render-complete"),
   signalAppReady: () =>

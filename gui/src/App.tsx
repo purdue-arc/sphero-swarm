@@ -17,6 +17,7 @@ declare global {
       getConstants: any;
       startSpheroSpotter: (config?: PerceptionConfig) => Promise<any>;
       stopSpheroSpotter: () => Promise<any>;
+      startControls: () => Promise<any>;
       quitApp: () => Promise<any>;
       saveConstants: (form: any) => Promise<any>;
     };
@@ -37,6 +38,7 @@ function App() {
         setAppReady(true);
         // Signal to splash that render is complete, showing the button
         window.electronAPI.appRenderComplete();
+        window.electronAPI.startControls()
       } catch (err) {
         console.error("Failed to load constants:", err);
         setAppReady(true);
@@ -78,7 +80,6 @@ function App() {
     )
   }
 
-  // Calculate connected robots for sidebar
   const connectedRobots = spheros.filter(s => s.connection === "connected").length;
 
   return (

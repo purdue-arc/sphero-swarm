@@ -55,6 +55,7 @@ function getConfig() {
 }
 
 let spheroProcess: any = null;
+let controlsProcess: any = null;
 
 const DEFAULT_PERCEPTION_CONFIG = {
   inputSource: "webcam",
@@ -105,6 +106,38 @@ function stopSpheroSpotter(force = false) {
   return true;
 }
 
+function startControls(config: any = {}) {
+  if (controlsProcess) { console.log("Controls already running"); return; }
+  const pythonExec = getPythonExecutable();
+  const moduleFolder = path.join(__dirname, "../../");
+
+  console.log(`Starting controls server with Python: ${pythonExec}`);
+
+  controlsProcess = spawn(pythonExec, ["-u", "-m", "controls.Fall_2025_Sphero_Swarm_Server", "-s"], {
+    cwd: moduleFolder,
+    stdio: "pipe",
+    env: {
+      ...process.env,
+      PYTHONUNBUFFERED: "1",
+    },
+  });
+
+  controlsProcess.stdout.on("data", (data: any) => {
+    process.stdout.write(data.toString());
+  });
+  controlsProcess.stderr.on("data", (data: any) => {
+    process.stderr.write(data.toString());
+  });
+  controlsProcess.on("error", (error: any) => {
+    console.error(`Controls server failed to start: ${error?.message ?? error}`);
+  });
+  controlsProcess.on("close", (code: any, signal: any) => {
+    console.log(`Controls server exited (code=${code}, signal=${signal})`);
+    controlsProcess = null;
+  });
+  return true;
+}
+
 ipcMain.handle("start-sphero-spotter", async (_event, config) => { startSpheroSpotter(config); return { status: "started" }; });
 ipcMain.handle("stop-sphero-spotter", async () => { stopSpheroSpotter(); return { status: "stopped" }; });
 ipcMain.handle("get-constants", async () => {
@@ -112,6 +145,10 @@ ipcMain.handle("get-constants", async () => {
   catch (error) { console.error("Error getting Python constants:", error); throw error; }
 });
 ipcMain.handle("quit-app", () => { app.quit(); });
+ipcMain.handle("start-controls", () => {
+  const started = startControls();
+  return { status: started ? "started" : "already-running" };
+});
 ipcMain.handle("splash-button-clicked", () => {
   showMainAndCloseSplash();
   return { status: "splash-dismissed" };

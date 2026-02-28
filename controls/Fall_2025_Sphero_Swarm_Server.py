@@ -14,6 +14,10 @@ from spherov2.commands.power import Power
 from spherov2.commands.drive import DriveFlags
 # threading to allow for multiple balls at moving
 import threading
+try:
+    from algorithms.constants import Constants
+except ImportError:
+    from ..algorithms.constants import Constants
 # instructions for the purposes of organization
 from .Instruction import Instruction
 
@@ -32,6 +36,7 @@ import logging
 from queue import Queue, Empty
 control_cmd_queue: Queue[dict] = Queue()
 
+constants = Constants()
 # For the React App
 parser = argparse.ArgumentParser(description="Sphero Spotter")
 parser.add_argument('--server', '-s', action='store_true', help="Run controls from main GUI.")
@@ -167,10 +172,10 @@ def command_gathering(valid_sphero_ids, command_array_2d):
     s.listen(5)
 
     # insert for buffering 
-    temp_s = socket.socket()
-    # arbitrary non-priv port that isn't the one used by the server
-    temp_port = 4324
-    temp_s.connect(('localhost', temp_port))
+    # temp_s = socket.socket()
+    # # arbitrary non-priv port that isn't the one used by the server
+    # temp_port = 4324
+    # temp_s.connect(('localhost', temp_port))
 
     print("Waiting for connection to client...")
     # conn is the object required for comm with the other files
@@ -182,16 +187,17 @@ def command_gathering(valid_sphero_ids, command_array_2d):
     global KILL_FLAG
     while (KILL_FLAG == 0):
         try:
+            print(valid_sphero_ids)
             appending_array = [None] * len(valid_sphero_ids)
             instruction_list = pickle.loads(conn.recv(1024)) 
             for instruction in instruction_list:
+                print(f"ID: {instruction.spheroID}\nType: {instruction.type}\nColor: {instruction.color}\nDegree: {instruction.degrees}\nSpeed: {instruction.speed}\nDuration: {instruction.duration}\n")
                 try:
                     # immediately terminate program
                     if (instruction.type == -2):
                         KILL_FLAG = 1
                         break
-                    index = valid_sphero_ids.index(instruction.spheroID)
-                    appending_array[index] = instruction
+                    appending_array[instruction.spheroID - 1] = instruction
                 except ValueError:
                     print("Attempting to send command to not connnected ball...")
                     continue
@@ -369,12 +375,11 @@ def run_server(ball_names, ws=None, loop=None):
 
         commands_array = []
         # set up server at this point in thread...
-        cmd_gather_thread = threading.Thread(target=command_gathering, args=[valid_sphero_ids, commands_array])
+        cmd_gather_thread = threading.Thread(target=command_gathering, args=[constants.SPHERO_TAGS, commands_array])
         cmd_gather_thread.start()
         
         num_commands_run = 1
         while (KILL_FLAG == 0):
-            # process any control commands coming from the GUI
             try:
                 ctrl = control_cmd_queue.get_nowait()
             except Empty:
@@ -401,6 +406,7 @@ def run_server(ball_names, ws=None, loop=None):
                             pass
                 # other command types can be added here
 
+            print(len(commands_array))
             if (len(commands_array) != 0):
                 print(commands_array)
                 print("Running command {}".format(num_commands_run))
@@ -466,6 +472,7 @@ def test_controls():
         terminate_multi_ball(sb_list)
 
 async def handle_client(websocket):
+    global constants
     print("Client connected")
     loop = asyncio.get_running_loop()
 
@@ -474,6 +481,8 @@ async def handle_client(websocket):
         typ = data.get("type")
 
         if typ == "connect":
+            constants = Constants()
+
             ball_names = data["spheros"]
 
             await loop.run_in_executor(
@@ -510,8 +519,9 @@ async def start_web_server():
             pass
 
 if __name__ == "__main__":
+    print("TEST")
     if args.server:
         asyncio.run(start_web_server())
     else:
         #test_controls()
-        run_server(['SB-E274', 'SB-B11D'])
+        run_server(['SB-E274'])

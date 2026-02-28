@@ -1,9 +1,10 @@
+import pickle
+
 from algorithms.constants import Constants
 from algorithms.algorithm import Algorithm
 from gui_server import send_algorithm_state, get_next_command
 import time
 import socket
-import pickle
 from controls.Instruction import Instruction
 
 def _to_int(value, default=None):
@@ -70,6 +71,7 @@ def _process_next_edit_ball_move(algorithm, edit_ball_queue):
 
     while edit_ball_queue:
         sphero_id, (nx, ny) = edit_ball_queue[0]
+        print(sphero_id, nx, ny)
         sphero = algorithm.find_sphero(sphero_id)
 
         if sphero is None:
@@ -79,7 +81,8 @@ def _process_next_edit_ball_move(algorithm, edit_ball_queue):
         sphero.x = sphero.target_x
         sphero.y = sphero.target_y
 
-        # consume no-op waypoints immediately so the first visible move doesn't stall
+        print(sphero.x, sphero.y)
+
         if (sphero.x, sphero.y) == (nx, ny):
             edit_ball_queue.pop(0)
             continue
@@ -96,31 +99,6 @@ def _process_next_edit_ball_move(algorithm, edit_ball_queue):
 
     algorithm.update_grid_bonds()
     return True
-
-
-def _send_instructions(sock, algorithm, constants):
-    """Build and send rotate + roll instructions to the controls server."""
-    rotate_instructions = []
-    roll_instructions = []
-
-    for sphero in algorithm.spheros:
-        direction_change = sphero.get_direction_change()
-        rotate_instruction = Instruction(sphero.id, 2, 45 * direction_change, constants.TURN_DURATION)
-        rotate_instructions.append(rotate_instruction)
-
-        speed = constants.SPHERO_SPEED
-        if sphero.direction > 0 and sphero.direction % 2 == 0:
-            speed = constants.SPHERO_DIAGONAL_SPEED
-
-        roll_instruction = Instruction(sphero.id, 1, speed, constants.ROLL_DURATION)
-        roll_instructions.append(roll_instruction)
-
-    sock.send(pickle.dumps(rotate_instructions))
-    sock.recv(1024)
-
-    sock.send(pickle.dumps(roll_instructions))
-    sock.recv(1024)
-
 
 if __name__ == "__main__":
     constants = Constants()
@@ -140,7 +118,7 @@ if __name__ == "__main__":
     step_delay = 4.0         # base sleep time, adjustable by GUI slider
     edit_ball_queue: list[tuple[int, tuple[int, int]]] = []
 
-    controls_sock = None
+    s = socket.socket()
     port = 1235
 
     try:
@@ -155,23 +133,11 @@ if __name__ == "__main__":
                 if typ == "use_controls":
                     use_controls = bool(cmd.get("value"))
                     print(f"[gui_driver] use_controls set to {use_controls}")
-                    if use_controls and controls_sock is None:
-                        try:
-                            controls_sock = socket.socket()
-                            controls_sock.connect(('localhost', port))
-                            print("[gui_driver] connected to controls server")
-                        except Exception as e:
-                            print(f"[gui_driver] failed to connect to controls server: {e}")
-                            controls_sock = None
-                    elif not use_controls and controls_sock is not None:
-                        try:
-                            controls_sock.close()
-                        except Exception:
-                            pass
-                        controls_sock = None
-                        print("[gui_driver] disconnected from controls server")
                 # allow playback controls (start/stop/pause/resume) regardless of use_controls
                 elif typ == "start":
+                    if (use_controls):
+                        s.connect(('localhost', port))
+
                     constants = Constants()
                     algorithm = Algorithm(
                         constants.GRID_WIDTH,
@@ -190,15 +156,6 @@ if __name__ == "__main__":
                             print(f"[gui_driver] speed set to {step_delay} (from start)")
                         except Exception:
                             pass
-                    # connect to controls server on start if use_controls is already enabled
-                    if use_controls and controls_sock is None:
-                        try:
-                            controls_sock = socket.socket()
-                            controls_sock.connect(('localhost', port))
-                            print("[gui_driver] connected to controls server on start")
-                        except Exception as e:
-                            print(f"[gui_driver] failed to connect to controls server: {e}")
-                            controls_sock = None
                     print("[gui_driver] started")
                 elif typ == "reset":
                     running = False
@@ -244,11 +201,6 @@ if __name__ == "__main__":
                                 print(f"[gui_driver] queued path for {ball_id}: {path_nodes}")
                                 if _process_next_edit_ball_move(algorithm, edit_ball_queue):
                                     print("NEW_MOVE")
-                                    if use_controls and controls_sock is not None:
-                                        try:
-                                            _send_instructions(controls_sock, algorithm, constants)
-                                        except Exception as e:
-                                            print(f"[gui_driver] controls send error (edit_ball): {e}")
                                     send_algorithm_state(algorithm)
                                     processed_edit_move_this_tick = True
                         else:
@@ -259,12 +211,7 @@ if __name__ == "__main__":
 
             if edit_ball_queue and not processed_edit_move_this_tick:
                 if _process_next_edit_ball_move(algorithm, edit_ball_queue):
-                    print("NEW_MOVE")
-                    if use_controls and controls_sock is not None:
-                        try:
-                            _send_instructions(controls_sock, algorithm, constants)
-                        except Exception as e:
-                            print(f"[gui_driver] controls send error (edit_ball queue): {e}")
+                    print("NEW EDIT BALL MOVE")
             elif running and not paused:
                 for sphero in algorithm.spheros:
                     sphero.x = sphero.target_x
@@ -272,13 +219,34 @@ if __name__ == "__main__":
                 algorithm.update_grid_bonds()
                 algorithm.update_grid_move()
 
-                print("NEW_MOVE")
+                rotate_instructions = []
+                roll_instructions = []
 
-                if use_controls and controls_sock is not None:
-                    try:
-                        _send_instructions(controls_sock, algorithm, constants)
-                    except Exception as e:
-                        print(f"[gui_driver] controls send error (normal step): {e}")
+                for sphero in algorithm.spheros:
+                    direction_change = sphero.get_direction_change()
+                    rotate_instruction = Instruction(sphero.id, 2, 45 * direction_change, constants.TURN_DURATION)
+                    rotate_instructions.append(rotate_instruction)
+
+                    speed = constants.SPHERO_SPEED
+
+                    # If we are going diagonal, adjust speed by a factor of sqrt(2). thanks pythagoras
+                    if sphero.direction > 0 and sphero.direction % 2 == 0:
+                        speed = constants.SPHERO_DIAGONAL_SPEED
+
+                    roll_instruction = Instruction(sphero.id, 1, speed, constants.ROLL_DURATION)
+                    print(str(sphero))
+                    roll_instructions.append(roll_instruction)
+
+
+                s.send(pickle.dumps(rotate_instructions))
+
+                buffer = s.recv(1024)
+
+                s.send(pickle.dumps(roll_instructions))
+
+                buffer = s.recv(1024)
+
+                print("NEW_MOVE")
 
             send_algorithm_state(algorithm)
 
@@ -286,9 +254,3 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"[gui_driver] exception: {e}")
         pass
-    finally:
-        if controls_sock is not None:
-            try:
-                controls_sock.close()
-            except Exception:
-                pass
