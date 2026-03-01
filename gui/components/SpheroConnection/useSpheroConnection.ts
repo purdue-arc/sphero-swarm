@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { SpheroStatus } from "../../types/swarm_types";
 
 type ConnectState = "idle" | "connecting" | "connected" | "failed";
@@ -15,6 +15,27 @@ export function useSpheroConnection(
         wsRef.current?.close();
         wsRef.current = null;
     };
+
+    const connectedCount = spheros.filter((s) => s.connection === "connected").length;
+    const pendingCount = spheros.filter((s) => s.connection === "pending").length;
+    const failedCount = spheros.filter((s) => s.connection === "failed").length;
+
+    useEffect(() => {
+        if (connectState !== "connecting" || pendingCount > 0) return;
+
+        if (connectedCount === spheros.length && spheros.length > 0) {
+            setConnectState("connected");
+        } else if (failedCount > 0) {
+            setConnectState("failed");
+        }
+
+        cleanupSocket();
+
+        if (timeoutRef.current) {
+            clearTimeout(timeoutRef.current);
+            timeoutRef.current = null;
+        }
+    }, [connectState, connectedCount, pendingCount, failedCount, spheros.length]);
 
     const failConnection = () => {
         setSpheros((prev) =>
@@ -134,10 +155,6 @@ export function useSpheroConnection(
                 };
         }
     };
-
-    const connectedCount = spheros.filter((s) => s.connection === "connected").length;
-    const pendingCount = spheros.filter((s) => s.connection === "pending").length;
-    const failedCount = spheros.filter((s) => s.connection === "failed").length;
 
     return {
         connectState,

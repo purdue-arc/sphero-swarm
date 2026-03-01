@@ -100,6 +100,33 @@ def _process_next_edit_ball_move(algorithm, edit_ball_queue):
     algorithm.update_grid_bonds()
     return True
 
+
+def _send_controls_update(sock, algorithm, constants):
+    """Send rotate/roll instruction batches for the current sphero state."""
+    rotate_instructions = []
+    roll_instructions = []
+
+    for sphero in algorithm.spheros:
+        direction_change = sphero.get_direction_change()
+        rotate_instruction = Instruction(sphero.id, 2, 45 * direction_change, constants.TURN_DURATION)
+        rotate_instructions.append(rotate_instruction)
+
+        speed = constants.SPHERO_SPEED
+
+        # If we are going diagonal, adjust speed by a factor of sqrt(2). thanks pythagoras
+        if sphero.direction > 0 and sphero.direction % 2 == 0:
+            speed = constants.SPHERO_DIAGONAL_SPEED
+
+        roll_instruction = Instruction(sphero.id, 1, speed, constants.ROLL_DURATION)
+        print(str(sphero))
+        roll_instructions.append(roll_instruction)
+
+    sock.send(pickle.dumps(rotate_instructions))
+    sock.recv(1024)
+
+    sock.send(pickle.dumps(roll_instructions))
+    sock.recv(1024)
+
 if __name__ == "__main__":
     constants = Constants()
     print(constants.INITIAL_POSITIONS, constants.SPHERO_TAGS, constants.N_SPHEROS)
@@ -126,6 +153,7 @@ if __name__ == "__main__":
             # ---------------------------------------------------------------
             # process at-most-one command each iteration; newer commands win
             processed_edit_move_this_tick = False
+            sent_controls_this_tick = False
             cmd = get_next_command(timeout=0)
             if cmd is not None:
                 typ = cmd.get("type")
@@ -200,6 +228,9 @@ if __name__ == "__main__":
                                     edit_ball_queue.append((ball_id, node))
                                 print(f"[gui_driver] queued path for {ball_id}: {path_nodes}")
                                 if _process_next_edit_ball_move(algorithm, edit_ball_queue):
+                                    if use_controls and running:
+                                        _send_controls_update(s, algorithm, constants)
+                                        sent_controls_this_tick = True
                                     print("NEW_MOVE")
                                     send_algorithm_state(algorithm)
                                     processed_edit_move_this_tick = True
@@ -211,6 +242,9 @@ if __name__ == "__main__":
 
             if edit_ball_queue and not processed_edit_move_this_tick:
                 if _process_next_edit_ball_move(algorithm, edit_ball_queue):
+                    if use_controls and running:
+                        _send_controls_update(s, algorithm, constants)
+                        sent_controls_this_tick = True
                     print("NEW EDIT BALL MOVE")
             elif running and not paused:
                 for sphero in algorithm.spheros:
@@ -218,33 +252,9 @@ if __name__ == "__main__":
                     sphero.y = sphero.target_y
                 algorithm.update_grid_bonds()
                 algorithm.update_grid_move()
-
-                rotate_instructions = []
-                roll_instructions = []
-
-                for sphero in algorithm.spheros:
-                    direction_change = sphero.get_direction_change()
-                    rotate_instruction = Instruction(sphero.id, 2, 45 * direction_change, constants.TURN_DURATION)
-                    rotate_instructions.append(rotate_instruction)
-
-                    speed = constants.SPHERO_SPEED
-
-                    # If we are going diagonal, adjust speed by a factor of sqrt(2). thanks pythagoras
-                    if sphero.direction > 0 and sphero.direction % 2 == 0:
-                        speed = constants.SPHERO_DIAGONAL_SPEED
-
-                    roll_instruction = Instruction(sphero.id, 1, speed, constants.ROLL_DURATION)
-                    print(str(sphero))
-                    roll_instructions.append(roll_instruction)
-
-
-                s.send(pickle.dumps(rotate_instructions))
-
-                buffer = s.recv(1024)
-
-                s.send(pickle.dumps(roll_instructions))
-
-                buffer = s.recv(1024)
+                if use_controls and not sent_controls_this_tick:
+                    _send_controls_update(s, algorithm, constants)
+                    sent_controls_this_tick = True
 
                 print("NEW_MOVE")
 
