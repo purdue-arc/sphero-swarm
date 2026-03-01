@@ -102,10 +102,11 @@ class BondedGroup:
         # Copy all valid moves
         self.valid_moves = ALL_DIRECTIONS.copy()
 
-        # Remove rotations for single sphero groups
-        if len(self.spheros) <= 1:
-            self.valid_moves.remove(9)
-            self.valid_moves.remove(10)
+        # if we are using rotation, remove rotations for single sphero groups
+        if (len(ALL_DIRECTIONS) > 8):
+            if len(self.spheros) <= 1:
+                self.valid_moves.remove(9)
+                self.valid_moves.remove(10)
 
     def __str__(self) -> str:
         '''

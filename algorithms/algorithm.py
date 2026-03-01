@@ -40,6 +40,13 @@ class Algorithm:
         return return_str
 
 
+    def find_all_spheros(self) -> list[Sphero]:
+        spheros = []
+        for group in self.bonded_groups:
+            for sphero in group.spheros:
+                spheros.append(sphero)
+        return spheros
+
     def bond_all_groups(self) -> None:
         '''
         for each group

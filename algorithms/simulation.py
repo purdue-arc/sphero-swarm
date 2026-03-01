@@ -239,7 +239,9 @@ def StartSimulation(algorithm):
     surface = pygame.display.set_mode((SIM_WIDTH, SIM_HEIGHT))
     pygame.display.set_caption("sphero-swarm simulation")
 
-    for sphero in algorithm.spheros:
+
+    algorithm_spheros = algorithm.find_all_spheros()
+    for sphero in algorithm_spheros:
         spheros.append(LinkedSphero(sphero))
         spheros.append(sphero)
     
