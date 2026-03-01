@@ -66,15 +66,24 @@ def moving_sphero_to_target(sphero):
     if reached_target(sphero=sphero):
         sphero.x = sphero.target_x
         sphero.y = sphero.target_y
+        sphero.true_x = sphero.target_x
+        sphero.true_y = sphero.target_y
         return False
+    
+    
+
     if sphero.direction <= 8:
         # print(f"Direction: {sphero.direction}\tx pos change: {position_change[sphero.direction][0]}")
         sphero.x += position_change[sphero.direction][0] * (sphero.speed / SIM_DIST)
         sphero.y += position_change[sphero.direction][1] * (sphero.speed / SIM_DIST)
+    elif not ARC_ROTATION:
+        # move sphero straight to its target for a rotation
+        # I'm lazily using true_x and true_y to hold the sphero's previous location.
+        dx = sphero.target_x - sphero.true_x
+        dy = sphero.target_y - sphero.true_y
+        sphero.x += dx * (sphero.speed / SIM_DIST)
+        sphero.y += dy * (sphero.speed / SIM_DIST)
     else:
-        
-        
-
         step_length = (sphero.speed / SIM_DIST)
 
         center = algorithm.find_sphero(algorithm.find_group(sphero.group_id).center)
@@ -134,6 +143,8 @@ def teleport_sphero_to_target(sphero):
     """
     sphero.x = sphero.target_x
     sphero.y = sphero.target_y
+    sphero.true_x = sphero.target_x
+    sphero.true_y = sphero.target_y
 
 def draw_sphero(surface, sphero):
     """
@@ -181,7 +192,8 @@ if __name__ == "__main__":
                             grid_height=GRID_HEIGHT,
                             spheros=algorithm_spheros)
     for sphero in algorithm_spheros:
-       spheros.append(LinkedSphero(sphero))
+       #spheros.append(LinkedSphero(sphero))
+       spheros.append(sphero)
     
     running = True
     while running:
@@ -229,6 +241,7 @@ def StartSimulation(algorithm):
 
     for sphero in algorithm.spheros:
         spheros.append(LinkedSphero(sphero))
+        spheros.append(sphero)
     
     running = True
     while running:
