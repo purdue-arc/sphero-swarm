@@ -62,3 +62,4 @@ SPHERO_TAGS = [
 ]
 INITIAL_POSITIONS = [(0,0), (0,4), (0, 8), (4,0), (4,4), (4, 8), (8,0), (8,4), (8, 8)]#, (3, 4), (4, 4), (4, 1)]
 
+ARC_ROTATION = False # Flag for using arced movements vs straight line movements in rotations.
