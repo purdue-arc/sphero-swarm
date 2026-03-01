@@ -4,7 +4,12 @@ from .algorithm import Algorithm
 from .sphero import Sphero, LinkedSphero
 from math import hypot, atan, asin, cos, sin, pi
 
-# run with python -m algorithms.simulation
+'''
+ run the folllowing line to start the simulation:
+ 
+                python -m algorithms.simulation
+
+ '''
 
 def draw_grid(surface):
     """
