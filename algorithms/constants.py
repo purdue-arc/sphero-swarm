@@ -1,7 +1,6 @@
 import json
 import os
 
-
 class Constants:
     def __init__(self) -> None:
         # CONSTANTS

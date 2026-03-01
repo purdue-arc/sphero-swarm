@@ -8,6 +8,10 @@ class Swarm:
         # an array containing the bonding group index for each sphero, accessed by id - 1
         self.bonded_group_index = [index for index in range(n)]
 
+        # 1D array containing the ID of the pivot sphero for each bonded group
+        # (at the beginning, just the single sphero in each group)
+        self.bonded_group_centers = [group[0] for group in self.bonded_groups]
+
     def find_bonding_group(self, id): # -> List[Sphero]
         """
         Find the bonding group given a sphero's id
@@ -56,5 +60,5 @@ class Swarm:
                 self.bonded_group_index[id - 1] = group_index1
             self.bonded_groups[group_index1].extend(self.bonded_groups[group_index2])
             self.bonded_groups[group_index2] = []
-            return True
+            return group_index1
         return False
