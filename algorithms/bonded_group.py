@@ -103,7 +103,7 @@ class BondedGroup:
         self.valid_moves = ALL_DIRECTIONS.copy()
 
         # Remove rotations for single sphero groups
-        if len(self.spheros) <= 1:
+        if len(self.spheros) <= 1 and len(ALL_DIRECTIONS) > 8:
             self.valid_moves.remove(9)
             self.valid_moves.remove(10)
 
