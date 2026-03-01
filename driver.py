@@ -34,7 +34,7 @@ def main():
     spheros = []
     id = 1
     for x, y in INITIAL_POSITIONS:
-        spheros.append(Sphero(id, x, y))
+        spheros.append(Sphero(id, x, y, direction=1)) # initialize spheros to be pointing to direction positive y
         id += 1
 
 
@@ -58,7 +58,8 @@ def main():
             rotate_instructions = []
             roll_instructions = []
 
-            for sphero in algorithm.spheros:
+            spheros = algorithm.find_all_spheros()
+            for sphero in spheros:
                 # FIXME make get_direction_change work for rotation, 
                 # we also may want to rethink how we do this.
                 direction_change = sphero.get_direction_change() 
