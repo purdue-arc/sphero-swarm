@@ -1,9 +1,9 @@
-from .constants import *
+from .constants import constants
 
 class Sphero:
     def __init__(self, id, x, y,
                  target_x=None, target_y=None,
-                 previous_direction=0, direction=0, speed=1, color=BLACK):
+                 previous_direction=0, direction=0, speed=1, color=constants.BLACK):
         self.id = id
         self.x = x
         self.y = y
@@ -27,7 +27,7 @@ class Sphero:
             (int, int): sphero's target position
         """
 
-        return (self.x + position_change[direction][0], self.y + position_change[direction][1])   
+        return (self.x + constants.position_change[direction][0], self.y + constants.position_change[direction][1])   
 
     def update_target(self):
         """
@@ -92,7 +92,7 @@ class Sphero:
             (int, int): Our sphero's change in position from moving in the direction it's chosen.
         """
 
-        return position_change[self.direction]
+        return constants.position_change[self.direction]
 
     def can_bond(self, adj_sphero):
         """
