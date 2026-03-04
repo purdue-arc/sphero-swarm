@@ -204,6 +204,7 @@ class Algorithm:
                         sphero.target_y = (sphero.x - center_x) + center_y
 
                     # fill in next_grid spots
+                    print(f'Target_x = {sphero.target_x}\tTarget_y = {sphero.target_y}')
                     self.next_grid[sphero.target_x][sphero.target_y] = sphero.id
 
                     # update prev direction, direction
@@ -283,16 +284,22 @@ class Algorithm:
         center_y = group.find_sphero(group.center).y
         rotated_box = group.rotate_box(group.box, move)
 
+        up_bound = center_y + rotated_box[0] + 1
+        right_bound = center_x + rotated_box[1] + 1
+        down_bound = center_y - rotated_box[2] - 1
+        left_bound = center_x - rotated_box[3] - 1
+
         # Check if entire box is in bounds
         # Not sure if this is correct with the coordinate system FIXME ALAN 
-        in_bounds = (MARGIN <= center_x - rotated_box[3] and center_x + rotated_box[1] <= self.grid_width - MARGIN and 
-                        MARGIN <= center_y - rotated_box[0] and center_y + rotated_box[2] <= self.grid_height - MARGIN)
+        in_bounds = (MARGIN <= left_bound and right_bound < self.grid_width - MARGIN and 
+                        MARGIN <= down_bound and up_bound < self.grid_height - MARGIN)
         
         if in_bounds:
 
             # Check if entire box is unoccupied
-            for x in range(group.find_sphero(group.center).x - rotated_box[3], group.find_sphero(group.center).x + rotated_box[1]):
-                for y in range(group.find_sphero(group.center).y - rotated_box[2], group.find_sphero(group.center).y + rotated_box[0]):
+            for x in range(left_bound, right_bound):
+                for y in range(down_bound, up_bound):
+                    print(f'Checking ({x}, {y})')
                     if self.next_grid[x][y] != 0:
                         return False
                     

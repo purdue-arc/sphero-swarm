@@ -28,8 +28,8 @@ ARC_ROTATION = False # Flag for using arced movements vs straight line movements
 MARGIN = 0
 DIRECTIONS = 8
 
-# ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]   # WITH rotation
-ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8]          # NO rotation
+ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]   # WITH rotation
+# ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8]          # NO rotation
 
 position_change = {
     0: (0, 0),
