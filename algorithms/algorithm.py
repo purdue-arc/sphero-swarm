@@ -1,6 +1,5 @@
 import random
 from .constants import *
-from .swarm import Swarm
 from .sphero import Sphero
 from .bonded_group import BondedGroup
 from typing import cast
