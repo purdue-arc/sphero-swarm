@@ -173,24 +173,18 @@ if __name__ == "__main__":
     surface = pygame.display.set_mode((SIM_WIDTH, SIM_HEIGHT))
     pygame.display.set_caption("sphero-swarm simulation")
 
-##### Generate N_SPHEROS random spheros #########################################
+##### Generate N_SPHEROS spheros with head/tail traits ##########################
     initial_positions = INITIAL_POSITIONS
     assert len(initial_positions) == N_SPHEROS, 'Number of initial positions does not match N_SPHEROS'
     assert len(initial_positions) == len(set(initial_positions)), 'Cannot have repeats in initial_positions'
-
-    # generate random colors for spheros
-    colors = []
-    for i in range(N_SPHEROS):
-        colors.append(COLORS[i % len(COLORS)])
- 
-    # generate random initial positions if none passed in
+    assert len(INITIAL_TRAITS) == N_SPHEROS, 'INITIAL_TRAITS length must match N_SPHEROS'
 
     algorithm_spheros = []
     spheros = [] # put the Linked Spheros in here
 
     id = 1
-    for (x, y), color in zip(initial_positions, colors):
-        algorithm_spheros.append(Sphero(id=id, x=x, y=y, color=color))
+    for (x, y), trait in zip(initial_positions, INITIAL_TRAITS):
+        algorithm_spheros.append(Sphero(id=id, x=x, y=y, trait=trait))
         id += 1
 
     algorithm = Algorithm(grid_width=GRID_WIDTH,

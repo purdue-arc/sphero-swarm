@@ -4,10 +4,11 @@ import math
 
 
 class BondedGroup:
-    def __init__(self, list_spheros: list[Sphero], id: int):
+    def __init__(self, list_spheros: list[Sphero], id: int, max_monomers: int = 999):
         self.group_id = id              # groups have unique ids starting at 1
         self.spheros = list_spheros     
         self.size = len(self.spheros)   
+        self.max_monomers = max_monomers  # max number of spheros allowed in this bond
         self.box = [0,0,0,0]            # bounding box dimensions from center. order: U, D, L, R
 
         self.center = self.find_center() # ID of the center sphero (1, 2, 3, ...)
@@ -53,6 +54,11 @@ class BondedGroup:
         self.box[1] = max_y - center_sphero.y # down    
         self.box[2] = max_x - center_sphero.y # left
         self.box[3] = center_sphero.x - min_x # right
+
+        # when group reaches max_monomers, all spheros in the bond turn green
+        if self.size >= self.max_monomers:
+            for s in self.spheros:
+                s.color = GREEN
 
     def find_center(self) -> int:
         '''

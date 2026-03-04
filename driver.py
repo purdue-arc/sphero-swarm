@@ -24,17 +24,13 @@ def main():
     # sanity checks
     assert len(INITIAL_POSITIONS) == N_SPHEROS, 'Number of initial positions does not match N_SPHEROS'
     assert len(INITIAL_POSITIONS) == len(set(INITIAL_POSITIONS)), 'Cannot have repeats in initial_positions'
+    assert len(INITIAL_TRAITS) == N_SPHEROS, 'INITIAL_TRAITS length must match N_SPHEROS'
 
-    # generate random colors for spheros. FIXME NOT SURE IF THIS IS USED/NECESSARY
-    colors = []
-    for i in range(N_SPHEROS):
-        colors.append(COLORS[i % len(COLORS)])
-
-    # make a list of spheros to pass into algorithm using constant INITIAL_POSITIONS
+    # make a list of spheros to pass into algorithm using INITIAL_POSITIONS and INITIAL_TRAITS
     spheros = []
     id = 1
-    for x, y in INITIAL_POSITIONS:
-        spheros.append(Sphero(id, x, y, direction=1)) # initialize spheros to be pointing to direction positive y
+    for (x, y), trait in zip(INITIAL_POSITIONS, INITIAL_TRAITS):
+        spheros.append(Sphero(id, x, y, direction=1, trait=trait))
         id += 1
 
 
