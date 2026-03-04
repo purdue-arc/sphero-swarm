@@ -1,10 +1,8 @@
-N_SPHEROS = 5
-
 # the number of nodes on the grid widthwise
-GRID_WIDTH = 5
+GRID_WIDTH = 9
 
 # the number of nodes on the grid heightwise
-GRID_HEIGHT = 5
+GRID_HEIGHT = 9
 
 SPHERO_TAGS = [
     'SB-76B3',
@@ -14,22 +12,19 @@ SPHERO_TAGS = [
     'SB-1840'
 ]
 
-#INITIAL_POSITIONS = [(0,0), (0,4), (0, 8), (4,0), (4,4), (4, 8), (8,0), (8,4), (8, 8)]#, (3, 4), (4, 4), (4, 1)]
-INITIAL_POSITIONS = [(0,0), (0,4), (4, 0), (4,4), (2,2)]#, (3, 1)]
+INITIAL_POSITIONS = [(0,0), (0,4), (0, 8), (4,0), (4,4), (4, 8), (8,0), (8,4), (8, 8)]#, (3, 4), (4, 4), (4, 1)]
+# INITIAL_POSITIONS = [(0,0), (0,4), (4, 0), (4,4), (2,2)]#, (3, 1)]
 #INITIAL_POSITIONS = [(0,0), (0,1), (0, 2), (0,3), (0,4), (0, 5)]
 
-#ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]   # WITH rotation
-ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8]          # NO rotation
+N_SPHEROS = len(INITIAL_POSITIONS)
 
 ARC_ROTATION = False # Flag for using arced movements vs straight line movements in rotations.
-
-
 
 MARGIN = 0
 DIRECTIONS = 8
 
 ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]   # WITH rotation
-# ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8]          # NO rotation
+# ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8]        # NO rotation
 
 position_change = {
     0: (0, 0),

@@ -49,10 +49,10 @@ class BondedGroup:
             max_y = max(max_y, sphero.y)
             min_x = min(min_x, sphero.x)
             min_y = min(min_y, sphero.y)
-        self.box[0] = center_sphero.y - min_y # up  TODO we have to discuss which direction is up lol
-        self.box[1] = max_y - center_sphero.y # down    
-        self.box[2] = max_x - center_sphero.y # left
-        self.box[3] = center_sphero.x - min_x # right
+        self.box[0] = max_y - center_sphero.y # up  TODO we have to discuss which direction is up lol
+        self.box[1] = max_x - center_sphero.x # right    
+        self.box[2] = center_sphero.y - min_y # down
+        self.box[3] = center_sphero.x - min_x # left
 
     def find_center(self) -> int:
         '''
