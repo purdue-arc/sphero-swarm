@@ -1,7 +1,30 @@
+# the number of nodes on the grid widthwise
+GRID_WIDTH = 9
+
+# the number of nodes on the grid heightwise
+GRID_HEIGHT = 9
+
+SPHERO_TAGS = [
+    'SB-76B3',
+    'SB-B5A9',
+    'SB-B11D', 
+    'SB-E274',
+    'SB-1840'
+]
+
+INITIAL_POSITIONS = [(0,0), (0,4), (0, 8), (4,0), (4,4), (4, 8), (8,0), (8,4), (8, 8)]#, (3, 4), (4, 4), (4, 1)]
+# INITIAL_POSITIONS = [(0,0), (0,4), (4, 0), (4,4), (2,2)]#, (3, 1)]
+#INITIAL_POSITIONS = [(0,0), (0,1), (0, 2), (0,3), (0,4), (0, 5)]
+
+N_SPHEROS = len(INITIAL_POSITIONS)
+
+ARC_ROTATION = False # Flag for using arced movements vs straight line movements in rotations.
+
 MARGIN = 0
 DIRECTIONS = 8
 
-ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8]
+ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]   # WITH rotation
+# ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8]        # NO rotation
 
 position_change = {
     0: (0, 0),
@@ -14,15 +37,6 @@ position_change = {
     7: (-1, 0),
     8: (-1, 1)
 }
-
-N_SPHEROS = 2
-
-# the number of nodes on the grid widthwise
-GRID_WIDTH = 4
-
-# the number of nodes on the grid heightwise
-GRID_HEIGHT = 4
-
 # the pixel distance between two nodes 
 SIM_DIST = 50
 FRAMES = 60
@@ -45,20 +59,8 @@ GREEN = (0, 255, 0)
 YELLOW = (255, 255, 0)
 PURPLE = (128, 0, 128)
 ORANGE = (255, 165, 0)
-
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 GRAY = (150, 150, 150)
 
 COLORS = [BLUE, RED, GREEN, YELLOW, PURPLE, ORANGE]
-
-SPHERO_TAGS = [
-    'SB-76B3',
-    'SB-E274',
-    'SB-1840', 
-    'SB-B11D', 
-    'SB-CEB2',
-    'SB-BD0A',
-]
-INITIAL_POSITIONS = [(0,0), (0,2), (1, 3), (3, 3), (3, 1)]
-
