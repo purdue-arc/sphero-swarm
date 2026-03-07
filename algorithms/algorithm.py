@@ -1,5 +1,5 @@
 import random
-from .constants import *
+from .constants import constants
 from .sphero import Sphero
 from .bonded_group import BondedGroup
 from typing import cast
@@ -60,8 +60,8 @@ class Algorithm:
                     dx, dy = direction # get the component directions
 
                     # is the neighbor coordinate we're about to look at in bounds?
-                    in_bounds = (MARGIN <= sphero.x + dx < self.grid_width - MARGIN and 
-                        MARGIN <= sphero.y + dy < self.grid_height - MARGIN)
+                    in_bounds = (constants.MARGIN <= sphero.x + dx < self.grid_width - constants.MARGIN and 
+                        constants.MARGIN <= sphero.y + dy < self.grid_height - constants.MARGIN)
 
                     if not in_bounds:
                         continue
@@ -152,7 +152,7 @@ class Algorithm:
 
                 print(f"Group: {group.group_id}\tDirection: {valid_move}\tTranslation")
 
-                dx, dy = position_change[valid_move]
+                dx, dy = constants.position_change[valid_move]
 
                 for sphero in group.spheros:
                     # set the target
@@ -254,12 +254,12 @@ class Algorithm:
             2. go where another sphero is in self.next_grid
         '''   
         # make sure it's a translation
-        if move in position_change.keys():
-            dx, dy = position_change[move]
+        if move in constants.position_change.keys():
+            dx, dy = constants.position_change[move]
 
             #print('sphero next position x:', sphero.x+dx, 'y:', sphero.y+dy, '\nalgorithm width and height: ', self.grid_width, self.grid_height)
-            in_bounds = (MARGIN <= sphero.x + dx < self.grid_width - MARGIN and 
-                        MARGIN <= sphero.y + dy < self.grid_height - MARGIN)
+            in_bounds = (constants.MARGIN <= sphero.x + dx < self.grid_width - constants.MARGIN and 
+                        constants.MARGIN <= sphero.y + dy < self.grid_height - constants.MARGIN)
 
             target_node_id = 99999
             if in_bounds:
@@ -290,8 +290,8 @@ class Algorithm:
 
         # Check if entire box is in bounds
         # Not sure if this is correct with the coordinate system FIXME ALAN 
-        in_bounds = (MARGIN <= left_bound and right_bound < self.grid_width - MARGIN and 
-                        MARGIN <= down_bound and up_bound < self.grid_height - MARGIN)
+        in_bounds = (constants.MARGIN <= left_bound and right_bound < self.grid_width - constants.MARGIN and 
+                        constants.MARGIN <= down_bound and up_bound < self.grid_height - constants.MARGIN)
         
         if in_bounds:
 
@@ -325,7 +325,7 @@ class Algorithm:
 
         helper function for rotation collision checking
         '''
-        for x in range(GRID_WIDTH):
-            for y in range(GRID_HEIGHT):
+        for x in range(self.grid_width):
+            for y in range(self.grid_height):
                 if grid[x][y] == -1:
                     grid[x][y] = 0

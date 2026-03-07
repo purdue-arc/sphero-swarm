@@ -167,16 +167,22 @@ def build_state_payload(algorithm) -> dict:
         ]
     }
     """
+    all_spheros = algorithm.find_all_spheros()
     spheros_payload = [
         {
             "id": sphero.id,
             "x": sphero.x,
             "y": sphero.y,
-            "color": sphero.color,
+            "color": list(sphero.color),
             "direction": sphero.direction,
         }
-        for sphero in algorithm.spheros
-        if sphero is not None
+        for sphero in all_spheros
+    ]
+
+    bonded_groups_payload = [
+        [s.id for s in group.spheros]
+        for group in algorithm.bonded_groups
+        if group.spheros
     ]
 
     return {
@@ -186,7 +192,7 @@ def build_state_payload(algorithm) -> dict:
             "height": algorithm.grid_height,
         },
         "spheros": spheros_payload,
-        "bonded_groups": algorithm.swarm.bonded_groups,
+        "bonded_groups": bonded_groups_payload,
     }
 
 

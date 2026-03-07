@@ -50,7 +50,7 @@
     ]
   },
   "N_SPHEROS": 4,
-  "GRID_WIDTH": 8,
+  "GRID_WIDTH": 12,
   "GRID_HEIGHT": 8,
   "EPSILON": 0.01,
   "SPHERO_SPEED": 66,

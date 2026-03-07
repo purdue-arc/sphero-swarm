@@ -16,7 +16,7 @@ if __name__ == "__main__":
 
     # Start the producer script as a subprocess
     threads = []
-    thread = threading.Thread(target=controls.Fall_2025_Sphero_Swarm_Server.run_server, args=[algorithms.constants.SPHERO_TAGS])
+    thread = threading.Thread(target=controls.Fall_2025_Sphero_Swarm_Server.run_server, args=[algorithms.constants.constants.SPHERO_TAGS])
     threads.append(thread)
     thread.start()
 
@@ -31,7 +31,7 @@ if __name__ == "__main__":
     # conn is the object required for comm with the other files
     conn, address = s.accept()
     
-    thread = threading.Thread(target=driver.main(), args=[algorithms.constants.SPHERO_TAGS])
+    thread = threading.Thread(target=driver.main(), args=[algorithms.constants.constants.SPHERO_TAGS])
     threads.append(thread)
     thread.start()
 

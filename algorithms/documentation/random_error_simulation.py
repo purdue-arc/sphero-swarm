@@ -2,7 +2,15 @@
 TODO: add this feature to the simulation as a toggleable option, so we can run the sim with or without simulated error
 '''
 import pygame
-from constants import *
+import sys, os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+from constants import constants
+
+# Simulation display constants (not in shared constants.py)
+SIM_DIST = 100
+SIM_WIDTH = constants.GRID_WIDTH * SIM_DIST
+SIM_HEIGHT = constants.GRID_HEIGHT * SIM_DIST
+SPHERO_SIM_RADIUS = 20
 from algorithm import Algorithm
 import random
 
@@ -17,15 +25,15 @@ def draw_grid(surface):
         None
     """
     for x in range(0, SIM_WIDTH, SIM_DIST):
-        pygame.draw.line(surface=surface, color=GRAY, start_pos=(x, 0), end_pos=(x, SIM_HEIGHT))
+        pygame.draw.line(surface=surface, color=constants.GRAY, start_pos=(x, 0), end_pos=(x, SIM_HEIGHT))
   
     for y in range(0, SIM_HEIGHT, SIM_DIST):
-        pygame.draw.line(surface=surface, color=GRAY, start_pos=(0, y), end_pos=(SIM_WIDTH, y))
+        pygame.draw.line(surface=surface, color=constants.GRAY, start_pos=(0, y), end_pos=(SIM_WIDTH, y))
     
     for x in range (0, SIM_WIDTH, SIM_DIST):
         for y in range(0, SIM_HEIGHT, SIM_DIST):
-            pygame.draw.line(surface=surface, color=GRAY, start_pos=(x, y), end_pos=(x + SIM_DIST, y + SIM_DIST))
-            pygame.draw.line(surface=surface, color=GRAY, start_pos=(x + SIM_DIST, y), end_pos=(x, y + SIM_DIST))
+            pygame.draw.line(surface=surface, color=constants.GRAY, start_pos=(x, y), end_pos=(x + SIM_DIST, y + SIM_DIST))
+            pygame.draw.line(surface=surface, color=constants.GRAY, start_pos=(x + SIM_DIST, y), end_pos=(x, y + SIM_DIST))
     
     
 def draw_pause_button(surface, color, rect, paused):
@@ -34,7 +42,7 @@ def draw_pause_button(surface, color, rect, paused):
     button_name = 'Pause'
     if (paused == True):
         button_name = 'Resume'
-    text = font.render(button_name, True, BLACK)
+    text = font.render(button_name, True, constants.BLACK)
     text_rect = text.get_rect(center=rect.center)
     surface.blit(text, text_rect)
     
@@ -70,10 +78,10 @@ def moving_sphero_to_target(sphero):
         sphero.x = sphero.target_x
         sphero.y = sphero.target_y
         return False
-    sphero.x += position_change[sphero.direction][0] * (sphero.speed / SIM_DIST)
-    sphero.y += position_change[sphero.direction][1] * (sphero.speed / SIM_DIST)
-    sphero.true_x += position_change[sphero.direction][0] * (sphero.speed / SIM_DIST)
-    sphero.true_y += position_change[sphero.direction][1] * (sphero.speed / SIM_DIST)
+    sphero.x += constants.position_change[sphero.direction][0] * (sphero.speed / SIM_DIST)
+    sphero.y += constants.position_change[sphero.direction][1] * (sphero.speed / SIM_DIST)
+    sphero.true_x += constants.position_change[sphero.direction][0] * (sphero.speed / SIM_DIST)
+    sphero.true_y += constants.position_change[sphero.direction][1] * (sphero.speed / SIM_DIST)
     return True
 
 def draw_sphero(surface, sphero):
@@ -87,7 +95,7 @@ def draw_sphero(surface, sphero):
     Returns:
         None
     """
-    pygame.draw.circle(surface, WHITE, (sphero.true_x * SIM_DIST, sphero.true_y * SIM_DIST), SPHERO_SIM_RADIUS)
+    pygame.draw.circle(surface, constants.WHITE, (sphero.true_x * SIM_DIST, sphero.true_y * SIM_DIST), SPHERO_SIM_RADIUS)
 
 if __name__ == "__main__":
     pygame.init()
@@ -97,9 +105,9 @@ if __name__ == "__main__":
     pygame.display.set_caption("sphero-swarm simulation")
 
 
-    algorithm = Algorithm(grid_width=GRID_WIDTH,
-                            grid_height=GRID_HEIGHT,
-                            n_spheros=N_SPHEROS)
+    algorithm = Algorithm(grid_width=constants.GRID_WIDTH,
+                            grid_height=constants.GRID_HEIGHT,
+                            n_spheros=constants.N_SPHEROS)
     for sphero in algorithm.spheros:
         print(sphero)
     
@@ -109,7 +117,7 @@ if __name__ == "__main__":
             if event.type == pygame.QUIT:
                 running = False
 
-        surface.fill(BLACK) # replace frame with empty background
+        surface.fill(constants.BLACK) # replace frame with empty background
         draw_grid(surface=surface)
 
         spheros_reached_target = True

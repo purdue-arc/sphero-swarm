@@ -2,7 +2,7 @@ import pickle
 import socket
 import math
 from algorithms.algorithm import Algorithm
-from algorithms.constants import *
+from algorithms.constants import constants
 from algorithms.simulation import StartSimulation, spheros, teleport_sphero_to_target
 from algorithms.sphero import Sphero
 from controls.Instruction import Instruction
@@ -22,24 +22,24 @@ def main():
     '''
 
     # sanity checks
-    assert len(INITIAL_POSITIONS) == N_SPHEROS, 'Number of initial positions does not match N_SPHEROS'
-    assert len(INITIAL_POSITIONS) == len(set(INITIAL_POSITIONS)), 'Cannot have repeats in initial_positions'
+    assert len(constants.INITIAL_POSITIONS) == constants.N_SPHEROS, 'Number of initial positions does not match constants.N_SPHEROS'
+    assert len(constants.INITIAL_POSITIONS) == len(set(tuple(p) for p in constants.INITIAL_POSITIONS)), 'Cannot have repeats in initial_positions'
 
     # generate random colors for spheros. FIXME NOT SURE IF THIS IS USED/NECESSARY
     colors = []
-    for i in range(N_SPHEROS):
-        colors.append(COLORS[i % len(COLORS)])
+    for i in range(constants.N_SPHEROS):
+        colors.append(constants.COLORS[i % len(constants.COLORS)])
 
     # make a list of spheros to pass into algorithm using constant INITIAL_POSITIONS
     spheros = []
     id = 1
-    for x, y in INITIAL_POSITIONS:
+    for x, y in constants.INITIAL_POSITIONS:
         spheros.append(Sphero(id, x, y, direction=1)) # initialize spheros to be pointing to direction positive y
         id += 1
 
 
-    algorithm = Algorithm(grid_width=GRID_WIDTH,
-                            grid_height=GRID_HEIGHT,
+    algorithm = Algorithm(grid_width=constants.GRID_WIDTH,
+                            grid_height=constants.GRID_HEIGHT,
                             spheros=spheros)
     print("init success")
 
@@ -67,16 +67,16 @@ def main():
                 translation = True
                 if translation:
                     # also, make sure controls still wants the id passed in to be 1,2,3... instead of SB-B11D
-                    rotate_instruction = Instruction(sphero.id, 2, 45 * direction_change, TURN_DURATION)
+                    rotate_instruction = Instruction(sphero.id, 2, 45 * direction_change, constants.TURN_DURATION)
                     rotate_instructions.append(rotate_instruction)
 
-                    speed = SPHERO_SPEED
+                    speed = constants.SPHERO_SPEED
 
                     # If we are going diagonal, adjust speed by a factor of sqrt(2). thanks pythagoras
                     if sphero.direction > 0 and sphero.direction % 2 == 0:
-                        speed = SPHERO_DIAGONAL_SPEED
+                        speed = constants.SPHERO_DIAGONAL_SPEED
 
-                    roll_instruction = Instruction(sphero.id, 1, speed, ROLL_DURATION)
+                    roll_instruction = Instruction(sphero.id, 1, speed, constants.ROLL_DURATION)
                     print(str(sphero))
                     roll_instructions.append(roll_instruction)
 

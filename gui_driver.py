@@ -1,10 +1,32 @@
 from algorithms.constants import Constants
 from algorithms.algorithm import Algorithm
+from algorithms.sphero import Sphero
+from algorithms.bonded_group import BondedGroup
 from gui_server import send_algorithm_state, get_next_command
 import time
 import socket
 import pickle
-from controls.Instruction import Instruction
+try:
+    from controls.Instruction import Instruction
+    _controls_available = True
+except ImportError:
+    _controls_available = False
+    Instruction = None
+
+
+def _build_algorithm(constants):
+    """Build an Algorithm instance from constants, matching driver.py's approach."""
+    spheros = []
+    for i, (x, y) in enumerate(constants.INITIAL_POSITIONS[:constants.N_SPHEROS]):
+        sphero_id = i + 1
+        color = constants.COLORS[i % len(constants.COLORS)]
+        spheros.append(Sphero(sphero_id, x, y, color=color, direction=1))
+    return Algorithm(
+        grid_width=constants.GRID_WIDTH,
+        grid_height=constants.GRID_HEIGHT,
+        spheros=spheros,
+    )
+
 
 def _to_int(value, default=None):
     try:
@@ -34,14 +56,14 @@ def _extract_path_nodes(cmd_path, grid_w, grid_h):
 
 def _set_sphero_target_if_free(algorithm, sphero, target_x, target_y):
     """Override a sphero target when the destination node is free."""
-    current_occ = algorithm.nodes[target_x][target_y]
+    current_occ = algorithm.current_grid[target_x][target_y]
     if current_occ not in (0, sphero.id):
         return False
 
     old_x, old_y = sphero.target_x, sphero.target_y
-    if algorithm.nodes[old_x][old_y] == sphero.id:
-        algorithm.nodes[old_x][old_y] = 0
-    algorithm.nodes[target_x][target_y] = sphero.id
+    if algorithm.current_grid[old_x][old_y] == sphero.id:
+        algorithm.current_grid[old_x][old_y] = 0
+    algorithm.current_grid[target_x][target_y] = sphero.id
 
     sphero.target_x = target_x
     sphero.target_y = target_y
@@ -51,16 +73,20 @@ def _set_sphero_target_if_free(algorithm, sphero, target_x, target_y):
 
 def _remove_sphero_from_bond_group(algorithm, sphero_id):
     """Force a sphero into its own bonding group; recalculation can re-bond it."""
-    swarm = algorithm.swarm
-    current_group_index = swarm.bonded_group_index[sphero_id - 1]
-    current_group = swarm.bonded_groups[current_group_index]
+    sphero = algorithm.find_sphero(sphero_id)
+    if sphero is None:
+        return
+    group = algorithm.find_group(sphero.group_id)
+    if group is None or len(group.spheros) <= 1:
+        return
 
-    if sphero_id in current_group:
-        current_group.remove(sphero_id)
+    group.spheros = [s for s in group.spheros if s.id != sphero_id]
+    group.update_sphero_membership()
 
-    new_group_index = len(swarm.bonded_groups)
-    swarm.bonded_groups.append([sphero_id])
-    swarm.bonded_group_index[sphero_id - 1] = new_group_index
+    new_group_id = max(g.group_id for g in algorithm.bonded_groups) + 1
+    new_group = BondedGroup([sphero], new_group_id)
+    algorithm.bonded_groups.append(new_group)
+    sphero.group_id = new_group_id
 
 
 def _process_next_edit_ball_move(algorithm, edit_ball_queue):
@@ -91,19 +117,21 @@ def _process_next_edit_ball_move(algorithm, edit_ball_queue):
             sphero.y = sphero.target_y
             edit_ball_queue.pop(0)
 
-        algorithm.update_grid_bonds()
+        algorithm.bond_all_groups()
         return True
 
-    algorithm.update_grid_bonds()
+    algorithm.bond_all_groups()
     return True
 
 
 def _send_instructions(sock, algorithm, constants):
     """Build and send rotate + roll instructions to the controls server."""
+    if not _controls_available:
+        return
     rotate_instructions = []
     roll_instructions = []
 
-    for sphero in algorithm.spheros:
+    for sphero in algorithm.find_all_spheros():
         direction_change = sphero.get_direction_change()
         rotate_instruction = Instruction(sphero.id, 2, 45 * direction_change, constants.TURN_DURATION)
         rotate_instructions.append(rotate_instruction)
@@ -126,13 +154,7 @@ if __name__ == "__main__":
     constants = Constants()
     print(constants.INITIAL_POSITIONS, constants.SPHERO_TAGS, constants.N_SPHEROS)
     # start with an algorithm ready but not running until a "start" command
-    algorithm = Algorithm(
-        constants.GRID_WIDTH,
-        constants.GRID_HEIGHT,
-        constants.N_SPHEROS,
-        constants.COLORS,
-        constants.INITIAL_POSITIONS,
-    )
+    algorithm = _build_algorithm(constants)
 
     running = False          # controlled by start/stop commands
     paused = False
@@ -173,13 +195,7 @@ if __name__ == "__main__":
                 # allow playback controls (start/stop/pause/resume) regardless of use_controls
                 elif typ == "start":
                     constants = Constants()
-                    algorithm = Algorithm(
-                        constants.GRID_WIDTH,
-                        constants.GRID_HEIGHT,
-                        constants.N_SPHEROS,
-                        constants.COLORS,
-                        constants.INITIAL_POSITIONS,
-                    )
+                    algorithm = _build_algorithm(constants)
                     running = True
                     paused = False
                     edit_ball_queue.clear()
@@ -203,6 +219,7 @@ if __name__ == "__main__":
                 elif typ == "reset":
                     running = False
                     constants = Constants()
+                    algorithm = _build_algorithm(constants)
                     edit_ball_queue.clear()
                     print("[gui_driver] stopping")
                 elif typ == "pause" and running:
@@ -266,11 +283,11 @@ if __name__ == "__main__":
                         except Exception as e:
                             print(f"[gui_driver] controls send error (edit_ball queue): {e}")
             elif running and not paused:
-                for sphero in algorithm.spheros:
+                for sphero in algorithm.find_all_spheros():
                     sphero.x = sphero.target_x
                     sphero.y = sphero.target_y
-                algorithm.update_grid_bonds()
-                algorithm.update_grid_move()
+                algorithm.bond_all_groups()
+                algorithm.move_all_groups()
 
                 print("NEW_MOVE")
 
