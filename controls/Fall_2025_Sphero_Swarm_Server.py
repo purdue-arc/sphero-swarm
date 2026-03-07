@@ -123,11 +123,11 @@ def command_gathering(valid_sphero_ids, command_array_2d):
     # enables the system to handle up to 5 connections before refusing more
     s.listen(5)
 
-    # insert for buffering 
-    temp_s = socket.socket()
-    # arbitrary non-priv port that isn't the one used by the server
-    temp_port = 4324
-    temp_s.connect(('localhost', temp_port))
+    # # insert for buffering 
+    # temp_s = socket.socket()
+    # # arbitrary non-priv port that isn't the one used by the server
+    # temp_port = 4324
+    # temp_s.connect(('localhost', temp_port))
 
     print("Waiting for connection to client...")
     # conn is the object required for comm with the other files
@@ -147,7 +147,7 @@ def command_gathering(valid_sphero_ids, command_array_2d):
                     if (instruction.type == -2):
                         KILL_FLAG = 1
                         break
-                    index = valid_sphero_ids.index(instruction.spheroID)
+                    index = instruction.spheroID - 1 # changed to account for an off by 1 error we encountered in testing
                     appending_array[index] = instruction
                 except ValueError:
                     print("Attempting to send command to not connnected ball...")
@@ -402,4 +402,14 @@ def test_controls():
         
 if __name__ == "__main__":
     #test_controls()
-    run_server(['SB-E274', 'SB-B11D'])
+
+    SPHERO_TAGS = [
+    'SB-76B3',
+    'SB-B5A9',
+    'SB-B11D', 
+    'SB-E274',
+    'SB-1840'
+]
+
+
+    run_server(SPHERO_TAGS)#['SB-E274', 'SB-B11D'])

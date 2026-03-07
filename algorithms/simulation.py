@@ -1,9 +1,15 @@
 import pygame
 from .constants import *
 from .algorithm import Algorithm
-from .sphero import LinkedSphero
+from .sphero import Sphero, LinkedSphero
+from math import hypot, atan, asin, cos, sin, pi
 
-# run with python -m algorithms.simulation
+'''
+ run the folllowing line to start the simulation:
+ 
+                python -m algorithms.simulation
+
+ '''
 
 def draw_grid(surface):
     """
@@ -65,9 +71,72 @@ def moving_sphero_to_target(sphero):
     if reached_target(sphero=sphero):
         sphero.x = sphero.target_x
         sphero.y = sphero.target_y
+        sphero.true_x = sphero.target_x
+        sphero.true_y = sphero.target_y
         return False
-    sphero.x += position_change[sphero.direction][0] * (sphero.speed / SIM_DIST)
-    sphero.y += position_change[sphero.direction][1] * (sphero.speed / SIM_DIST)
+    
+    
+
+    if sphero.direction <= 8:
+        # print(f"Direction: {sphero.direction}\tx pos change: {position_change[sphero.direction][0]}")
+        sphero.x += position_change[sphero.direction][0] * (sphero.speed / SIM_DIST)
+        sphero.y += position_change[sphero.direction][1] * (sphero.speed / SIM_DIST)
+    elif not ARC_ROTATION:
+        # move sphero straight to its target for a rotation
+        # I'm lazily using true_x and true_y to hold the sphero's previous location.
+        dx = sphero.target_x - sphero.true_x
+        dy = sphero.target_y - sphero.true_y
+        sphero.x += dx * (sphero.speed / SIM_DIST)
+        sphero.y += dy * (sphero.speed / SIM_DIST)
+    else:
+        step_length = (sphero.speed / SIM_DIST)
+
+        center = algorithm.find_sphero(algorithm.find_group(sphero.group_id).center)
+        dx_center = sphero.x - center.x
+        dy_center = sphero.y - center.y
+        dist_center = hypot(dx_center, dy_center)
+
+        # Attempted solution, currently doesn't work
+        # TODO: Try to fix this solution
+        # if sphero is not center:
+        #     if dx_center != 0:
+        #         current_angle = atan(dy_center / dx_center)
+        #     else:
+        #         current_angle = (pi / 2) * (dy_center / abs(dy_center))
+
+        #     delta_angle = asin(step_length / (2 * dist_center))
+
+        #     if sphero.direction == 9:
+        #         middle_angle = current_angle - delta_angle
+        #         heading_x = -sin(middle_angle)
+        #         heading_y = cos(middle_angle)
+        #     else:
+        #         middle_angle = current_angle + delta_angle
+        #         heading_x = sin(middle_angle)
+        #         heading_y = -cos(middle_angle)
+
+        
+        # else:
+        #     ux = 0
+        #     uy = 0
+
+
+
+        # This version spins, but doesn't stop
+        ux = dx_center / dist_center
+        uy = dy_center / dist_center
+
+        if sphero.direction == 9:
+            heading_x = -uy
+            heading_y = ux
+        else:
+            heading_x = uy
+            heading_y = -ux
+
+        sphero.x += heading_x * dist_center * step_length
+        sphero.y += heading_y * dist_center * step_length
+
+
     return True
 
 def teleport_sphero_to_target(sphero):
@@ -79,6 +148,8 @@ def teleport_sphero_to_target(sphero):
     """
     sphero.x = sphero.target_x
     sphero.y = sphero.target_y
+    sphero.true_x = sphero.target_x
+    sphero.true_y = sphero.target_y
 
 def draw_sphero(surface, sphero):
     """
@@ -102,14 +173,32 @@ if __name__ == "__main__":
     surface = pygame.display.set_mode((SIM_WIDTH, SIM_HEIGHT))
     pygame.display.set_caption("sphero-swarm simulation")
 
+##### Generate N_SPHEROS random spheros #########################################
+    initial_positions = INITIAL_POSITIONS
+    assert len(initial_positions) == N_SPHEROS, 'Number of initial positions does not match N_SPHEROS'
+    assert len(initial_positions) == len(set(initial_positions)), 'Cannot have repeats in initial_positions'
+
+    # generate random colors for spheros
+    colors = []
+    for i in range(N_SPHEROS):
+        colors.append(COLORS[i % len(COLORS)])
+ 
+    # generate random initial positions if none passed in
+
+    algorithm_spheros = []
+    spheros = [] # put the Linked Spheros in here
+
+    id = 1
+    for (x, y), color in zip(initial_positions, colors):
+        algorithm_spheros.append(Sphero(id=id, x=x, y=y, color=color))
+        id += 1
 
     algorithm = Algorithm(grid_width=GRID_WIDTH,
                             grid_height=GRID_HEIGHT,
-                            n_spheros=N_SPHEROS,
-                            initial_positions=INITIAL_POSITIONS)
-    for sphero in algorithm.spheros:
-        # spheros.append(LinkedSphero(sphero))
-        spheros.append(sphero) 
+                            spheros=algorithm_spheros)
+    for sphero in algorithm_spheros:
+       #spheros.append(LinkedSphero(sphero))
+       spheros.append(sphero)
     
     running = True
     while running:
@@ -128,15 +217,15 @@ if __name__ == "__main__":
 
         # if all spheros reached their target, bond spheros and find new directions
         if spheros_reached_target:
-            for sphero in algorithm.spheros:
-                sphero.x = sphero.target_x
-                sphero.y = sphero.target_y
-                print(str(sphero))
-            
-            print('-'*50)
+            # update sphero positions to simulate they reached their target
+            algorithm.reset_sphero_positions()
 
-            algorithm.update_grid_bonds()
-            algorithm.update_grid_move()
+            # bond
+            algorithm.bond_all_groups()  # formerly used algorithm.update_grid_bonds()
+            #print(str(algorithm))
+
+            # move
+            algorithm.move_all_groups() # formerly used algorithm.update_grid_move()
         
         # Draw the spheros
         for sphero in spheros:
@@ -155,9 +244,11 @@ def StartSimulation(algorithm):
     surface = pygame.display.set_mode((SIM_WIDTH, SIM_HEIGHT))
     pygame.display.set_caption("sphero-swarm simulation")
 
-    for sphero in algorithm.spheros:
-        # spheros.append(LinkedSphero(sphero))
-        spheros.append(sphero) 
+
+    algorithm_spheros = algorithm.find_all_spheros()
+    for sphero in algorithm_spheros:
+        spheros.append(LinkedSphero(sphero))
+        spheros.append(sphero)
     
     running = True
     while running:
