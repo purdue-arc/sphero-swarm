@@ -3,7 +3,7 @@ from .constants import constants
 class Sphero:
     def __init__(self, id, x, y,
                  target_x=None, target_y=None,
-                 previous_direction=0, direction=0, speed=1, color=constants.BLACK,
+                 previous_direction=0, direction=0, speed=constants.SIM_SPEED, color=constants.BLACK,
                  bonding_directions=list(constants.position_change.values())[1:]):
         # attributes
         self.id = id

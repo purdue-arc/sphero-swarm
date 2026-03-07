@@ -39,11 +39,15 @@ class Constants:
         self.N_SPHEROS = 2
         self.GRID_WIDTH = 4
         self.GRID_HEIGHT = 4
-        self.SPHERO_SPEED = 60
-        self.SPHERO_DIAGONAL_SPEED = 76
+
+        self.SPEED_SCALAR = 2  # Set to 1 for original speed
+        self.SPHERO_SPEED = 60 * self.SPEED_SCALAR
+        self.SPHERO_DIAGONAL_SPEED = 76 * self.SPEED_SCALAR  # Use 76 for SPEED 60. Thanks to jack for testing this
 
         self.ROLL_DURATION = 0.8
         self.TURN_DURATION = 0.5
+
+        self.SIM_SPEED = 1  # DO NOT SET THIS TOO HIGH!!!
 
         self.SPHERO_TAGS = [
             "SB-B11D",
