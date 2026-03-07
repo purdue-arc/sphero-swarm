@@ -48,8 +48,9 @@ SIM_HEIGHT = (GRID_HEIGHT-1) * SIM_DIST
 
 EPSILON = 0.01
 
-SPHERO_SPEED = 60
-SPHERO_DIAGONAL_SPEED = 76 # 60 * sqrt(2), but adjusted for acceleration. Thanks to jack for testing this
+SPEED_SCALAR = 1 # Set to 1 for original speed
+SPHERO_SPEED = 60 * SPEED_SCALAR
+SPHERO_DIAGONAL_SPEED = 76 * SPEED_SCALAR # 60 * sqrt(2), but adjusted for acceleration. Use 76 for SPEED 60. Thanks to jack for testing this
 ROLL_DURATION = 0.8 # in seconds
 TURN_DURATION = 0.5 # in seconds
 
