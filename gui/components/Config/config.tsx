@@ -22,6 +22,8 @@ const KNOWN_TAGS = [
     'SB-B11D',
     'SB-CEB2',
     'SB-BD0A',
+    'SB-4039',
+    'SB-856A'
 ];
 
 interface ConfigProps {
