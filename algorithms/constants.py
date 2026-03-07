@@ -1,94 +1,66 @@
-import json
-import os
+# the number of nodes on the grid widthwise
+GRID_WIDTH = 9
 
+# the number of nodes on the grid heightwise
+GRID_HEIGHT = 9
 
-class Constants:
-    def __init__(self) -> None:
-        # CONSTANTS
-        self.MARGIN = 0
-        self.DIRECTIONS = 8
+SPHERO_TAGS = [
+    'SB-76B3',
+    'SB-B5A9',
+    'SB-B11D', 
+    'SB-E274',
+    'SB-1840'
+]
 
-        self.ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8]
+INITIAL_POSITIONS = [(0,0), (0,4), (0, 8), (4,0), (4,4), (4, 8), (8,0), (8,4), (8, 8)]#, (3, 4), (4, 4), (4, 1)]
+# INITIAL_POSITIONS = [(0,0), (0,4), (4, 0), (4,4), (2,2)]#, (3, 1)]
+#INITIAL_POSITIONS = [(0,0), (0,1), (0, 2), (0,3), (0,4), (0, 5)]
 
-        self.position_change = {
-            0: (0, 0),
-            1: (0, 1),
-            2: (1, 1),
-            3: (1, 0),
-            4: (1, -1),
-            5: (0, -1),
-            6: (-1, -1),
-            7: (-1, 0),
-            8: (-1, 1),
-        }
-        self.EPSILON = 0.01
+N_SPHEROS = len(INITIAL_POSITIONS)
 
-        self.BLUE = (0, 0, 255)
-        self.RED = (255, 0, 0)
-        self.GREEN = (0, 255, 0)
-        self.YELLOW = (255, 255, 0)
-        self.PURPLE = (128, 0, 128)
-        self.ORANGE = (255, 165, 0)
+ARC_ROTATION = False # Flag for using arced movements vs straight line movements in rotations.
 
-        self.BLACK = (0, 0, 0)
-        self.WHITE = (255, 255, 255)
-        self.GRAY = (150, 150, 150)
+MARGIN = 0
+DIRECTIONS = 8
 
-        self.COLORS = [self.BLUE, self.RED, self.GREEN, self.YELLOW, self.PURPLE, self.ORANGE]
+ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]   # WITH rotation
+# ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8]        # NO rotation
 
-        self.N_SPHEROS = 2
-        self.GRID_WIDTH = 4
-        self.GRID_HEIGHT = 4
-        self.SPHERO_SPEED = 60
-        self.SPHERO_DIAGONAL_SPEED = 76
+position_change = {
+    0: (0, 0),
+    1: (0, 1),
+    2: (1, 1),
+    3: (1, 0),
+    4: (1, -1),
+    5: (0, -1),
+    6: (-1, -1),
+    7: (-1, 0),
+    8: (-1, 1)
+}
+# the pixel distance between two nodes 
+SIM_DIST = 50
+FRAMES = 60
 
-        self.ROLL_DURATION = 0.8
-        self.TURN_DURATION = 0.5
+SPHERO_SIM_RADIUS = 15
 
-        self.SPHERO_TAGS = [
-            "SB-B11D",
-            "SB-BD0A",
-        ]
-        self.INITIAL_POSITIONS = [(0, 0), (0, 2), (1, 3), (3, 3), (3, 1)]
-        
-        self._load_constants_from_file()
+SIM_WIDTH = (GRID_WIDTH-1) * SIM_DIST
+SIM_HEIGHT = (GRID_HEIGHT-1) * SIM_DIST
 
-    def _load_constants_from_file(self) -> None:
-        """Automatically load variable constants from constants.json if it exists."""
-        variable_fields = {
-            "N_SPHEROS",
-            "GRID_WIDTH",
-            "GRID_HEIGHT",
-            "SPHERO_SPEED",
-            "SPHERO_DIAGONAL_SPEED",
-            "ROLL_DURATION",
-            "TURN_DURATION",
-            "SPHERO_TAGS",
-            "INITIAL_POSITIONS",
-        }
+EPSILON = 0.01
 
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        constants_path = os.path.join(current_dir, "../constants.json")
+SPHERO_SPEED = 60
+SPHERO_DIAGONAL_SPEED = 76 # 60 * sqrt(2), but adjusted for acceleration. Thanks to jack for testing this
+ROLL_DURATION = 0.8 # in seconds
+TURN_DURATION = 0.5 # in seconds
 
-        if not os.path.exists(constants_path):
-            return
+BLUE = (0, 0, 255)
+RED = (255, 0, 0)
+GREEN = (0, 255, 0)
+YELLOW = (255, 255, 0)
+PURPLE = (128, 0, 128)
+ORANGE = (255, 165, 0)
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+GRAY = (150, 150, 150)
 
-        try:
-            with open(constants_path, "r", encoding="utf-8") as handle:
-                updates = json.load(handle)
-
-            for key, value in updates.items():
-                if key in variable_fields:
-                    setattr(self, key, value)
-        except (json.JSONDecodeError, IOError) as e:
-            print(f"Warning: Could not load constants.json: {e}")
-
-constants = Constants()
-
-# __all__ = ["Constants", "constants"]
-
-# if __name__ == "__main__":
-#     test = Constants() 
-#     print("sphero speed should be 60: ", test.SPHERO_SPEED)
-#     test.update_variable_constants("./documentation/example_constants.json")
-#     print("sphero speed (should be 70 not 60): ", test.SPHERO_SPEED) 
+COLORS = [BLUE, RED, GREEN, YELLOW, PURPLE, ORANGE]

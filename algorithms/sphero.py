@@ -1,10 +1,16 @@
-from .constants import constants
+from .constants import *
 
 class Sphero:
     def __init__(self, id, x, y,
                  target_x=None, target_y=None,
-                 previous_direction=0, direction=0, speed=1, color=constants.BLACK):
+                 previous_direction=0, direction=0, speed=1, color=BLACK, 
+                 bonding_directions=list(position_change.values())[1:]):
+        # attributes
         self.id = id
+        self.speed = speed
+        self.color = color
+
+        # position values
         self.x = x
         self.y = y
         self.true_x = x
@@ -13,8 +19,10 @@ class Sphero:
         self.target_y = target_y if target_y is not None else y
         self.previous_direction = previous_direction
         self.direction = direction
-        self.speed = speed
-        self.color = color
+
+        # bonding rules. CHANGE THIS if you need to change the bonding rules
+        self.bonding_directions = bonding_directions #the default: spheros can bond in all 8 directions.
+        self.group_id = id # spheros are initialized as belonging to themselves
 
     def compute_target_position(self, direction): # -> (int, int)
         """
@@ -27,7 +35,7 @@ class Sphero:
             (int, int): sphero's target position
         """
 
-        return (self.x + constants.position_change[direction][0], self.y + constants.position_change[direction][1])   
+        return (self.x + position_change[direction][0], self.y + position_change[direction][1])   
 
     def update_target(self):
         """
@@ -92,7 +100,7 @@ class Sphero:
             (int, int): Our sphero's change in position from moving in the direction it's chosen.
         """
 
-        return constants.position_change[self.direction]
+        return position_change[self.direction]
 
     def can_bond(self, adj_sphero):
         """
@@ -170,6 +178,10 @@ class LinkedSphero:
     @property
     def direction(self):
         return self.sphero.direction
+    
+    @property
+    def group_id(self):
+        return self.sphero.group_id
     
     def __str__(self):
         return f"pos: {self.x}, {self.y}, id: {self.id}, direction: {self.direction}, target pos: {self.target_x}, {self.target_y}"

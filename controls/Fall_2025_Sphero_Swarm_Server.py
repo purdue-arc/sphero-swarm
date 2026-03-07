@@ -166,11 +166,11 @@ def command_gathering(valid_sphero_ids, command_array_2d):
     # enables the system to handle up to 5 connections before refusing more
     s.listen(5)
 
-    # insert for buffering 
-    temp_s = socket.socket()
-    # arbitrary non-priv port that isn't the one used by the server
-    temp_port = 4324
-    temp_s.connect(('localhost', temp_port))
+    # # insert for buffering 
+    # temp_s = socket.socket()
+    # # arbitrary non-priv port that isn't the one used by the server
+    # temp_port = 4324
+    # temp_s.connect(('localhost', temp_port))
 
     print("Waiting for connection to client...")
     # conn is the object required for comm with the other files
@@ -190,7 +190,7 @@ def command_gathering(valid_sphero_ids, command_array_2d):
                     if (instruction.type == -2):
                         KILL_FLAG = 1
                         break
-                    index = valid_sphero_ids.index(instruction.spheroID)
+                    index = instruction.spheroID - 1 # changed to account for an off by 1 error we encountered in testing
                     appending_array[index] = instruction
                 except ValueError:
                     print("Attempting to send command to not connnected ball...")
@@ -367,9 +367,12 @@ def run_server(ball_names, ws=None, loop=None):
         for sb in sb_list:
             print(check_voltage(sb))
 
+        if ws:
+            ws_send(loop, ws, {"type": "session_ready"})
+
         commands_array = []
         # set up server at this point in thread...
-        cmd_gather_thread = threading.Thread(target=command_gathering, args=[valid_sphero_ids, commands_array])
+        cmd_gather_thread = threading.Thread(target=command_gathering, args=[names_in_order, commands_array])
         cmd_gather_thread.start()
         
         num_commands_run = 1
@@ -514,4 +517,4 @@ if __name__ == "__main__":
         asyncio.run(start_web_server())
     else:
         #test_controls()
-        run_server(['SB-E274', 'SB-B11D'])
+        run_server(['SB-76B3', 'SB-B5A9', 'SB-B11D', 'SB-E274', 'SB-1840'])
