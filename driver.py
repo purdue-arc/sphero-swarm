@@ -53,9 +53,13 @@ def main():
 
             rotate_instructions = []
             roll_instructions = []
+            color_instructions = []
 
             spheros = algorithm.find_all_spheros()
             for sphero in spheros:
+                # Set LED to sphero's color (from algorithm: head=RED, tail=BLUE)
+                color_instruction = Instruction(sphero.id, 0, sphero.color[0], sphero.color[1], sphero.color[2])
+                color_instructions.append(color_instruction)
                 # FIXME make get_direction_change work for rotation, 
                 # we also may want to rethink how we do this.
                 direction_change = sphero.get_direction_change() 
@@ -81,13 +85,15 @@ def main():
                     pass
 
 
-            # send the instructions
-            s.send(pickle.dumps(rotate_instructions))
-
-            # waits for a response from the API
+            # send color instructions first so LEDs update before movement
+            s.send(pickle.dumps(color_instructions))
             buffer = s.recv(1024)
 
-            # send the instructions
+            # send rotate instructions
+            s.send(pickle.dumps(rotate_instructions))
+            buffer = s.recv(1024)
+
+            # send roll instructions
             s.send(pickle.dumps(roll_instructions))
 
             # waits for a response from the API

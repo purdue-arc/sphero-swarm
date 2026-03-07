@@ -1,22 +1,25 @@
-N_SPHEROS = 9
+N_SPHEROS = 3
 
 # the number of nodes on the grid widthwise
-GRID_WIDTH = 10
+GRID_WIDTH = 5
 
 # the number of nodes on the grid heightwise
-GRID_HEIGHT = 10
+GRID_HEIGHT = 5
 
 SPHERO_TAGS = [
-    'SB-76B3',
-    'SB-B5A9',
-    'SB-B11D', 
+    'SB-45B0',
+    'SB-0439',
+    'SB-7672'
+]
+'''
     'SB-E274',
     'SB-1840'
 ]
+'''
 
-INITIAL_POSITIONS = [(0,0), (0,4), (0, 8), (4,0), (4,4), (4, 8), (8,0), (8,4), (8, 8)]#, (3, 4), (4, 4), (4, 1)]
+INITIAL_POSITIONS = [(0,0), (0,3), (3, 3)] # , (3,0), (3,3), (3, 6)] #, (8,0), (8,4), (8, 8)]#, (3, 4), (4, 4), (4, 1)]
 # One "head" or "tail" per sphero; length must match N_SPHEROS
-INITIAL_TRAITS = ["head", "tail", "head", "tail", "tail", "tail", "tail", "head", "tail"]
+INITIAL_TRAITS = ["head", "tail", "tail"] # , "tail", "tail", "tail"] #, "tail", "head", "tail"]
 MAX_MONOMERS = 3  # max spheros allowed per bonded group
 # INITIAL_POSITIONS = [(0,0), (0,4), (4, 0), (4,4), (2,2)]#, (3, 1)]
 #INITIAL_POSITIONS = [(0,0), (0,1), (0, 2), (0,3), (0,4), (0, 5)]
