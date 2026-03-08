@@ -1,3 +1,6 @@
+'''
+TODO: add this feature to the simulation as a toggleable option, so we can run the sim with or without simulated error
+'''
 import pygame
 from constants import *
 from algorithm import Algorithm

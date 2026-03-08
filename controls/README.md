@@ -1,8 +1,8 @@
 # Sphero Swarm Server - Quick Start Guide
 
-A simple Python script to connect to multiple Sphero robots and control them.
+A simple Python script to connect to multiple Sphero robots and control them
 
-## Setup
+## Setup instructions
 
 1. **Install Python package**:
    ```bash
