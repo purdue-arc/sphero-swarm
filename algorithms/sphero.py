@@ -3,12 +3,14 @@ from .constants import *
 class Sphero:
     def __init__(self, id, x, y,
                  target_x=None, target_y=None,
-                 previous_direction=0, direction=0, speed=SIM_SPEED, color=BLACK, 
+                 previous_direction=0, direction=0, speed=SIM_SPEED, color=BLACK,
+                 trait="tail",
                  bonding_directions=list(position_change.values())[1:]):
         # attributes
         self.id = id
         self.speed = speed
-        self.color = color
+        self.trait = trait  # "head" or "tail"
+        self.color = RED if trait == "head" else BLUE
 
         # position values
         self.x = x

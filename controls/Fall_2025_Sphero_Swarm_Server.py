@@ -404,12 +404,10 @@ if __name__ == "__main__":
     #test_controls()
 
     SPHERO_TAGS = [
-    'SB-76B3',
-    'SB-B5A9',
-    'SB-B11D', 
-    'SB-E274',
-    'SB-1840'
-]
+    'SB-45B0',
+    'SB-0439',
+    'SB-7672'
+    ]
 
 
     run_server(SPHERO_TAGS)#['SB-E274', 'SB-B11D'])

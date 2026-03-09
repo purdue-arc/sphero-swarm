@@ -27,7 +27,7 @@ class Algorithm:
         self.bonded_groups = []
         id = 1
         for sphero in spheros:
-            self.bonded_groups.append(BondedGroup([sphero], id))
+            self.bonded_groups.append(BondedGroup([sphero], id, max_monomers=MAX_MONOMERS))
             id += 1
 
     def __str__(self) -> str:
@@ -46,6 +46,30 @@ class Algorithm:
             for sphero in group.spheros:
                 spheros.append(sphero)
         return spheros
+
+    def _can_bond(self, sphero: Sphero, neighbor_sphero: Sphero, group_1: BondedGroup, group_2: BondedGroup) -> bool:
+        '''
+        Rules:
+        - At most one head per bonded group (a tail can be with at most one head).
+        - All bonds must start as head + tail (no pure tail–tail start).
+        - Head can only bond when its group currently has just that head.
+        '''
+        # Enforce max one head across the two groups being considered
+        heads_1 = sum(1 for s in group_1.spheros if s.trait == "head")
+        heads_2 = sum(1 for s in group_2.spheros if s.trait == "head")
+        if heads_1 + heads_2 > 1:
+            return False
+
+        # Tail–tail: only allowed if exactly one of the groups already has a head
+        if sphero.trait == "tail" and neighbor_sphero.trait == "tail":
+            return (heads_1 + heads_2) == 1
+
+        # Head–tail: allowed only if the head's group is just the head
+        if sphero.trait == "head" and neighbor_sphero.trait == "tail":
+            return len(group_1.spheros) == 1
+        if sphero.trait == "tail" and neighbor_sphero.trait == "head":
+            return len(group_2.spheros) == 1
+        return False
 
     def bond_all_groups(self) -> None:
         '''
@@ -73,9 +97,14 @@ class Algorithm:
                         continue
                     #print('in bounds, neighbor_spheros exist')
 
-                    # the neighboring sphero belongs to another group; we have to bond
+                    # the neighboring sphero belongs to another group; check trait rules and max_monomers
                     if neighbor_sphero.group_id != sphero.group_id:
-                        #print(f'bond {sphero} with {neighbor_sphero}')
+                        group_1 = self.find_group(sphero.group_id)
+                        group_2 = self.find_group(neighbor_sphero.group_id)
+                        if not self._can_bond(sphero, neighbor_sphero, group_1, group_2):
+                            continue
+                        if group_1.size + group_2.size > group_1.max_monomers:
+                            continue
                         self.bond_two_groups(sphero.group_id, neighbor_sphero.group_id)
     
     def bond_two_groups(self, group_1_id, group_2_id) -> None:
