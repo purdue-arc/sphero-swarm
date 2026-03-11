@@ -1,8 +1,8 @@
 # the number of nodes on the grid widthwise
-GRID_WIDTH = 9
+GRID_WIDTH = 10
 
 # the number of nodes on the grid heightwise
-GRID_HEIGHT = 9
+GRID_HEIGHT = 10
 
 SPHERO_TAGS = [
     'SB-45B0',
@@ -15,9 +15,9 @@ SPHERO_TAGS = [
 ]
 '''
 
-INITIAL_POSITIONS = [(0,0), (0,3), (3, 3)] # , (3,0), (3,3), (3, 6)] #, (8,0), (8,4), (8, 8)]#, (3, 4), (4, 4), (4, 1)]
+INITIAL_POSITIONS = [(0,0), (0,3), (0, 6) , (3,0), (3,3), (3, 6), (6,0), (6,3), (6, 6), (3, 4), (4, 4), (4, 1)]
 # One "head" or "tail" per sphero; length must match N_SPHEROS
-INITIAL_TRAITS = ["head", "tail", "tail"] # , "tail", "tail", "tail"] #, "tail", "head", "tail"]
+INITIAL_TRAITS = ["head", "tail", "tail", "tail", "tail", "tail", "tail", "head", "tail", "head", "tail", "head"]
 MAX_MONOMERS = 3  # max spheros allowed per bonded group
 # INITIAL_POSITIONS = [(0,0), (0,4), (4, 0), (4,4), (2,2)]#, (3, 1)]
 #INITIAL_POSITIONS = [(0,0), (0,1), (0, 2), (0,3), (0,4), (0, 5)]
@@ -30,7 +30,7 @@ MARGIN = 0
 DIRECTIONS = 8
 
 ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]   # WITH rotation
-# ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8]        # NO rotation
+#ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8]        # NO rotation
 
 position_change = {
     0: (0, 0),

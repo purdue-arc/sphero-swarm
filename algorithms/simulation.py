@@ -1,7 +1,7 @@
 import pygame
 from .constants import *
 from .algorithm import Algorithm
-from .sphero import Sphero, LinkedSphero
+from .sphero import Sphero
 from math import hypot, atan, asin, cos, sin, pi
 
 '''
@@ -191,7 +191,6 @@ if __name__ == "__main__":
                             grid_height=GRID_HEIGHT,
                             spheros=algorithm_spheros)
     for sphero in algorithm_spheros:
-       #spheros.append(LinkedSphero(sphero))
        spheros.append(sphero)
     
     running = True
@@ -241,7 +240,6 @@ def StartSimulation(algorithm):
 
     algorithm_spheros = algorithm.find_all_spheros()
     for sphero in algorithm_spheros:
-        spheros.append(LinkedSphero(sphero))
         spheros.append(sphero)
     
     running = True

@@ -9,7 +9,7 @@ class BondedGroup:
         self.spheros = list_spheros     
         self.size = len(self.spheros)   
         self.max_monomers = max_monomers  # max number of spheros allowed in this bond
-        self.box = [0,0,0,0]            # bounding box dimensions from center. order: U, D, L, R
+        self.box = [0,0,0,0]            # bounding box dimensions from center. order: U, R, D, L
 
         self.center = self.find_center() # ID of the center sphero (1, 2, 3, ...)
         
@@ -50,7 +50,7 @@ class BondedGroup:
             max_y = max(max_y, sphero.y)
             min_x = min(min_x, sphero.x)
             min_y = min(min_y, sphero.y)
-        self.box[0] = max_y - center_sphero.y # up  TODO we have to discuss which direction is up lol
+        self.box[0] = max_y - center_sphero.y # up  
         self.box[1] = max_x - center_sphero.x # right    
         self.box[2] = center_sphero.y - min_y # down
         self.box[3] = center_sphero.x - min_x # left
