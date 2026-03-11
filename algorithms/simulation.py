@@ -237,9 +237,8 @@ if __name__ == "__main__":
         # Control frame rate
         clock.tick(60)
 
-    algorithm.log_lines.append('END SIMULATION')
-
-    with open(LOG_PATH, 'r') as log_file:
+    algorithm.log('END SIMULATION')
+    with open(LOG_PATH, 'w') as log_file:
         log_file.writelines(algorithm.log_lines)
 
 def StartSimulation(algorithm):

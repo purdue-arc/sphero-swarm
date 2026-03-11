@@ -8,7 +8,7 @@ from math import hypot
 class Algorithm:
     def __init__(self, grid_width, grid_height, spheros: list[Sphero]):
         
-        self.log_lines = []
+        self.log_lines = ['START SIMULATION']
 
         self.grid_width = grid_width
         self.grid_height = grid_height
@@ -37,6 +37,13 @@ class Algorithm:
         for group in self.bonded_groups:
             return_str += str(group) + '\n'
         return return_str
+    
+    def log(self, line):
+        '''
+        Appends argument as a new log line
+        '''
+
+        self.log_lines.append(f'\n{line}')
 
 
     def find_all_spheros(self) -> list[Sphero]:
