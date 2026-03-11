@@ -404,6 +404,10 @@
     filter: drop-shadow(0 0 40px rgba(0, 0, 0, 0.5));
 }
 
+.gridSvgDense {
+    filter: none;
+}
+
 /* SVG Elements */
 .gridLine {
     stroke: rgba(255, 255, 255, 0.07);
@@ -412,8 +416,17 @@
     transition: stroke 0.3s ease;
 }
 
+.gridLineDense {
+    stroke: rgba(255, 255, 255, 0.055);
+    stroke-width: 1;
+}
+
 .gridLine.active {
     stroke: rgba(255, 255, 255, 0.15);
+}
+
+.toggleRow {
+    margin-bottom: 10px;
 }
 
 .gridNode {
@@ -421,8 +434,7 @@
     stroke: rgba(255, 255, 255, 0.12);
     stroke-width: 1.5;
     cursor: pointer;
-    transition: all 0.2s ease;
-    r: 8;
+    transition: fill 0.08s linear, stroke 0.08s linear;
 }
 
 .gridNode:hover {
@@ -614,4 +626,9 @@
     text-transform: uppercase;
     letter-spacing: 0.06em;
     margin-right: 0.25rem;
+}
+
+.gridNodeDense {
+    stroke-width: 1;
+    fill: rgba(255, 255, 255, 0.05);
 }

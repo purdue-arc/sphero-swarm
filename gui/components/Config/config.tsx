@@ -23,7 +23,9 @@ const KNOWN_TAGS = [
     'SB-CEB2',
     'SB-BD0A',
     'SB-4039',
-    'SB-856A'
+    'SB-856A',
+    'SB-7672',
+    'SB-5AB9'
 ];
 
 interface ConfigProps {
@@ -180,22 +182,31 @@ export function Config({ constants, onUpdate }: ConfigProps) {
                     </div>
                     <div className={s.formRow}>
                         <div className={s.formGroup}>
-                            <label className={s.label}>Speed</label>
+                            <label className={s.label}>Speed Scalar</label>
+                            <input
+                                type="number" min={0} className={s.input}
+                                value={form.SPEED_SCALAR}
+                                onChange={e => update("SPEED_SCALAR", e.target.value)}
+                            />
+                            <span className={s.hint}>Multiplier applied at runtime</span>
+                        </div>
+                        <div className={s.formGroup}>
+                            <label className={s.label}>Speed (base)</label>
                             <input
                                 type="number" min={1} max={255} className={s.input}
                                 value={form.SPHERO_SPEED}
                                 onChange={e => update("SPHERO_SPEED", parseInt(e.target.value) || 0)}
                             />
-                            <span className={s.hint}>Linear speed (1–255)</span>
+                            <span className={s.hint}>Linear speed before scalar</span>
                         </div>
                         <div className={s.formGroup}>
-                            <label className={s.label}>Diagonal Speed</label>
+                            <label className={s.label}>Diagonal Speed (base)</label>
                             <input
                                 type="number" min={1} max={255} className={s.input}
                                 value={form.SPHERO_DIAGONAL_SPEED}
                                 onChange={e => update("SPHERO_DIAGONAL_SPEED", parseInt(e.target.value) || 0)}
                             />
-                            <span className={s.hint}>≈ speed × √2, tune for accel</span>
+                            <span className={s.hint}>Diagonal speed before scalar</span>
                         </div>
                         <div className={s.formGroup}>
                             <label className={s.label}>Roll Duration (s)</label>

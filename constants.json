@@ -49,11 +49,12 @@
       1
     ]
   },
-  "N_SPHEROS": 1,
-  "GRID_WIDTH": 8,
-  "GRID_HEIGHT": 8,
+  "N_SPHEROS": 4,
+  "GRID_WIDTH": 6,
+  "GRID_HEIGHT": 6,
   "EPSILON": 0.01,
-  "SPHERO_SPEED": 66,
+  "SPEED_SCALAR": "0.75",
+  "SPHERO_SPEED": 60,
   "SPHERO_DIAGONAL_SPEED": 76,
   "ROLL_DURATION": 0.8,
   "TURN_DURATION": 0.5,
@@ -137,12 +138,27 @@
     ]
   ],
   "SPHERO_TAGS": [
-    "SB-856A"
+    "SB-B11D",
+    "SB-7672",
+    "SB-E274",
+    "SB-5AB9"
   ],
   "INITIAL_POSITIONS": [
     [
       0,
       0
+    ],
+    [
+      0,
+      2
+    ],
+    [
+      2,
+      0
+    ],
+    [
+      2,
+      2
     ]
   ]
 }

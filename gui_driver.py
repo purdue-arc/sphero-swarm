@@ -288,7 +288,13 @@ if __name__ == "__main__":
                     sphero.y = sphero.target_y
                 algorithm.bond_all_groups()
                 algorithm.move_all_groups()
+                # Commit the newly selected move immediately so published state
+                # reflects the same step controls are about to execute.
+                for sphero in algorithm.find_all_spheros():
+                    sphero.x = sphero.target_x
+                    sphero.y = sphero.target_y
 
+                print(constants.SPHERO_SPEED, constants.SPEED_SCALAR)
                 print("NEW_MOVE")
 
                 if use_controls and controls_sock is not None:

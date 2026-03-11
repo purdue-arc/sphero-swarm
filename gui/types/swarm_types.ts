@@ -25,6 +25,7 @@ export interface SpheroConstants {
   SIM_WIDTH: number;
   SIM_HEIGHT: number;
   EPSILON: number;
+  SPEED_SCALAR: number;
   SPHERO_SPEED: number;
   SPHERO_DIAGONAL_SPEED: number;
   ROLL_DURATION: number;

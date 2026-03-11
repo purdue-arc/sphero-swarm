@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlay, faPause } from "@fortawesome/free-solid-svg-icons";
 import styles from "./simulation.module.css";
@@ -21,8 +21,8 @@ interface ServerPayload {
 
 interface Ball {
     id: number;          // matches server id (1-indexed)
-    color: string;
-    glowColor: string;
+    serverColor: string;
+    paletteIdx: number;
     currentNode: number; // flat index = y * gridWidth + x
     targetNode: number;
     progress: number;    // 0..1
@@ -42,9 +42,10 @@ const GROUP_PALETTE: { color: string; glow: string }[] = [
 const WS_URL = "ws://localhost:6769";
 const VIEW_SIZE = 500;
 const PADDING = 40;
-const NODE_RADIUS = 6;
-const BALL_RADIUS = 8;
-const MOVE_SPEED = 100; // pixels/sec
+const NODE_RADIUS = 4;
+const BALL_RADIUS = 6;
+const MOVE_SPEED = 50; // pixels/sec
+const DENSE_GRID_THRESHOLD = 225; // 15x15 and above uses lighter rendering
 
 export function Simulation({constants} : {constants : SpheroConstants}) {
     const [gridSize, setGridSize] = useState({ width: constants.GRID_WIDTH, height: constants.GRID_HEIGHT });
@@ -57,6 +58,7 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
     const [isPathDrawing, setIsPathDrawing] = useState(false);
     const [speed, setSpeed] = useState(4);                // current delay value
     const [useControls, setUseControls] = useState(false); // whether GUI commands are respected
+    const [useCustomColors, setUseCustomColors] = useState(true);
 
     const ballsRef = useRef<Map<number, Ball>>(new Map());
     const groupColorRef = useRef<Map<number, number>>(new Map());
@@ -209,7 +211,6 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
                     seenIds.add(s.id);
                     const target = nodeIndex(s.x, s.y, gw);
                     const paletteIdx = newGroupColor.get(s.id) ?? (s.id - 1) % GROUP_PALETTE.length;
-                    const palette = GROUP_PALETTE[paletteIdx];
 
                     if (balls.has(s.id)) {
                         const ball = balls.get(s.id)!;
@@ -219,14 +220,14 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
                             ball.targetNode = target;
                             ball.progress = 0;
                         }
-                        // Always sync colour (group membership may change)
-                        ball.color = palette.color;
-                        ball.glowColor = palette.glow;
+                        // Keep both color sources updated each tick.
+                        ball.serverColor = s.color;
+                        ball.paletteIdx = paletteIdx;
                     } else {
                         balls.set(s.id, {
                             id: s.id,
-                            color: palette.color,
-                            glowColor: palette.glow,
+                            serverColor: s.color,
+                            paletteIdx,
                             currentNode: target,
                             targetNode: target,
                             progress: 1,
@@ -311,6 +312,7 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
         const tick = (now: number) => {
             const dt = (now - last) / 1000;
             last = now;
+            let didAnimate = false;
 
             for (const ball of ballsRef.current.values()) {
                 if (ball.progress >= 1) continue;
@@ -321,9 +323,12 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 const moveAmount = dt * MOVE_SPEED / distance;
                 ball.progress = Math.min(1, ball.progress + moveAmount);
+                didAnimate = true;
             }
 
-            forceRender(v => v + 1);
+            if (didAnimate) {
+                forceRender(v => v + 1);
+            }
             raf = requestAnimationFrame(tick);
         };
 
@@ -334,6 +339,19 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
     // ── Derived render values ──────────────────────────────────────────────
 
     const balls = Array.from(ballsRef.current.values());
+    const editPathSet = useMemo(() => new Set(currentEditPath), [currentEditPath]);
+    const totalNodes = COLS * ROWS;
+    const highDensityGrid = totalNodes > DENSE_GRID_THRESHOLD;
+
+    const nodePositions = useMemo(
+        () => Array.from({ length: totalNodes }, (_, i) => getNodePos(i, COLS, ROWS)),
+        [COLS, ROWS, totalNodes, getNodePos]
+    );
+
+    const edgeOffsets = useMemo<[number, number][]>(
+        () => (highDensityGrid ? [[0, 1], [1, 0]] : [[0, 1], [1, 0], [1, 1], [1, -1]]),
+        [highDensityGrid]
+    );
 
     function ballPos(ball: Ball) {
         const from = getNodePos(ball.currentNode, COLS, ROWS);
@@ -341,6 +359,14 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
         const t = ball.progress;
         return { cx: from.x + (to.x - from.x) * t, cy: from.y + (to.y - from.y) * t };
     }
+
+    const getBallVisual = useCallback((ball: Ball) => {
+        if (useCustomColors) {
+            const palette = GROUP_PALETTE[ball.paletteIdx % GROUP_PALETTE.length];
+            return { color: palette.color, glowColor: palette.glow };
+        }
+        return { color: ball.serverColor, glowColor: ball.serverColor };
+    }, [useCustomColors]);
 
     const handleStart = () => {
         sendCommand({ type: "start" });
@@ -357,7 +383,6 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
         setSelectedEditBallId(null);
         setEditPath([]);
         setIsPathDrawing(false);
-        // clear animation state and bonds but keep speed slider value
         ballsRef.current.clear();
         bondLinesRef.current = [];
         groupColorRef.current.clear();
@@ -418,7 +443,7 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
                 )}
             <svg
                 ref={svgRef}
-                className={styles.gridSvg}
+                className={`${styles.gridSvg} ${highDensityGrid ? styles.gridSvgDense : ""}`}
                 width="100%"
                 height="100%"
                 viewBox={`0 0 ${VIEW_SIZE} ${VIEW_SIZE}`}
@@ -428,13 +453,16 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
                 onPointerLeave={endPathDraw}
             >
                 <defs>
-                    {balls.map(ball => (
+                    {balls.map(ball => {
+                        const visual = getBallVisual(ball);
+                        return (
                         <radialGradient key={ball.id} id={`grad-${ball.id}`} cx="40%" cy="35%" r="60%">
                             <stop offset="0%" stopColor="#fff" stopOpacity="0.9" />
-                            <stop offset="40%" stopColor={ball.color} />
-                            <stop offset="100%" stopColor={ball.color} stopOpacity="0.7" />
+                            <stop offset="40%" stopColor={visual.color} />
+                            <stop offset="100%" stopColor={visual.color} stopOpacity="0.7" />
                         </radialGradient>
-                    ))}
+                        );
+                    })}
                     {balls.map(ball => (
                         <filter key={ball.id} id={`glow-${ball.id}`} x="-50%" y="-50%" width="200%" height="200%">
                             <feGaussianBlur stdDeviation="4" />
@@ -454,17 +482,18 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
                 {Array.from({ length: ROWS }).map((_, r) =>
                     Array.from({ length: COLS }).map((_, c) => {
                         const i = r * COLS + c;
-                        const from = getNodePos(i, COLS, ROWS);
+                        const from = nodePositions[i];
                         return (
                             <g key={`edges-${i}`}>
-                                {([[r, c + 1], [r + 1, c], [r + 1, c + 1], [r + 1, c - 1]] as [number, number][])
+                                {edgeOffsets
+                                    .map(([dr, dc]) => [r + dr, c + dc] as [number, number])
                                     .map(([rr, cc], idx) => {
                                         if (rr >= ROWS || cc < 0 || cc >= COLS) return null;
-                                        const to = getNodePos(rr * COLS + cc, COLS, ROWS);
+                                        const to = nodePositions[rr * COLS + cc];
                                         return (
                                             <line key={idx}
                                                 x1={from.x} y1={from.y} x2={to.x} y2={to.y}
-                                                className={styles.gridLine}
+                                                className={`${styles.gridLine} ${highDensityGrid ? styles.gridLineDense : ""}`}
                                             />
                                         );
                                     })}
@@ -474,12 +503,12 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
                 )}
 
                 {Array.from({ length: ROWS * COLS }).map((_, i) => {
-                    const { x, y } = getNodePos(i, COLS, ROWS);
-                    const inEditPath = currentEditPath.includes(i);
+                    const { x, y } = nodePositions[i];
+                    const inEditPath = editPathSet.has(i);
                     return (
                         <circle key={`node-${i}`} cx={x} cy={y} r={NODE_RADIUS}
-                            className={`${styles.gridNode} ${inEditPath ? styles.gridNodePath : ""}`}
-                            filter="url(#node-glow)" />
+                            className={`${styles.gridNode} ${highDensityGrid ? styles.gridNodeDense : ""} ${inEditPath ? styles.gridNodePath : ""}`}
+                            filter={highDensityGrid ? undefined : "url(#node-glow)"} />
                     );
                 })}
 
@@ -511,6 +540,7 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
                 {/* Balls */}
                 {balls.map(ball => {
                     const { cx, cy } = ballPos(ball);
+                    const visual = getBallVisual(ball);
                     return (
                         <g
                             key={ball.id}
@@ -520,7 +550,7 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
                         >
                             {/* Outer glow halo */}
                             <circle cx={cx} cy={cy} r={BALL_RADIUS + 5}
-                                fill={ball.glowColor} opacity={0.15} />
+                                fill={visual.glowColor} opacity={0.15} />
                             {/* Main ball */}
                             <circle cx={cx} cy={cy} r={BALL_RADIUS}
                                 fill={`url(#grad-${ball.id})`} />
@@ -537,10 +567,11 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
                     if (!ba || !bb) return null;
                     const pa = ballPos(ba);
                     const pb = ballPos(bb);
+                    const bondColor = getBallVisual(ba).color;
                     return (
                         <line key={`bond-${a}-${b}`}
                             x1={pa.cx} y1={pa.cy} x2={pb.cx} y2={pb.cy}
-                            stroke={ba.color}
+                            stroke={bondColor}
                             strokeWidth={2}
                             strokeOpacity={1}
                             strokeLinecap="round"
@@ -582,7 +613,7 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
                     <button
                         className={`${styles.sidebarButton} ${styles.reset}`}
                         onClick={handleStop}
-                        disabled={!connected || !running}
+                        disabled={!connected}
                     >
                         ■ Reset
                     </button>
@@ -635,6 +666,20 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
                             onClick={toggleUseControls}
                             role="switch"
                             aria-checked={useControls}
+                        >
+                            <div className={styles.toggleThumb} />
+                        </div>
+                    </label>
+                </div>
+
+                <div className={styles.sidebarSection}>
+                    <label className={styles.toggleRow}>
+                        <span className={styles.sectionLabel} style={{ marginBottom: 0 }}>Use Custom Colors</span>
+                        <div
+                            className={`${styles.toggleTrack} ${useCustomColors ? styles.toggleOn : ""}`}
+                            onClick={() => setUseCustomColors(prev => !prev)}
+                            role="switch"
+                            aria-checked={useCustomColors}
                         >
                             <div className={styles.toggleThumb} />
                         </div>

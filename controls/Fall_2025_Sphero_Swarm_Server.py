@@ -160,54 +160,62 @@ def check_voltage(sb):
 # same with the valid_sphero_ids
 def command_gathering(valid_sphero_ids, command_array_2d):
     s = socket.socket()
+    # allow quick restart/rebind after client drops
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     # arbitrary non-priv port
     port = 1235
     s.bind(('localhost', port))
     # enables the system to handle up to 5 connections before refusing more
     s.listen(5)
-
-    # # insert for buffering 
-    # temp_s = socket.socket()
-    # # arbitrary non-priv port that isn't the one used by the server
-    # temp_port = 4324
-    # temp_s.connect(('localhost', temp_port))
-
-    print("Waiting for connection to client...")
-    # conn is the object required for comm with the other files
-    conn, address = s.accept()
-    # given this is the first and only connection to be made for now, can immediately send relevant information
-    conn.send(pickle.dumps(valid_sphero_ids))
-    # will need two in actuality... - one for the center and the other for algo
+    # periodic timeout allows us to check KILL_FLAG while waiting for clients
+    s.settimeout(1.0)
 
     global KILL_FLAG
-    while (KILL_FLAG == 0):
-        try:
-            appending_array = [None] * len(valid_sphero_ids)
-            instruction_list = pickle.loads(conn.recv(1024)) 
-            for instruction in instruction_list:
+    conn = None
+    try:
+        while (KILL_FLAG == 0):
+            if conn is None:
+                print("Waiting for connection to client...")
                 try:
-                    # immediately terminate program
-                    if (instruction.type == -2):
-                        KILL_FLAG = 1
-                        break
-                    index = instruction.spheroID - 1 # changed to account for an off by 1 error we encountered in testing
-                    appending_array[index] = instruction
-                except ValueError:
-                    print("Attempting to send command to not connnected ball...")
+                    conn, address = s.accept()
+                except socket.timeout:
                     continue
-            if (KILL_FLAG == 0):
-                command_array_2d.append(appending_array)
-                conn.send("Done".encode())
-        except EOFError:
-            print("EOFError..., other process terminated")
-            s.close()
-            # finish all other proceesses, but now append a kill set command
-            kill_array = []
-            for id in valid_sphero_ids:
-                kill_array.append(Instruction(id,-1))
-            command_array_2d.append(kill_array)
-            # exit for loop - return to main
-            break
+
+                print("Client connected: {}".format(address))
+                # send ids immediately on every new client connection
+                conn.send(pickle.dumps(valid_sphero_ids))
+
+            try:
+                appending_array = [None] * len(valid_sphero_ids)
+                instruction_list = pickle.loads(conn.recv(1024))
+                for instruction in instruction_list:
+                    try:
+                        # immediately terminate program
+                        if (instruction.type == -2):
+                            KILL_FLAG = 1
+                            break
+                        index = instruction.spheroID - 1 # changed to account for an off by 1 error we encountered in testing
+                        appending_array[index] = instruction
+                    except ValueError:
+                        print("Attempting to send command to not connnected ball...")
+                        continue
+                if (KILL_FLAG == 0):
+                    command_array_2d.append(appending_array)
+                    conn.send("Done".encode())
+            except (EOFError, ConnectionResetError, BrokenPipeError, OSError):
+                print("Client disconnected from command socket, waiting for reconnect...")
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+                conn = None
+    finally:
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+        s.close()
             
 # the individual method for running a command on a sphero ball
 def run_command(sb, command):

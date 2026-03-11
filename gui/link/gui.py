@@ -7,6 +7,7 @@ import json
 
 def export_to_json():
     """Export all constants to a JSON-serializable dictionary"""
+    speed_scalar = constants.SPEED_SCALAR if constants.SPEED_SCALAR else 1
     state = {
         "MARGIN": constants.MARGIN,
         "DIRECTIONS": constants.DIRECTIONS,
@@ -16,8 +17,9 @@ def export_to_json():
         "GRID_WIDTH": constants.GRID_WIDTH,
         "GRID_HEIGHT": constants.GRID_HEIGHT,
         "EPSILON": constants.EPSILON,
-        "SPHERO_SPEED": constants.SPHERO_SPEED,
-        "SPHERO_DIAGONAL_SPEED": constants.SPHERO_DIAGONAL_SPEED,
+        "SPEED_SCALAR": speed_scalar,
+        "SPHERO_SPEED": int(round(constants.SPHERO_SPEED / float(speed_scalar))),
+        "SPHERO_DIAGONAL_SPEED": int(round(constants.SPHERO_DIAGONAL_SPEED / float(speed_scalar))),
         "ROLL_DURATION": constants.ROLL_DURATION,
         "TURN_DURATION": constants.TURN_DURATION,
         "COLORS": {

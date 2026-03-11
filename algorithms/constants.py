@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 
 
 class Constants:
@@ -40,9 +41,9 @@ class Constants:
         self.GRID_WIDTH = 4
         self.GRID_HEIGHT = 4
 
-        self.SPEED_SCALAR = 2  # Set to 1 for original speed
-        self.SPHERO_SPEED = 60 * self.SPEED_SCALAR
-        self.SPHERO_DIAGONAL_SPEED = 76 * self.SPEED_SCALAR  # Use 76 for SPEED 60. Thanks to jack for testing this
+        self.SPEED_SCALAR = 1/2
+        self.SPHERO_SPEED = 60
+        self.SPHERO_DIAGONAL_SPEED = 76  # Use 76 for SPEED 60. Thanks to jack for testing this
 
         self.ROLL_DURATION = 0.8
         self.TURN_DURATION = 0.5
@@ -63,6 +64,7 @@ class Constants:
             "N_SPHEROS",
             "GRID_WIDTH",
             "GRID_HEIGHT",
+            "SPEED_SCALAR",
             "SPHERO_SPEED",
             "SPHERO_DIAGONAL_SPEED",
             "ROLL_DURATION",
@@ -84,8 +86,15 @@ class Constants:
             for key, value in updates.items():
                 if key in variable_fields:
                     setattr(self, key, value)
+            
+            self.SPHERO_SPEED *= float(self.SPEED_SCALAR)
+            self.SPHERO_SPEED = int(self.SPHERO_SPEED)
+
+            self.SPHERO_DIAGONAL_SPEED *= float(self.SPEED_SCALAR)
+            self.SPHERO_DIAGONAL_SPEED = int(self.SPHERO_DIAGONAL_SPEED)
+            
         except (json.JSONDecodeError, IOError) as e:
-            print(f"Warning: Could not load constants.json: {e}")
+            print(f"Warning: Could not load constants.json: {e}", file=sys.stderr)
 
 constants = Constants()
 
