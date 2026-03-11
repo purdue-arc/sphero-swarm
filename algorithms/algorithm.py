@@ -30,6 +30,11 @@ class Algorithm:
             self.bonded_groups.append(BondedGroup([sphero], id))
             id += 1
 
+        self.color_counter = 0
+
+        for sphero in spheros:
+            sphero.color = UNBONDED_COLOR
+
     def __str__(self) -> str:
         return_str = 'Algorithm\n'
         for group in self.bonded_groups:
@@ -87,10 +92,15 @@ class Algorithm:
         group_2 = self.find_group(group_2_id)
         assert group_1 and group_2, 'should be valid group ids passed into bond_two_groups!!!'
 
+        if (group_1.spheros[0].color == UNBONDED_COLOR):
+            group_1.spheros[0].color = COLORS[self.color_counter % len(COLORS)]
+            self.color_counter += 1
+
         for sphero in group_2.spheros:
 
             # put in group 1
             group_1.spheros.append(sphero)
+            sphero.color = group_1.spheros[0].color
 
             # TODO update bonding rules if necessary
 

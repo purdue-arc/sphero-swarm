@@ -1,20 +1,23 @@
 # the number of nodes on the grid widthwise
-GRID_WIDTH = 9
+GRID_WIDTH = 4
 
 # the number of nodes on the grid heightwise
-GRID_HEIGHT = 9
+GRID_HEIGHT = 4
 
 SPHERO_TAGS = [
-    'SB-76B3',
+    # 'SB-76B3',
+    # 'SB-B5A9',
+    # 'SB-B11D', 
+    # 'SB-E274',
+    # 'SB-1840',
     'SB-B5A9',
-    'SB-B11D', 
-    'SB-E274',
-    'SB-1840'
+    'SB-0439',
+    'SB-5AB9'
 ]
 
 INITIAL_POSITIONS = [(0,0), (0,4), (0, 8), (4,0), (4,4), (4, 8), (8,0), (8,4), (8, 8)]#, (3, 4), (4, 4), (4, 1)]
 # INITIAL_POSITIONS = [(0,0), (0,4), (4, 0), (4,4), (2,2)]#, (3, 1)]
-#INITIAL_POSITIONS = [(0,0), (0,1), (0, 2), (0,3), (0,4), (0, 5)]
+INITIAL_POSITIONS = [(0,0), (2,0), (0, 2)]
 
 N_SPHEROS = len(INITIAL_POSITIONS)
 
@@ -48,9 +51,9 @@ SIM_HEIGHT = (GRID_HEIGHT-1) * SIM_DIST
 
 EPSILON = 0.01
 
-SPEED_SCALAR = 2 # Set to 1 for original speed
-SPHERO_SPEED = 60 * SPEED_SCALAR
-SPHERO_DIAGONAL_SPEED = 76 * SPEED_SCALAR # 60 * sqrt(2), but adjusted for acceleration. Use 76 for SPEED 60. Thanks to jack for testing this
+SPEED_SCALAR = 0.5 # Set to 1 for original speed
+SPHERO_SPEED = int(60 * SPEED_SCALAR)
+SPHERO_DIAGONAL_SPEED = int(76 * SPEED_SCALAR) # 60 * sqrt(2), but adjusted for acceleration. Use 76 for SPEED 60. Thanks to jack for testing this
 ROLL_DURATION = 0.8 # in seconds
 TURN_DURATION = 0.5 # in seconds
 
@@ -66,4 +69,5 @@ BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 GRAY = (150, 150, 150)
 
-COLORS = [BLUE, RED, GREEN, YELLOW, PURPLE, ORANGE]
+UNBONDED_COLOR = RED
+COLORS = [BLUE, GREEN, YELLOW, PURPLE, ORANGE]

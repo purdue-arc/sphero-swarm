@@ -28,13 +28,14 @@ def main():
     # generate random colors for spheros. FIXME NOT SURE IF THIS IS USED/NECESSARY
     colors = []
     for i in range(N_SPHEROS):
-        colors.append(COLORS[i % len(COLORS)])
+        # colors.append(COLORS[i % len(COLORS)])
+        colors.append(UNBONDED_COLOR)
 
     # make a list of spheros to pass into algorithm using constant INITIAL_POSITIONS
     spheros = []
     id = 1
     for x, y in INITIAL_POSITIONS:
-        spheros.append(Sphero(id, x, y, direction=1)) # initialize spheros to be pointing to direction positive y
+        spheros.append(Sphero(id, x, y, direction=1, color=UNBONDED_COLOR)) # initialize spheros to be pointing to direction positive y
         id += 1
 
 
@@ -57,9 +58,15 @@ def main():
 
             rotate_instructions = []
             roll_instructions = []
+            color_instructions = []
 
             spheros = algorithm.find_all_spheros()
             for sphero in spheros:
+                # Set LED to sphero's color (from algorithm: head=RED, tail=BLUE)
+                color_instruction = Instruction(sphero.id, 0, sphero.color[0], sphero.color[1], sphero.color[2])
+                color_instructions.append(color_instruction)
+                # FIXME make get_direction_change work for rotation, 
+                # we also may want to rethink how we do this.
                 # FIXME make get_direction_change work for rotation, 
                 # we also may want to rethink how we do this.
                 direction_change = sphero.get_direction_change() 
@@ -83,6 +90,9 @@ def main():
                 else: # rotation 
                     # TODO implement @Alan @John
                     pass
+
+            s.send(pickle.dumps(color_instructions))
+            buffer = s.recv(1024)
 
 
             # send the instructions
