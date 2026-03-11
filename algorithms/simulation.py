@@ -237,6 +237,11 @@ if __name__ == "__main__":
         # Control frame rate
         clock.tick(60)
 
+    algorithm.log('END SIMULATION')
+    with open(LOG_PATH, 'w') as log_file:
+        log_file.writelines(algorithm.log_lines)
+        print(f'\nLog written to {LOG_PATH}\n')
+
 def StartSimulation(algorithm):
     pygame.init()
     clock = pygame.time.Clock()

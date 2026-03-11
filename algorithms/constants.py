@@ -1,3 +1,5 @@
+LOG_PATH = 'algorithms\logs\log.txt'
+
 # the number of nodes on the grid widthwise
 GRID_WIDTH = 9
 
