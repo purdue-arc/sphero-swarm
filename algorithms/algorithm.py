@@ -44,6 +44,7 @@ class Algorithm:
         '''
 
         self.log_lines.append(f'\n{line}')
+        print(f'[{line.replace('\n', '\n(')}')
 
 
     def find_all_spheros(self) -> list[Sphero]:
@@ -155,11 +156,13 @@ class Algorithm:
 
             # find a valid move for the group
             valid_move = self.find_group_move(group) # will return a valid move for group, error checking done
-            print(f"Group: {group.group_id}\tDirection: {valid_move}")
+            # print(f"Group: {group.group_id}\tDirection: {valid_move}")
+            self.log(f"Group: {group.group_id}\tDirection: {valid_move}")
 
             if valid_move >= 0 and valid_move <= 8: # for staying still (0) / translation (1 to 8)
 
-                print(f"Group: {group.group_id}\tDirection: {valid_move}\tTranslation")
+                # print(f"Group: {group.group_id}\tDirection: {valid_move}\tTranslation")
+                self.log(f"Group: {group.group_id}\tDirection: {valid_move}\tTranslation")
 
                 dx, dy = position_change[valid_move]
 
@@ -186,7 +189,8 @@ class Algorithm:
                     update prev direction, direction.
                 '''
 
-                print(f"Group: {group.group_id}\tDirection: {valid_move}\tRotation")
+                # print(f"Group: {group.group_id}\tDirection: {valid_move}\tRotation")
+                self.log(f"Group: {group.group_id}\tDirection: {valid_move}\tRotation")
 
                 center = self.find_sphero(group.center)
 
@@ -212,7 +216,8 @@ class Algorithm:
                         sphero.target_y = (sphero.x - center_x) + center_y
 
                     # fill in next_grid spots
-                    print(f'Target_x = {sphero.target_x}\tTarget_y = {sphero.target_y}')
+                    # print(f'Target_x = {sphero.target_x}\tTarget_y = {sphero.target_y}')
+                    self.log(f'Target_x = {sphero.target_x}\tTarget_y = {sphero.target_y}')
                     self.next_grid[sphero.target_x][sphero.target_y] = sphero.id
 
                     # update prev direction, direction
@@ -307,7 +312,7 @@ class Algorithm:
             # Check if entire box is unoccupied
             for x in range(left_bound, right_bound):
                 for y in range(down_bound, up_bound):
-                    print(f'Checking ({x}, {y})')
+                    self.log(f'Checking ({x}, {y})')
                     if self.next_grid[x][y] != 0:
                         return False
                     

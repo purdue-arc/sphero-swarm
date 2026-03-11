@@ -1,2 +1,92 @@
 START SIMULATION
+Group: 1	Direction: 1
+Group: 1	Direction: 1	Translation
+Group: 2	Direction: 4
+Group: 2	Direction: 4	Translation
+Group: 3	Direction: 5
+Group: 3	Direction: 5	Translation
+Group: 4	Direction: 1
+Group: 4	Direction: 1	Translation
+Group: 5	Direction: 8
+Group: 5	Direction: 8	Translation
+Group: 6	Direction: 5
+Group: 6	Direction: 5	Translation
+Group: 7	Direction: 8
+Group: 7	Direction: 8	Translation
+Group: 8	Direction: 1
+Group: 8	Direction: 1	Translation
+Group: 9	Direction: 7
+Group: 9	Direction: 7	Translation
+Group: 1	Direction: 4
+Group: 1	Direction: 4	Translation
+Group: 2	Direction: 7
+Group: 2	Direction: 7	Translation
+Group: 3	Direction: 4
+Group: 3	Direction: 4	Translation
+Group: 4	Direction: 3
+Group: 4	Direction: 3	Translation
+Group: 5	Direction: 3
+Group: 5	Direction: 3	Translation
+Group: 6	Direction: 8
+Group: 6	Direction: 8	Translation
+Group: 7	Direction: 8
+Group: 7	Direction: 8	Translation
+Group: 8	Direction: 1
+Group: 8	Direction: 1	Translation
+Group: 9	Direction: 3
+Group: 9	Direction: 3	Translation
+Group: 1	Direction: 8
+Group: 1	Direction: 8	Translation
+Group: 2	Direction: 1
+Group: 2	Direction: 1	Translation
+Group: 3	Direction: 3
+Group: 3	Direction: 3	Translation
+Group: 4	Direction: 1
+Group: 4	Direction: 1	Translation
+Group: 5	Direction: 8
+Group: 5	Direction: 8	Translation
+Group: 6	Direction: 6
+Group: 6	Direction: 6	Translation
+Group: 8	Direction: 7
+Group: 8	Direction: 7	Translation
+Group: 9	Direction: 6
+Group: 9	Direction: 6	Translation
+Group: 1	Direction: 1
+Group: 1	Direction: 1	Translation
+Group: 2	Direction: 2
+Group: 2	Direction: 2	Translation
+Group: 3	Direction: 7
+Group: 3	Direction: 7	Translation
+Group: 4	Direction: 2
+Group: 4	Direction: 2	Translation
+Checking (5, 5)
+Checking (5, 6)
+Checking (6, 5)
+Checking (6, 6)
+Checking (7, 5)
+Checking (7, 6)
+Group: 8	Direction: 10
+Group: 8	Direction: 10	Rotation
+Target_x = 7	Target_y = 6
+Target_x = 6	Target_y = 6
+Group: 1	Direction: 4
+Group: 1	Direction: 4	Translation
+Group: 2	Direction: 4
+Group: 2	Direction: 4	Translation
+Group: 4	Direction: 2
+Group: 4	Direction: 2	Translation
+Group: 8	Direction: 5
+Group: 8	Direction: 5	Translation
+Group: 1	Direction: 5
+Group: 1	Direction: 5	Translation
+Group: 2	Direction: 7
+Group: 2	Direction: 7	Translation
+Group: 4	Direction: 6
+Group: 4	Direction: 6	Translation
+Group: 1	Direction: 8
+Group: 1	Direction: 8	Translation
+Group: 2	Direction: 1
+Group: 2	Direction: 1	Translation
+Group: 4	Direction: 4
+Group: 4	Direction: 4	Translation
 END SIMULATION
