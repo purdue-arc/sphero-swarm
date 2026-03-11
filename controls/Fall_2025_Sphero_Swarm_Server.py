@@ -148,6 +148,7 @@ def command_gathering(valid_sphero_ids, command_array_2d):
                         KILL_FLAG = 1
                         break
                     index = instruction.spheroID - 1 # changed to account for an off by 1 error we encountered in testing
+                    print('index AHHHH = ', index)
                     appending_array[index] = instruction
                 except ValueError:
                     print("Attempting to send command to not connnected ball...")
@@ -404,9 +405,9 @@ if __name__ == "__main__":
     #test_controls()
 
     SPHERO_TAGS = [
-    'SB-45B0',
-    'SB-0439',
-    'SB-7672'
+        'SB-B11D',
+        'SB-E274',
+        'SB-1840'
     ]
 
 
