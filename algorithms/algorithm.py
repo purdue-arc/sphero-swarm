@@ -8,6 +8,8 @@ from math import hypot
 class Algorithm:
     def __init__(self, grid_width, grid_height, spheros: list[Sphero]):
         
+        self.log_lines = []
+
         self.grid_width = grid_width
         self.grid_height = grid_height
 
