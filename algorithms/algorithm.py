@@ -157,7 +157,6 @@ class Algorithm:
             # find a valid move for the group
             valid_move = self.find_group_move(group) # will return a valid move for group, error checking done
             # print(f"Group: {group.group_id}\tDirection: {valid_move}")
-            self.log(f"Group: {group.group_id}\tDirection: {valid_move}")
 
             if valid_move >= 0 and valid_move <= 8: # for staying still (0) / translation (1 to 8)
 

@@ -201,7 +201,9 @@ if __name__ == "__main__":
        spheros.append(sphero)
     
     running = True
+    step = 0
     while running:
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
@@ -217,6 +219,10 @@ if __name__ == "__main__":
 
         # if all spheros reached their target, bond spheros and find new directions
         if spheros_reached_target:
+
+            step += 1
+            algorithm.log(f"\n\tStep {step}\n")
+
             # update sphero positions to simulate they reached their target
             algorithm.reset_sphero_positions()
 
