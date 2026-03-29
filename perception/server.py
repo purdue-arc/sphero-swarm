@@ -4,6 +4,7 @@ import threading
 import time
 import json
 import cv2
+import errno
 from queue import Queue, Empty
 import websockets
 
@@ -12,6 +13,11 @@ status_queue = Queue(maxsize=1)
 
 connected_clients = set()
 telemetry_clients = set()
+
+FRAME_HOST = "localhost"
+FRAME_PORT = 6767
+TELEMETRY_HOST = "localhost"
+TELEMETRY_PORT = 6770
 
 key = "perception"
 
@@ -78,8 +84,8 @@ async def telemetry_handler(websocket):
         print(f"Telemetry client disconnected: {websocket.remote_address}")
 
 async def run_server():
-    async with websockets.serve(handler, "localhost", 6767):
-        async with websockets.serve(telemetry_handler, "localhost", 6768):
+    async with websockets.serve(handler, FRAME_HOST, FRAME_PORT):
+        async with websockets.serve(telemetry_handler, TELEMETRY_HOST, TELEMETRY_PORT):
             await asyncio.gather(broadcast_frames(), broadcast_telemetry())
 
 def start_server():
@@ -87,6 +93,15 @@ def start_server():
     asyncio.set_event_loop(loop)
     try:
         loop.run_until_complete(run_server())
+    except OSError as exc:
+        # Prevent noisy thread tracebacks when another process already owns the port.
+        if exc.errno == errno.EADDRINUSE:
+            print(
+                f"Perception WebSocket server not started: one of the ports is already in use "
+                f"(frames: ws://{FRAME_HOST}:{FRAME_PORT}, telemetry: ws://{TELEMETRY_HOST}:{TELEMETRY_PORT})."
+            )
+        else:
+            raise
     except KeyboardInterrupt:
         pass
     finally:
@@ -94,7 +109,10 @@ def start_server():
 
 server_thread = threading.Thread(target=start_server, daemon=True)
 server_thread.start()
-print("WebSocket server started — frames: ws://localhost:6767  telemetry: ws://localhost:6768")
+print(
+    f"WebSocket server started — frames: ws://{FRAME_HOST}:{FRAME_PORT} "
+    f"telemetry: ws://{TELEMETRY_HOST}:{TELEMETRY_PORT}"
+)
 
 def feed_frames_from_calculateFrame(frame, timestamp=None):
     """Call this from calculateFrame after processing a frame."""

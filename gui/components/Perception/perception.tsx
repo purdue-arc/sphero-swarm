@@ -56,6 +56,7 @@ const MODELS = [
 ];
 
 const IMGSZ_OPTIONS = [320, 416, 640, 1280];
+const PERCEPTION_TELEMETRY_PORT = 6770;
 
 const DEFAULT_CONFIG: PerceptionConfig = {
     inputSource: "webcam",
@@ -79,7 +80,7 @@ export function Perception() {
     const shouldConnectRef  = useRef(false);
     const reconnectTimerRef = useRef<any>(null);
 
-    // ── Telemetry WebSocket (port 6768) ──────────────────────────────────────
+    // ── Telemetry WebSocket (port 6770) ──────────────────────────────────────
     useEffect(() => {
         shouldConnectRef.current = spotterStatus !== "stopped";
 
@@ -95,7 +96,7 @@ export function Perception() {
 
         const connect = () => {
             if (!shouldConnectRef.current) return;
-            const ws = new WebSocket("ws://localhost:6768");
+            const ws = new WebSocket(`ws://localhost:${PERCEPTION_TELEMETRY_PORT}`);
             telemetryWsRef.current = ws;
 
             ws.onmessage = (e) => {
