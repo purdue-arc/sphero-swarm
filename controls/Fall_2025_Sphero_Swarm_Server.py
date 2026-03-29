@@ -171,7 +171,7 @@ def command_gathering(valid_sphero_ids, command_array_2d):
     # enables the system to handle up to 5 connections before refusing more
     s.listen(5)
 
-    # insert for buffering 
+    # # insert for buffering 
     # temp_s = socket.socket()
     # # arbitrary non-priv port that isn't the one used by the server
     # temp_port = 4324
@@ -197,7 +197,9 @@ def command_gathering(valid_sphero_ids, command_array_2d):
                     if (instruction.type == -2):
                         KILL_FLAG = 1
                         break
-                    appending_array[instruction.spheroID - 1] = instruction
+                    index = instruction.spheroID - 1 # changed to account for an off by 1 error we encountered in testing
+                    print('index AHHHH = ', index)
+                    appending_array[index] = instruction
                 except ValueError:
                     print("Attempting to send command to not connnected ball...")
                     continue

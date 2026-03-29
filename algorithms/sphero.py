@@ -3,12 +3,14 @@ from .constants import constants
 class Sphero:
     def __init__(self, id, x, y,
                  target_x=None, target_y=None,
-                 previous_direction=0, direction=0, speed=1, color=BLACK, 
+                 previous_direction=0, direction=0, speed=SIM_SPEED, color=BLACK,
+                 trait="tail",
                  bonding_directions=list(position_change.values())[1:]):
         # attributes
         self.id = id
         self.speed = speed
-        self.color = color
+        self.trait = trait  # "head" or "tail"
+        self.color = RED if trait == "head" else BLUE
 
         # position values
         self.x = x
@@ -119,70 +121,3 @@ class Sphero:
 
     def __str__(self):
         return f"pos: {self.x}, {self.y}, id: {self.id}, direction: {self.direction}, target pos: {self.target_x}, {self.target_y}"
-    
-# TODO:
-# remove update direction
-# look at driver - look at differences at driver vs Sphero
-# We want the driver code ot use the same functions
-# so change the sphero class to use the similariaries of rthe driver 
-# make it the same as driver 
-# remove rotate
-# we are using driver2
-# remove velocity
-# tdlr base off sphero.py off of driver2
-
-
-
-# algorithms strucutre:
-# - algorithms.py
-#   - 2D grid (field) - Width x Height
-#   - Each Cell has a value - 0 for no sphero, non zero for sphero ID 
-# - simulation.py
-#   - code to actually move it
-# - sphero.py
-#   - implement driver code changes, update or 8 directions
-#   - parameters - [id, x, y, color] - no target_x/y
-#   - 
-
-# sphero.py is the class
-
-
-# TODO LIST FOR Simulation -> 8 Directions
-
-# Fill in Constants class
-# Sphero class - update_direction
-# Rewrite Driver code to call algoritms code
-# Change simulation UI to have background as grid
-# TODO: Documentation needed for using the driver 
-
-class LinkedSphero:
-    def __init__(self, sphero):
-        self.sphero = sphero
-        self.id = sphero.id
-        self.x = sphero.x
-        self.y = sphero.y
-        self.color = sphero.color
-    
-    @property
-    def target_x(self):
-        return self.sphero.target_x
-
-    @property
-    def target_y(self):
-        return self.sphero.target_y
-    
-    @property
-    def speed(self):
-        return self.sphero.speed
-    
-    @property
-    def direction(self):
-        return self.sphero.direction
-    
-    @property
-    def group_id(self):
-        return self.sphero.group_id
-    
-    def __str__(self):
-        return f"pos: {self.x}, {self.y}, id: {self.id}, direction: {self.direction}, target pos: {self.target_x}, {self.target_y}"
-    

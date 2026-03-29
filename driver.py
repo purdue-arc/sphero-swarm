@@ -24,17 +24,13 @@ def main():
     # sanity checks
     assert len(INITIAL_POSITIONS) == N_SPHEROS, 'Number of initial positions does not match N_SPHEROS'
     assert len(INITIAL_POSITIONS) == len(set(INITIAL_POSITIONS)), 'Cannot have repeats in initial_positions'
+    assert len(INITIAL_TRAITS) == N_SPHEROS, 'INITIAL_TRAITS length must match N_SPHEROS'
 
-    # generate random colors for spheros. FIXME NOT SURE IF THIS IS USED/NECESSARY
-    colors = []
-    for i in range(N_SPHEROS):
-        colors.append(COLORS[i % len(COLORS)])
-
-    # make a list of spheros to pass into algorithm using constant INITIAL_POSITIONS
+    # make a list of spheros to pass into algorithm using INITIAL_POSITIONS and INITIAL_TRAITS
     spheros = []
     id = 1
-    for x, y in INITIAL_POSITIONS:
-        spheros.append(Sphero(id, x, y))
+    for (x, y), trait in zip(INITIAL_POSITIONS, INITIAL_TRAITS):
+        spheros.append(Sphero(id, x, y, direction=1, trait=trait))
         id += 1
 
 
@@ -57,8 +53,13 @@ def main():
 
             rotate_instructions = []
             roll_instructions = []
+            color_instructions = []
 
-            for sphero in algorithm.spheros:
+            spheros = algorithm.find_all_spheros()
+            for sphero in spheros:
+                # Set LED to sphero's color (from algorithm: head=RED, tail=BLUE)
+                color_instruction = Instruction(sphero.id, 0, sphero.color[0], sphero.color[1], sphero.color[2])
+                color_instructions.append(color_instruction)
                 # FIXME make get_direction_change work for rotation, 
                 # we also may want to rethink how we do this.
                 direction_change = sphero.get_direction_change() 
@@ -84,13 +85,15 @@ def main():
                     pass
 
 
-            # send the instructions
-            s.send(pickle.dumps(rotate_instructions))
-
-            # waits for a response from the API
+            # send color instructions first so LEDs update before movement
+            s.send(pickle.dumps(color_instructions))
             buffer = s.recv(1024)
 
-            # send the instructions
+            # send rotate instructions
+            s.send(pickle.dumps(rotate_instructions))
+            buffer = s.recv(1024)
+
+            # send roll instructions
             s.send(pickle.dumps(roll_instructions))
 
             # waits for a response from the API

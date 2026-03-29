@@ -1,7 +1,5 @@
 import random
-import time
-from .constants import constants
-from .swarm import Swarm
+from .constants import *
 from .sphero import Sphero
 from .bonded_group import BondedGroup
 from typing import cast
@@ -18,6 +16,8 @@ class Algorithm:
         # grid[i][j] != 0 means that the sphero with the id of value grid[i][j] is at that node
         self.current_grid = [ [0 for _ in range(grid_height)] for _ in range(grid_width)] 
         self.next_grid = [ [0 for _ in range(grid_height)] for _ in range(grid_width)] 
+        self.edge_grid = [ [0 for _ in range(grid_height * 2)] for _ in range(grid_width * 2)] 
+
         # put the spheros into the current_grid
         for sphero in spheros:
             self.current_grid[sphero.x][sphero.y] = sphero.id
@@ -28,11 +28,8 @@ class Algorithm:
         self.bonded_groups = []
         id = 1
         for sphero in spheros:
-            self.bonded_groups.append(BondedGroup([sphero], id))
+            self.bonded_groups.append(BondedGroup([sphero], id, max_monomers=MAX_MONOMERS))
             id += 1
-
-            
-
 
     def __str__(self) -> str:
         return_str = 'Algorithm\n'
@@ -41,14 +38,43 @@ class Algorithm:
         return return_str
 
 
+    def find_all_spheros(self) -> list[Sphero]:
+        '''
+        returns list of all spheros contained in our grid algorithm
+        '''
+        spheros = []
+        for group in self.bonded_groups:
+            for sphero in group.spheros:
+                spheros.append(sphero)
+        return spheros
+
+    def _can_bond(self, sphero: Sphero, neighbor_sphero: Sphero, group_1: BondedGroup, group_2: BondedGroup) -> bool:
+        '''
+        Rules:
+        - At most one head per bonded group (a tail can be with at most one head).
+        - All bonds must start as head + tail (no pure tail–tail start).
+        - Head can only bond when its group currently has just that head.
+        '''
+        # Enforce max one head across the two groups being considered
+        heads_1 = sum(1 for s in group_1.spheros if s.trait == "head")
+        heads_2 = sum(1 for s in group_2.spheros if s.trait == "head")
+        if heads_1 + heads_2 > 1:
+            return False
+
+        # Tail–tail: only allowed if exactly one of the groups already has a head
+        if sphero.trait == "tail" and neighbor_sphero.trait == "tail":
+            return (heads_1 + heads_2) == 1
+
+        # Head–tail: allowed only if the head's group is just the head
+        if sphero.trait == "head" and neighbor_sphero.trait == "tail":
+            return len(group_1.spheros) == 1
+        if sphero.trait == "tail" and neighbor_sphero.trait == "head":
+            return len(group_2.spheros) == 1
+        return False
+
     def bond_all_groups(self) -> None:
         '''
-        for each group
-            for each sphero
-                check in each sphero's valid directions
-
-                if there is a neighboring sphero in one of the sphero's neighboring directions
-                that doesn't belong to the same group, bond the two groups.
+        bonds any groups in bonded_groups whose spheros bond with each other according to their bonding rules.
         '''
         for group in self.bonded_groups:
             if len(group.spheros) == 0:
@@ -72,15 +98,19 @@ class Algorithm:
                         continue
                     #print('in bounds, neighbor_spheros exist')
 
-                    # the neighboring sphero belongs to another group; we have to bond
+                    # the neighboring sphero belongs to another group; check trait rules and max_monomers
                     if neighbor_sphero.group_id != sphero.group_id:
-                        #print(f'bond {sphero} with {neighbor_sphero}')
+                        group_1 = self.find_group(sphero.group_id)
+                        group_2 = self.find_group(neighbor_sphero.group_id)
+                        if not self._can_bond(sphero, neighbor_sphero, group_1, group_2):
+                            continue
+                        if group_1.size + group_2.size > group_1.max_monomers:
+                            continue
                         self.bond_two_groups(sphero.group_id, neighbor_sphero.group_id)
     
-    def bond_two_groups(self, group_1_id, group_2_id) -> BondedGroup:
+    def bond_two_groups(self, group_1_id, group_2_id) -> None:
         '''
         gives all of group 2's spheros to group 1
-        returns group 1
         '''
         # print('bonding ', group_1_id, group_2_id)
         group_1 = self.find_group(group_1_id)
@@ -104,7 +134,7 @@ class Algorithm:
         # group_2.center = -1
         self.bonded_groups.remove(group_2)
     
-    def find_sphero(self, id: int) -> Sphero:
+    def find_sphero(self, id: int) -> Sphero | None:
         '''
         returns Sphero whose id matches in the passed in id
         else -1
@@ -115,7 +145,7 @@ class Algorithm:
                     return sphero
         return None
     
-    def find_group(self, id: int) -> BondedGroup:
+    def find_group(self, id: int) -> BondedGroup | None:
         '''
         returns BondedGroup whose group_id matches in the passed in id
         else -1
@@ -125,17 +155,12 @@ class Algorithm:
                 return group
         return None
 
-    def move_all_groups(self):
+    def move_all_groups(self) -> None:
         '''
         for each group: 
-            valid_move = self.find_group_move(group)
-            if valid_move == 0 there are no valid moves, don't do anything
-                we still have to update our stuff tho
-            if valid_move == 1-8 
-                update all necessary attributes for a translation
-            if valid_move == 9 or 10 
-                update all necessary attributes for a rotation
-            
+            finds a valid move
+            updates all attributes within the group and within the spheros
+           
             Things that will be updated for each move:
             - next_grid for each sphero in each group
             - target position for each sphero in each group
@@ -151,7 +176,6 @@ class Algorithm:
 
             # find a valid move for the group
             valid_move = self.find_group_move(group) # will return a valid move for group, error checking done
-            print(f"Group: {group.group_id}\tDirection: {valid_move}")
 
             if valid_move >= 0 and valid_move <= 8: # for staying still (0) / translation (1 to 8)
 
@@ -166,6 +190,9 @@ class Algorithm:
 
                     # fill in next_grid spots
                     self.next_grid[sphero.target_x][sphero.target_y] = sphero.id
+
+                    # this sphero claims that edge. this is to deal with crossing over on the same
+                    self.edge_grid[sphero.x * 2 + dx][sphero.y * 2 + dy] = sphero.id
 
                     # update prev direction, direction
                     sphero.update_direction(valid_move)
@@ -208,6 +235,7 @@ class Algorithm:
                         sphero.target_y = (sphero.x - center_x) + center_y
 
                     # fill in next_grid spots
+                    #print(f'Target_x = {sphero.target_x}\tTarget_y = {sphero.target_y}')
                     self.next_grid[sphero.target_x][sphero.target_y] = sphero.id
 
                     # update prev direction, direction
@@ -218,31 +246,21 @@ class Algorithm:
 
 
         self.purge_grid(self.next_grid) # get rid of box placeholders for rotation
+        self.edge_grid = [ [0 for _ in range(GRID_HEIGHT* 2)] for _ in range(GRID_WIDTH* 2)] 
         # all groups are moved. only thing left to do is flip the grids to get ready for the next iteration.
         self.current_grid = self.next_grid.copy()
         self.next_grid = [ [0 for _ in range(self.grid_height)] for _ in range(self.grid_width)] 
+        print('yea we moved!\n')
 
-    def find_group_move(self, group: BondedGroup)-> int:
+    def find_group_move(self, group: BondedGroup) -> int:
         '''
-        randomly select a translation or a rotation from group.valid_moves
-        take out that option from the group.valid_moves
-        check if it's valid 
-            if it's translation, check by calling self.check_translation(move)
-            else do some special stuff for checking rotation of the group
-        if it is valid, 
-            return the move direction
-        if it isn't, 
-            keep trying to find a valid move
-        if we run out of valid_directions to try
-            return 0 (don't move)
+        given a group, finds a valid move for it and returns it.
         '''
         #reset the group valid moves
         group.reset_valid_moves()
 
         while len(group.valid_moves) > 0:
-            #print(group.valid_moves)
             cur_direction = random.choice(group.valid_moves)
-            #print('chose: ', cur_direction)
             group.valid_moves.remove(cur_direction)
 
             if cur_direction <= 8: # if it's a translation, check
@@ -269,20 +287,39 @@ class Algorithm:
         '''   
         # make sure it's a translation
         if move in position_change.keys():
+            print(f'checking sphero {str(sphero)} and POTENTIAL direction {move}')
             dx, dy = position_change[move]
 
             #print('sphero next position x:', sphero.x+dx, 'y:', sphero.y+dy, '\nalgorithm width and height: ', self.grid_width, self.grid_height)
             in_bounds = (MARGIN <= sphero.x + dx < self.grid_width - MARGIN and 
                         MARGIN <= sphero.y + dy < self.grid_height - MARGIN)
 
-            target_node_id = 99999
+            if self.edge_grid[sphero.x * 2 + dx][sphero.y * 2 + dy] != 0:
+                return False
+
+            target_node_id = -1
+            target_node_id_current = -1
             if in_bounds:
                 target_node_id = self.next_grid[sphero.x + dx][sphero.y + dy]
+                target_node_id_current = self.current_grid[sphero.x + dx][sphero.y + dy]
                 # if there is nothing on the target node, target_node_id will be 0.
 
-            #print('target_node_id = ', target_node_id)
-            no_collisions = (target_node_id == 0)
-            #print(f'is {move} valid:  {in_bounds and }')
+            # find the sphero on the node that it's going to 
+            target_sphero = self.find_sphero(target_node_id)
+            target_sphero_group_id = -1
+            if target_sphero:
+                target_sphero_group_id = target_sphero.group_id
+                
+            # find the sphero on the node that it's going to on the CURRENT grid
+            target_sphero_current = self.find_sphero(target_node_id_current)
+            target_sphero_current_group_id = -1
+            if target_sphero_current:
+                target_sphero_current_group_id = target_sphero_current.group_id
+            # it's only valid when the group id of the target from current is the same as its id, or that it's 0
+
+            no_collisions = ((target_node_id == 0 or target_sphero_group_id == sphero.group_id) and 
+                             (target_node_id_current == 0 or target_sphero_current_group_id == sphero.group_id))
+            #print(f'is {move} valid:  {in_bounds and no_collisions}')
             #print(f'in_bounds  {in_bounds}')
             return in_bounds and no_collisions
         # check for a rotation
@@ -291,22 +328,28 @@ class Algorithm:
     
     def check_rotation(self, group: BondedGroup, move: int) -> bool:
         '''
-        Check if a rotation is valid
+        Check if a rotation is valid for the group
         '''
         center_x = group.find_sphero(group.center).x
         center_y = group.find_sphero(group.center).y
         rotated_box = group.rotate_box(group.box, move)
 
+        up_bound = center_y + rotated_box[0] + 1
+        right_bound = center_x + rotated_box[1] + 1
+        down_bound = center_y - rotated_box[2] - 1
+        left_bound = center_x - rotated_box[3] - 1
+
         # Check if entire box is in bounds
         # Not sure if this is correct with the coordinate system FIXME ALAN 
-        in_bounds = (MARGIN <= center_x - rotated_box[3] and center_x + rotated_box[1] <= self.grid_width - MARGIN and 
-                        MARGIN <= center_y - rotated_box[0] and center_y + rotated_box[2] <= self.grid_height - MARGIN)
+        in_bounds = (MARGIN <= left_bound and right_bound < self.grid_width - MARGIN and 
+                        MARGIN <= down_bound and up_bound < self.grid_height - MARGIN)
         
         if in_bounds:
 
             # Check if entire box is unoccupied
-            for x in range(group.find_sphero(group.center).x - rotated_box[3], group.find_sphero(group.center).x + rotated_box[1]):
-                for y in range(group.find_sphero(group.center).y - rotated_box[2], group.find_sphero(group.center).y + rotated_box[0]):
+            for x in range(left_bound, right_bound):
+                for y in range(down_bound, up_bound):
+                    #print(f'Checking ({x}, {y})')
                     if self.next_grid[x][y] != 0:
                         return False
                     
@@ -327,6 +370,15 @@ class Algorithm:
                 sphero.x = sphero.target_x
                 sphero.y = sphero.target_y
 
+    def purge_grid(self, grid) -> None:
+        '''
+        removes all *negative* values from a grid. This is changed from removing only -1 before
+
+        helper function for rotation collision checking
+        '''
+        for x in range(len(grid)):
+            for y in range(len(grid[0])):
+                if grid[x][y] < 0:
    
     # def find_valid_move(self, sphero, possible_directions): # -> List[int]
     #     """
