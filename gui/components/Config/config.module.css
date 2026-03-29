@@ -367,6 +367,60 @@
     margin-left: 0.5rem;
 }
 
+.toggleRow {
+    margin-top: 0.75rem;
+}
+
+.switchWrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.switchWrap input {
+    display: none;
+}
+
+.switchSlider {
+    position: relative;
+    width: 42px;
+    height: 22px;
+    border-radius: 999px;
+    background: rgba(100, 116, 139, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    transition: all 0.2s ease;
+}
+
+.switchSlider::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    transition: all 0.2s ease;
+}
+
+.switchWrap input:checked + .switchSlider {
+    background: rgba(139, 92, 246, 0.8);
+    border-color: rgba(139, 92, 246, 0.9);
+}
+
+.switchWrap input:checked + .switchSlider::after {
+    transform: translateX(20px);
+}
+
+.switchText {
+    font-size: 0.78rem;
+    color: #cbd5e1;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
 /* Delete button */
 .deleteBtn {
     all: unset;

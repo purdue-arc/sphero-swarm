@@ -49,14 +49,22 @@
       1
     ]
   },
-  "N_SPHEROS": 1,
+  "N_SPHEROS": 3,
   "GRID_WIDTH": 8,
   "GRID_HEIGHT": 8,
+  "SIM_DIST": 50,
+  "FRAMES": 60,
+  "SPHERO_SIM_RADIUS": 15,
+  "SIM_WIDTH": 350,
+  "SIM_HEIGHT": 350,
   "EPSILON": 0.01,
   "SPHERO_SPEED": 66,
   "SPHERO_DIAGONAL_SPEED": 76,
   "ROLL_DURATION": 0.8,
   "TURN_DURATION": 0.5,
+  "SIM_SPEED": 1,
+  "ARC_ROTATION": false,
+  "MAX_MONOMERS": 3,
   "COLORS": {
     "BLUE": [
       0,
@@ -137,12 +145,27 @@
     ]
   ],
   "SPHERO_TAGS": [
-    "SB-E274"
+    "SB-E274",
+    "SB-76B3",
+    "SB-1840"
   ],
   "INITIAL_POSITIONS": [
     [
       7,
       7
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      0,
+      5
     ]
+  ],
+  "INITIAL_TRAITS": [
+    "head",
+    "tail",
+    "tail"
   ]
 }

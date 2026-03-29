@@ -43,19 +43,22 @@ export function Config({ constants, onUpdate }: ConfigProps) {
         setHasChanges(true);
     };
 
-    const updateSpheroRow = (index: number, field: "tag" | "x" | "y", value: any) => {
+    const updateSpheroRow = (index: number, field: "tag" | "x" | "y" | "trait", value: any) => {
         const tags = [...form.SPHERO_TAGS];
         const positions = form.INITIAL_POSITIONS.map(p => [...p] as [number, number]);
+        const traits = [...form.INITIAL_TRAITS] as ("head" | "tail")[];
 
         if (field === "tag") {
             tags[index] = value;
         } else if (field === "x") {
             positions[index][0] = Number(value);
-        } else {
+        } else if (field === "y") {
             positions[index][1] = Number(value);
+        } else {
+            traits[index] = value === "head" ? "head" : "tail";
         }
 
-        setForm(prev => ({ ...prev, SPHERO_TAGS: tags, INITIAL_POSITIONS: positions }));
+        setForm(prev => ({ ...prev, SPHERO_TAGS: tags, INITIAL_POSITIONS: positions, INITIAL_TRAITS: traits }));
         setHasChanges(true);
     };
 
@@ -66,6 +69,7 @@ export function Config({ constants, onUpdate }: ConfigProps) {
             N_SPHEROS: prev.N_SPHEROS + 1,
             SPHERO_TAGS: [...prev.SPHERO_TAGS, unusedTag],
             INITIAL_POSITIONS: [...prev.INITIAL_POSITIONS, [0, 0]],
+            INITIAL_TRAITS: [...prev.INITIAL_TRAITS, "tail"],
         }));
         setHasChanges(true);
     };
@@ -74,11 +78,13 @@ export function Config({ constants, onUpdate }: ConfigProps) {
         if (form.SPHERO_TAGS.length <= 1) return;
         const tags = form.SPHERO_TAGS.filter((_, i) => i !== index);
         const positions = form.INITIAL_POSITIONS.filter((_, i) => i !== index);
+        const traits = form.INITIAL_TRAITS.filter((_, i) => i !== index);
         setForm(prev => ({
             ...prev,
             N_SPHEROS: prev.N_SPHEROS - 1,
             SPHERO_TAGS: tags,
             INITIAL_POSITIONS: positions,
+            INITIAL_TRAITS: traits,
         }));
         setHasChanges(true);
     };
@@ -87,11 +93,13 @@ export function Config({ constants, onUpdate }: ConfigProps) {
         const n = Math.max(1, val);
         const tags = [...form.SPHERO_TAGS];
         const positions = form.INITIAL_POSITIONS.map(p => [...p] as [number, number]);
+        const traits = [...form.INITIAL_TRAITS] as ("head" | "tail")[];
 
         while (tags.length < n) {
             const unusedTag = KNOWN_TAGS.find(t => !tags.includes(t)) ?? "SB-XXXX";
             tags.push(unusedTag);
             positions.push([0, 0]);
+            traits.push("tail");
         }
 
         setForm(prev => ({
@@ -99,6 +107,7 @@ export function Config({ constants, onUpdate }: ConfigProps) {
             N_SPHEROS: n,
             SPHERO_TAGS: tags.slice(0, n),
             INITIAL_POSITIONS: positions.slice(0, n),
+            INITIAL_TRAITS: traits.slice(0, n),
         }));
         setHasChanges(true);
     };
@@ -114,6 +123,7 @@ export function Config({ constants, onUpdate }: ConfigProps) {
         tag: form.SPHERO_TAGS[i] ?? "SB-XXXX",
         x: form.INITIAL_POSITIONS[i]?.[0] ?? 0,
         y: form.INITIAL_POSITIONS[i]?.[1] ?? 0,
+        trait: (form.INITIAL_TRAITS[i] ?? "tail") as "head" | "tail",
     }));
 
     const availableTagsFor = (currentTag: string) =>
@@ -215,6 +225,81 @@ export function Config({ constants, onUpdate }: ConfigProps) {
                         </div>
                     </div>
                 </div>
+
+                <div className={s.section}>
+                    <div className={s.sectionHead}>
+                        <div className={s.sectionIcon}><FontAwesomeIcon icon={faGaugeHigh} /></div>
+                        <h2 className={s.sectionTitle}>Simulation &amp; Bonding</h2>
+                    </div>
+                    <div className={s.formRow}>
+                        <div className={s.formGroup}>
+                            <label className={s.label}>Simulation Speed</label>
+                            <input
+                                type="number" min={0.1} step={0.1} className={s.input}
+                                value={form.SIM_SPEED}
+                                onChange={e => update("SIM_SPEED", parseFloat(e.target.value) || 0)}
+                            />
+                            <span className={s.hint}>Rendering/motion scalar in sim</span>
+                        </div>
+                        <div className={s.formGroup}>
+                            <label className={s.label}>Grid Pixel Distance</label>
+                            <input
+                                type="number" min={1} className={s.input}
+                                value={form.SIM_DIST}
+                                onChange={e => update("SIM_DIST", parseInt(e.target.value) || 1)}
+                            />
+                            <span className={s.hint}>Pixels between simulation nodes</span>
+                        </div>
+                        <div className={s.formGroup}>
+                            <label className={s.label}>Frames</label>
+                            <input
+                                type="number" min={1} className={s.input}
+                                value={form.FRAMES}
+                                onChange={e => update("FRAMES", parseInt(e.target.value) || 1)}
+                            />
+                            <span className={s.hint}>Frame batch size used by simulation</span>
+                        </div>
+                        <div className={s.formGroup}>
+                            <label className={s.label}>Sphero Sim Radius</label>
+                            <input
+                                type="number" min={1} className={s.input}
+                                value={form.SPHERO_SIM_RADIUS}
+                                onChange={e => update("SPHERO_SIM_RADIUS", parseInt(e.target.value) || 1)}
+                            />
+                            <span className={s.hint}>Rendered sphero radius in simulator</span>
+                        </div>
+                        <div className={s.formGroup}>
+                            <label className={s.label}>Max Monomers</label>
+                            <input
+                                type="number" min={1} className={s.input}
+                                value={form.MAX_MONOMERS}
+                                onChange={e => update("MAX_MONOMERS", parseInt(e.target.value) || 1)}
+                            />
+                            <span className={s.hint}>Max spheros allowed per bonded group</span>
+                        </div>
+                        <div className={s.formGroup}>
+                            <label className={s.label}>Epsilon</label>
+                            <input
+                                type="number" min={0.0001} step={0.0001} className={s.input}
+                                value={form.EPSILON}
+                                onChange={e => update("EPSILON", parseFloat(e.target.value) || 0)}
+                            />
+                            <span className={s.hint}>Target tolerance threshold</span>
+                        </div>
+                    </div>
+
+                    <div className={s.toggleRow}>
+                        <label className={s.switchWrap}>
+                            <input
+                                type="checkbox"
+                                checked={form.ARC_ROTATION}
+                                onChange={e => update("ARC_ROTATION", e.target.checked)}
+                            />
+                            <span className={s.switchSlider} />
+                            <span className={s.switchText}>Use Arc Rotation</span>
+                        </label>
+                    </div>
+                </div>
             </div>
 
             {/* Full-width Sphero table */}
@@ -248,6 +333,7 @@ export function Config({ constants, onUpdate }: ConfigProps) {
                                     Initial Position (x, y)
                                 </span>
                             </th>
+                            <th className={s.th}>Trait</th>
                             <th className={s.th} style={{ width: "40px" }}></th>
                         </tr>
                     </thead>
@@ -288,6 +374,17 @@ export function Config({ constants, onUpdate }: ConfigProps) {
                                             onChange={e => updateSpheroRow(i, "y", e.target.value)}
                                         />
                                     </div>
+                                </td>
+                                <td className={s.td}>
+                                    <label className={s.switchWrap}>
+                                        <input
+                                            type="checkbox"
+                                            checked={row.trait === "head"}
+                                            onChange={e => updateSpheroRow(i, "trait", e.target.checked ? "head" : "tail")}
+                                        />
+                                        <span className={s.switchSlider} />
+                                        <span className={s.switchText}>{row.trait === "head" ? "Head" : "Tail"}</span>
+                                    </label>
                                 </td>
                                 <td className={s.td}>
                                     <button

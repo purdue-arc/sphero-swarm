@@ -29,6 +29,9 @@ export interface SpheroConstants {
   SPHERO_DIAGONAL_SPEED: number;
   ROLL_DURATION: number;
   TURN_DURATION: number;
+  SIM_SPEED: number;
+  ARC_ROTATION: boolean;
+  MAX_MONOMERS: number;
   COLORS: {
     BLUE: [number, number, number];
     RED: [number, number, number];
@@ -43,6 +46,7 @@ export interface SpheroConstants {
   COLORS_ARRAY: [number, number, number][];
   SPHERO_TAGS: string[];
   INITIAL_POSITIONS: [number, number][];
+  INITIAL_TRAITS: ("head" | "tail")[];
 }
 
 type SpheroConnectionState = "pending" | "connected" | "failed" | "not-attempted";

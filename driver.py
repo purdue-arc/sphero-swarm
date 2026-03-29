@@ -8,7 +8,6 @@ from algorithms.sphero import Sphero
 from controls.Instruction import Instruction
 from time import sleep
 import threading
-import pygame
 
 def main():
     s = socket.socket()

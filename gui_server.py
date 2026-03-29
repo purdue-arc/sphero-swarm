@@ -167,6 +167,11 @@ def build_state_payload(algorithm) -> dict:
         ]
     }
     """
+    if hasattr(algorithm, "find_all_spheros"):
+        spheros_list = algorithm.find_all_spheros()
+    else:
+        spheros_list = [s for s in getattr(algorithm, "spheros", []) if s is not None]
+
     spheros_payload = [
         {
             "id": sphero.id,
@@ -175,9 +180,17 @@ def build_state_payload(algorithm) -> dict:
             "color": sphero.color,
             "direction": sphero.direction,
         }
-        for sphero in algorithm.spheros
-        if sphero is not None
+        for sphero in spheros_list
     ]
+
+    if hasattr(algorithm, "bonded_groups"):
+        bonded_groups_payload = [
+            [sphero.id for sphero in group.spheros]
+            for group in algorithm.bonded_groups
+            if len(group.spheros) > 0
+        ]
+    else:
+        bonded_groups_payload = getattr(getattr(algorithm, "swarm", None), "bonded_groups", [])
 
     return {
         "timestamp": time.time(),
@@ -186,7 +199,7 @@ def build_state_payload(algorithm) -> dict:
             "height": algorithm.grid_height,
         },
         "spheros": spheros_payload,
-        "bonded_groups": algorithm.swarm.bonded_groups,
+        "bonded_groups": bonded_groups_payload,
     }
 
 

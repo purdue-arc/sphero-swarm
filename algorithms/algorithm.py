@@ -1,5 +1,5 @@
 import random
-from .constants import *
+from .constants import constants
 from .sphero import Sphero
 from .bonded_group import BondedGroup
 from typing import cast
@@ -28,7 +28,7 @@ class Algorithm:
         self.bonded_groups = []
         id = 1
         for sphero in spheros:
-            self.bonded_groups.append(BondedGroup([sphero], id, max_monomers=MAX_MONOMERS))
+            self.bonded_groups.append(BondedGroup([sphero], id, max_monomers=constants.MAX_MONOMERS))
             id += 1
 
     def __str__(self) -> str:
@@ -85,8 +85,10 @@ class Algorithm:
                     dx, dy = direction # get the component directions
 
                     # is the neighbor coordinate we're about to look at in bounds?
-                    in_bounds = (MARGIN <= sphero.x + dx < self.grid_width - MARGIN and 
-                        MARGIN <= sphero.y + dy < self.grid_height - MARGIN)
+                    in_bounds = (
+                        constants.MARGIN <= sphero.x + dx < self.grid_width - constants.MARGIN
+                        and constants.MARGIN <= sphero.y + dy < self.grid_height - constants.MARGIN
+                    )
 
                     if not in_bounds:
                         continue
@@ -181,7 +183,7 @@ class Algorithm:
 
                 print(f"Group: {group.group_id}\tDirection: {valid_move}\tTranslation")
 
-                dx, dy = position_change[valid_move]
+                dx, dy = constants.position_change[valid_move]
 
                 for sphero in group.spheros:
                     # set the target
@@ -246,7 +248,7 @@ class Algorithm:
 
 
         self.purge_grid(self.next_grid) # get rid of box placeholders for rotation
-        self.edge_grid = [ [0 for _ in range(GRID_HEIGHT* 2)] for _ in range(GRID_WIDTH* 2)] 
+        self.edge_grid = [[0 for _ in range(constants.GRID_HEIGHT * 2)] for _ in range(constants.GRID_WIDTH * 2)]
         # all groups are moved. only thing left to do is flip the grids to get ready for the next iteration.
         self.current_grid = self.next_grid.copy()
         self.next_grid = [ [0 for _ in range(self.grid_height)] for _ in range(self.grid_width)] 
@@ -286,13 +288,15 @@ class Algorithm:
             2. go where another sphero is in self.next_grid
         '''   
         # make sure it's a translation
-        if move in position_change.keys():
+        if move in constants.position_change.keys():
             print(f'checking sphero {str(sphero)} and POTENTIAL direction {move}')
-            dx, dy = position_change[move]
+            dx, dy = constants.position_change[move]
 
             #print('sphero next position x:', sphero.x+dx, 'y:', sphero.y+dy, '\nalgorithm width and height: ', self.grid_width, self.grid_height)
-            in_bounds = (MARGIN <= sphero.x + dx < self.grid_width - MARGIN and 
-                        MARGIN <= sphero.y + dy < self.grid_height - MARGIN)
+            in_bounds = (
+                constants.MARGIN <= sphero.x + dx < self.grid_width - constants.MARGIN
+                and constants.MARGIN <= sphero.y + dy < self.grid_height - constants.MARGIN
+            )
 
             if self.edge_grid[sphero.x * 2 + dx][sphero.y * 2 + dy] != 0:
                 return False
@@ -341,8 +345,12 @@ class Algorithm:
 
         # Check if entire box is in bounds
         # Not sure if this is correct with the coordinate system FIXME ALAN 
-        in_bounds = (MARGIN <= left_bound and right_bound < self.grid_width - MARGIN and 
-                        MARGIN <= down_bound and up_bound < self.grid_height - MARGIN)
+        in_bounds = (
+            constants.MARGIN <= left_bound
+            and right_bound < self.grid_width - constants.MARGIN
+            and constants.MARGIN <= down_bound
+            and up_bound < self.grid_height - constants.MARGIN
+        )
         
         if in_bounds:
 
@@ -379,249 +387,4 @@ class Algorithm:
         for x in range(len(grid)):
             for y in range(len(grid[0])):
                 if grid[x][y] < 0:
-   
-    # def find_valid_move(self, sphero, possible_directions): # -> List[int]
-    #     """
-    #     Find a valid direction for a sphero given a list of possible directions
-
-    #     Args:
-    #         sphero: (Sphero) the passed in sphero
-    #         possible_directions: (List[int]) a list of possible directions
-
-    #     Returns:
-    #         (List[int]): a list of all valid directions for the given sphero
-    #     """
-    #     for direction in possible_directions[:]:
-    #         if not self.is_valid_move(direction=direction, sphero=sphero):
-    #             possible_directions.remove(direction)
-    #     return possible_directions if possible_directions else []
-    
-
-    # def find_bonded_group_move(self, bonded_group): # -> int
-    #     """
-    #     Find a valid direction for the bonded group
-
-    #     Args:
-    #         bonded_group: (List[int]) an array of sphero ids apart of the same bonded group
-
-    #     Returns:
-    #         (int): a valid direction for the bonded group
-    #     """
-
-    #     possible_directions = ALL_DIRECTIONS.copy()
-    #     direction = None
-    #     for id in bonded_group:
-    #         sphero = self.find_sphero(id)
-    #         possible_directions = self.find_valid_move(sphero=sphero,
-    #                                                     possible_directions=possible_directions)
-    #     direction = random.choice(possible_directions) if possible_directions else 0
-    #     return direction
-    
-    # change to flip()
-    def update_nodes(self, sphero):
-        """
-        Update the nodes array with the target position of the sphero
-
-        Args:
-            sphero: (Sphero) a passed in sphero
-        
-        Returns:
-            None
-        """
-        
-        self.nodes[sphero.x][sphero.y] = 0
-        self.nodes[sphero.target_x][sphero.target_y] = sphero.id
-    
-    def update_bonded_group_move(self, bonded_group):
-        """
-        Update the direction of the bonded group and the grid
-
-        Args:
-            bonded_group: (List[int]) a list of sphero id's apart of the same bonding group
-
-        Returns: 
-            None
-        """
-        
-        direction = self.find_bonded_group_move(bonded_group=bonded_group)
-        for id in bonded_group:
-            sphero = self.find_sphero(id)
-            if sphero is not None:
-                sphero.update_movement(direction=direction)
-                self.update_nodes(sphero=sphero)
-            else:
-                # Should never happen
-                raise NotImplementedError()
-  
-    def update_grid_move(self):
-        """
-        Update the movement for all bonded groups
-
-        Args:
-            None
-        
-        Returns:
-            None
-        """
-
-        for bonded_group in self.swarm.bonded_groups:
-            self.update_bonded_group_move(bonded_group=bonded_group)
-
-    # change
-    def update_sphero_bonds(self, sphero): 
-        """
-        Given a sphero, bond to all spheros that can bond to it
-
-        Args:
-            sphero: (Sphero) the passed in sphero
-
-        Returns:
-            None
-        """
-
-        # check all surrounding spheros
-        for direction in range(1, constants.DIRECTIONS + 1):
-            adj_x, adj_y = sphero.compute_target_position(direction=direction)
-
-            # if the surrounding position is in bounds
-            if self.in_bounds(adj_x, adj_y):
-                adj_id = self.nodes[adj_x][adj_y]
-                if adj_id:
-                    adj_sphero = self.find_sphero(id=adj_id)
-
-                    # bond both spheros if they can bond
-                    if sphero.can_bond(adj_sphero=adj_sphero):
-                        new_group_index = self.swarm.combine(id1=sphero.id, id2=adj_id)
-
-                        # determine new pivot sphero for resulting group
-                        self.swarm.bonded_group_centers[new_group_index] = self.calculate_bonded_group_center(self.swarm.bonded_groups[new_group_index])
-    
-    def update_grid_bonds(self):
-        """
-        Update the bonds for all spheros
-
-        Args:
-            None
-
-        Returns:
-            None
-        """
-
-        for sphero in self.spheros:
-            self.update_sphero_bonds(sphero=sphero)
-
-# def generate_colors(self): # -> List[color]
-    #     """
-    #     Generate a list of colors, with length equal to the number of spheros
-
-    #     Args:
-    #         None
-
-    #     Returns:
-    #         List[colors]: a list of colors, with length equal to the number of spheros
-    #     """
-
-    #     colors = []
-    #     for i in range(self.n_spheros):
-    #         colors.append(COLORS[i % len(COLORS)])
-    #     return colors
-
-    # def random_initial_position(self): # -> (int, int)
-    #     """
-    #     Generate a random initial position on the grid that is both in bounds and
-    #     doesn't collide with another sphero
-
-    #     Args:
-    #         None
-
-    #     Returns:
-    #         (int, int): a valid random initial position
-    #     """
-
-    #     x = random.randint(MARGIN, self.grid_width - MARGIN - 1)
-    #     y = random.randint(MARGIN, self.grid_height - MARGIN - 1)
-    #     while self.nodes[x][y]:
-    #         x = random.randint(MARGIN, self.grid_width - MARGIN - 1)
-    #         y = random.randint(MARGIN, self.grid_height - MARGIN - 1)
-
-    #     # fill in board with temporary id
-    #     self.nodes[x][y] = -1
-    #     return x, y
-
-    # def generate_random_grid(self): # -> List[int]
-    #     """
-    #     Generate a random set of initial positions for all spheros on the grid
-
-    #     Args:
-    #         None
-        
-    #     Returns:
-    #         List[int]: a list of random intiial positions, with length equal to the number of spheros
-    #     """
-
-    #     positions = []
-    #     for _ in range(self.n_spheros):
-    #         x, y = self.random_initial_position()
-    #         positions.append((x, y))
-    #     return positions
-
-    # def find_sphero(self, id): # -> Sphero
-    #     """
-    #     The sphero object that has the specified id
-
-    #     Args:
-    #         id: (int) the sphero's id
-        
-    #     Returns:
-    #         (Sphero): the sphero object that has the specified id
-    #     """
-    #     if id:
-    #         return self.spheros[id - 1]
-    #     return None
-
-
-
-    # def calculate_bonded_group_center(self, group):
-    #     """
-    #     Calculate the id of the sphero to be used as the pivot point for the bonded group
-
-    #     Args:
-    #         bonded group (swarm.bonded_groups[index])
-
-    #     Returns:
-    #         pivot sphero id (sphero.id)
-    #     """
-
-    #     total_x = 0
-    #     total_y = 0
-    #     n = 0
-
-    #     for id in group:
-    #         sphero = self.find_sphero(id)
-    #         total_x += sphero.x
-    #         total_y += sphero.y
-    #         n += 1
-
-    #     x_avg = total_x / n
-    #     y_avg = total_y / n
-
-    #     closest_sphero = 0
-    #     closest_distance = -1
-
-    #     for id in group:
-    #         sphero = self.find_sphero(id)
-
-    #         distance = hypot(x_avg - sphero.x, y_avg - sphero.y)
-
-    #         if (closest_distance == -1) or (distance < closest_distance):
-    #             closest_distance = distance
-    #             closest_sphero = id
-    
-
-    #     return closest_sphero
-
-    def purge_grid(self, grid):
-        for x in range(GRID_WIDTH):
-            for y in range(GRID_HEIGHT):
-                if grid[x][y] == -1:
                     grid[x][y] = 0

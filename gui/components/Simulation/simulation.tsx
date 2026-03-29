@@ -57,6 +57,7 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
     const [isPathDrawing, setIsPathDrawing] = useState(false);
     const [speed, setSpeed] = useState(4);                // current delay value
     const [useControls, setUseControls] = useState(false); // whether GUI commands are respected
+    const [useAlgorithmColors, setUseAlgorithmColors] = useState(true); // true => match driver.py color behavior
 
     const ballsRef = useRef<Map<number, Ball>>(new Map());
     const groupColorRef = useRef<Map<number, number>>(new Map());
@@ -404,6 +405,12 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
         }
     };
 
+    const toggleUseAlgorithmColors = () => {
+        const next = !useAlgorithmColors;
+        setUseAlgorithmColors(next);
+        sendCommand({ type: "use_algorithm_colors", value: next });
+    };
+
     // ── Render ─────────────────────────────────────────────────────────────
 
     return (
@@ -635,6 +642,25 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
                             onClick={toggleUseControls}
                             role="switch"
                             aria-checked={useControls}
+                        >
+                            <div className={styles.toggleThumb} />
+                        </div>
+                    </label>
+                </div>
+
+                <div className={styles.sidebarDivider} />
+
+                {/* Hardware color mode toggle */}
+                <div className={styles.sidebarSection}>
+                    <label className={styles.toggleRow}>
+                        <span className={styles.sectionLabel} style={{ marginBottom: 0 }}>
+                            Algorithm Colors
+                        </span>
+                        <div
+                            className={`${styles.toggleTrack} ${useAlgorithmColors ? styles.toggleOn : ""}`}
+                            onClick={toggleUseAlgorithmColors}
+                            role="switch"
+                            aria-checked={useAlgorithmColors}
                         >
                             <div className={styles.toggleThumb} />
                         </div>

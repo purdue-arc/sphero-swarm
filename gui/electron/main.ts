@@ -67,6 +67,36 @@ const DEFAULT_PERCEPTION_CONFIG = {
   latency: false,
 };
 
+function normalizeConstantsForSave(raw: any) {
+  const n = Math.max(
+    1,
+    Number(raw?.N_SPHEROS ?? raw?.SPHERO_TAGS?.length ?? raw?.INITIAL_POSITIONS?.length ?? 1)
+  );
+
+  const tags = Array.isArray(raw?.SPHERO_TAGS) ? [...raw.SPHERO_TAGS] : [];
+  const positions = Array.isArray(raw?.INITIAL_POSITIONS)
+    ? raw.INITIAL_POSITIONS.map((p: any) => [Number(p?.[0] ?? 0), Number(p?.[1] ?? 0)])
+    : [];
+  const traits = Array.isArray(raw?.INITIAL_TRAITS) ? [...raw.INITIAL_TRAITS] : [];
+
+  while (tags.length < n) tags.push("SB-XXXX");
+  while (positions.length < n) positions.push([0, 0]);
+  while (traits.length < n) traits.push("tail");
+
+  const normalizedTraits = traits
+    .slice(0, n)
+    .map((t) => (t === "head" ? "head" : "tail"));
+  if (!normalizedTraits.includes("head")) normalizedTraits[0] = "head";
+
+  return {
+    ...raw,
+    N_SPHEROS: n,
+    SPHERO_TAGS: tags.slice(0, n),
+    INITIAL_POSITIONS: positions.slice(0, n),
+    INITIAL_TRAITS: normalizedTraits,
+  };
+}
+
 function startSpheroSpotter(config: any = {}) {
   if (spheroProcess) { console.log("Sphero Spotter already running"); return; }
   const cfg = { ...DEFAULT_PERCEPTION_CONFIG, ...config };
@@ -157,7 +187,8 @@ ipcMain.handle("save-constants", async (_event, constants) => {
   try {
     const fs = await import("fs/promises");
     const constantsPath = path.join(__dirname, "../../constants.json");
-    await fs.writeFile(constantsPath, JSON.stringify(constants, null, 2));
+    const normalized = normalizeConstantsForSave(constants);
+    await fs.writeFile(constantsPath, JSON.stringify(normalized, null, 2));
     return { status: "saved" };
   } catch (error) { console.error("Error saving constants:", error); throw error; }
 });

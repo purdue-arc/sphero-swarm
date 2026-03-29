@@ -1,5 +1,5 @@
 from .sphero import Sphero
-from .constants import *
+from .constants import constants
 import math
 
 
@@ -13,7 +13,7 @@ class BondedGroup:
 
         self.center = self.find_center() # ID of the center sphero (1, 2, 3, ...)
         
-        self.valid_moves = ALL_DIRECTIONS.copy()       #  1-10
+        self.valid_moves = constants.ALL_DIRECTIONS.copy()       #  1-10
 
     def find_sphero(self, id):
         '''
@@ -58,7 +58,7 @@ class BondedGroup:
         # when group reaches max_monomers, all spheros in the bond turn green
         if self.size >= self.max_monomers:
             for s in self.spheros:
-                s.color = GREEN
+                s.color = constants.GREEN
 
     def find_center(self) -> int:
         '''
@@ -106,10 +106,10 @@ class BondedGroup:
     def reset_valid_moves(self) -> None:
 
         # Copy all valid moves
-        self.valid_moves = ALL_DIRECTIONS.copy()
+        self.valid_moves = constants.ALL_DIRECTIONS.copy()
 
         # Remove rotations for single sphero groups
-        if len(self.spheros) <= 1 and len(ALL_DIRECTIONS) > 8:
+        if len(self.spheros) <= 1 and len(constants.ALL_DIRECTIONS) > 8:
             self.valid_moves.remove(9)
             self.valid_moves.remove(10)
 
