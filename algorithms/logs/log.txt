@@ -2,210 +2,36 @@ START SIMULATION
 
 	Step 1
 
-Group: 1	Direction: 2	Translation
-Group: 2	Direction: 3	Translation
-Group: 3	Direction: 4	Translation
-Group: 4	Direction: 3	Translation
-Group: 5	Direction: 4	Translation
-Group: 6	Direction: 4	Translation
-Group: 7	Direction: 8	Translation
+Group: 1	Direction: 3	Translation
+Group: 2	Direction: 4	Translation
+Group: 3	Direction: 5	Translation
+Group: 4	Direction: 1	Translation
+Group: 5	Direction: 6	Translation
+Group: 6	Direction: 7	Translation
+Group: 7	Direction: 7	Translation
 Group: 8	Direction: 8	Translation
 Group: 9	Direction: 5	Translation
 
 	Step 2
 
-Group: 1	Direction: 1	Translation
-Group: 2	Direction: 3	Translation
+Group: 1	Direction: 3	Translation
+Group: 2	Direction: 6	Translation
 Group: 3	Direction: 1	Translation
 Group: 4	Direction: 3	Translation
 Group: 5	Direction: 4	Translation
-Group: 6	Direction: 2	Translation
-Group: 7	Direction: 2	Translation
-Group: 8	Direction: 1	Translation
-Group: 9	Direction: 1	Translation
+Group: 6	Direction: 5	Translation
+Group: 7	Direction: 1	Translation
+Group: 8	Direction: 2	Translation
+Group: 9	Direction: 8	Translation
 
 	Step 3
 
-Group: 1	Direction: 1	Translation
-Group: 2	Direction: 1	Translation
-Group: 3	Direction: 7	Translation
+Group: 1	Direction: 7	Translation
+Group: 2	Direction: 3	Translation
+Group: 3	Direction: 3	Translation
 Group: 4	Direction: 7	Translation
-Group: 5	Direction: 5	Translation
-Group: 6	Direction: 4	Translation
-Group: 7	Direction: 8	Translation
-Group: 8	Direction: 8	Translation
-Group: 9	Direction: 5	Translation
-
-	Step 4
-
-Group: 1	Direction: 3	Translation
-Group: 2	Direction: 8	Translation
-Group: 3	Direction: 4	Translation
-Group: 4	Direction: 7	Translation
-Group: 6	Direction: 6	Translation
-Group: 7	Direction: 2	Translation
-
-	Step 5
-
-Group: 1	Direction: 7	Translation
-Group: 2	Direction: 7	Translation
-Group: 4	Direction: 2	Translation
-Group: 6	Direction: 1	Translation
-Group: 7	Direction: 7	Translation
-
-	Step 6
-
-Group: 1	Direction: 1	Translation
-Group: 2	Direction: 4	Translation
-Group: 4	Direction: 1	Translation
-Group: 6	Direction: 2	Translation
-Group: 7	Direction: 2	Translation
-
-	Step 7
-
-Group: 1	Direction: 6	Translation
-Group: 4	Direction: 4	Translation
-Group: 6	Direction: 5	Translation
-Group: 7	Direction: 8	Translation
-
-	Step 8
-
-Group: 1	Direction: 1	Translation
-Group: 4	Direction: 2	Translation
-Group: 6	Direction: 6	Translation
-
-	Step 9
-
-Group: 1	Direction: 4	Translation
-Group: 4	Direction: 5	Translation
-Checking (4, 4)
-Checking (4, 5)
-Checking (4, 6)
-Checking (4, 7)
-Checking (5, 4)
-Checking (5, 5)
-Checking (5, 6)
-Checking (5, 7)
-Checking (6, 4)
-Checking (6, 5)
-Checking (6, 6)
-Checking (6, 7)
-Group: 6	Direction: 9	Rotation
-Target_x = 6	Target_y = 6
-Target_x = 6	Target_y = 5
-Target_x = 6	Target_y = 7
-Target_x = 5	Target_y = 6
-
-	Step 10
-
-Group: 1	Direction: 4	Translation
-Group: 4	Direction: 1	Translation
-Group: 6	Direction: 5	Translation
-
-	Step 11
-
-Group: 1	Direction: 7	Translation
-Group: 4	Direction: 6	Translation
-Checking (4, 3)
-Checking (4, 4)
-Checking (4, 5)
-Checking (5, 3)
-Checking (5, 4)
-Checking (5, 5)
-Checking (6, 3)
-Checking (6, 4)
-Checking (6, 5)
-Checking (7, 3)
-Checking (7, 4)
-Checking (7, 5)
-Group: 6	Direction: 10	Rotation
-Target_x = 6	Target_y = 5
-Target_x = 7	Target_y = 5
-Target_x = 5	Target_y = 5
-Target_x = 6	Target_y = 4
-
-	Step 12
-
-Group: 1	Direction: 7	Translation
-Group: 4	Direction: 4	Translation
-Checking (4, 3)
-Checking (4, 4)
-Checking (4, 5)
-Checking (4, 6)
-Checking (5, 3)
-Checking (5, 4)
-Checking (5, 5)
-Checking (5, 6)
-Checking (6, 3)
-Checking (6, 4)
-Checking (6, 5)
-Checking (6, 6)
-Group: 6	Direction: 9	Rotation
-Target_x = 6	Target_y = 5
-Target_x = 6	Target_y = 4
-Target_x = 6	Target_y = 6
-Target_x = 5	Target_y = 5
-
-	Step 13
-
-Group: 1	Direction: 3	Translation
-Group: 4	Direction: 1	Translation
 Group: 6	Direction: 7	Translation
-
-	Step 14
-
-Group: 1	Direction: 7	Translation
-Group: 4	Direction: 1	Translation
-Group: 6	Direction: 8	Translation
-
-	Step 15
-
-Group: 1	Direction: 4	Translation
-Checking (5, 1)
-Checking (5, 2)
-Checking (5, 3)
-Checking (6, 1)
-Checking (6, 2)
-Checking (6, 3)
-Checking (7, 1)
-Checking (7, 2)
-Checking (7, 3)
-Group: 4	Direction: 10	Rotation
-Target_x = 7	Target_y = 2
-Target_x = 6	Target_y = 3
-Checking (2, 5)
-Checking (2, 6)
-Checking (2, 7)
-Checking (3, 5)
-Checking (3, 6)
-Checking (3, 7)
-Checking (4, 5)
-Checking (4, 6)
-Checking (4, 7)
-Checking (5, 5)
-Checking (5, 6)
-Checking (5, 7)
-Group: 6	Direction: 9	Rotation
-Target_x = 4	Target_y = 6
-Target_x = 3	Target_y = 6
-Target_x = 5	Target_y = 6
-Target_x = 4	Target_y = 7
-
-	Step 16
-
-Group: 1	Direction: 8	Translation
-Group: 4	Direction: 6	Translation
-Group: 6	Direction: 6	Translation
-
-	Step 17
-
-Group: 1	Direction: 4	Translation
-Group: 4	Direction: 8	Translation
-Group: 6	Direction: 8	Translation
-
-	Step 18
-
-Group: 1	Direction: 4	Translation
-Group: 4	Direction: 2	Translation
-Group: 6	Direction: 6	Translation
+Group: 7	Direction: 3	Translation
+Group: 8	Direction: 1	Translation
+Group: 9	Direction: 6	Translation
 END SIMULATION
