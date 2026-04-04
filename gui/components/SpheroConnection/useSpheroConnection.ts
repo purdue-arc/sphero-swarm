@@ -10,10 +10,16 @@ export function useSpheroConnection(
     const wsRef = useRef<WebSocket | null>(null);
     const [connectState, setConnectState] = useState<ConnectState>("idle");
     const timeoutRef = useRef<number | null>(null);
+    const demoTimeoutsRef = useRef<number[]>([]);
 
     const cleanupSocket = () => {
         wsRef.current?.close();
         wsRef.current = null;
+    };
+
+    const cleanupDemoTimeouts = () => {
+        demoTimeoutsRef.current.forEach((id) => clearTimeout(id));
+        demoTimeoutsRef.current = [];
     };
 
     const connectedCount = spheros.filter((s) => s.connection === "connected").length;
@@ -51,6 +57,32 @@ export function useSpheroConnection(
             clearTimeout(timeoutRef.current);
             timeoutRef.current = null;
         }
+    };
+
+    const startConnectionDemo = () => {
+        if (connectState === "connecting") return;
+
+        setConnectState("connecting");
+        cleanupDemoTimeouts();
+
+        // Set all spheros to pending state
+        setSpheros((prev) => prev.map((r) => ({ ...r, connection: "pending" })));
+
+        // For each sphero, schedule connection after random delay (0-4 seconds)
+        spheros.forEach((sphero, index) => {
+            const randomDelay = Math.random() * 4000; // 0-4 seconds
+            console.log(`[Demo] Sphero ${sphero.id} will connect in ${randomDelay.toFixed(0)}ms`);
+            
+            const timeoutId = window.setTimeout(() => {
+                setSpheros((prev) =>
+                    prev.map((r) =>
+                        r.id === sphero.id ? { ...r, connection: "connected" } : r
+                    )
+                );
+            }, randomDelay);
+
+            demoTimeoutsRef.current.push(timeoutId);
+        });
     };
 
     const startConnection = () => {
@@ -159,6 +191,7 @@ export function useSpheroConnection(
     return {
         connectState,
         startConnection,
+        startConnectionDemo,
         getButtonConfig,
         connectedCount,
         pendingCount,

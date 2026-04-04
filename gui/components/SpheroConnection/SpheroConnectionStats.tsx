@@ -12,12 +12,14 @@ type ConnectState = "idle" | "connecting" | "connected" | "failed";
 export function SpheroConnectionStats({
     connectState,
     startConnection,
+    startConnectionDemo,
     connectedCount,
     pendingCount,
     failedCount,
 }: {
     connectState: ConnectState;
     startConnection: () => void;
+    startConnectionDemo: () => void;
     connectedCount: number;
     pendingCount: number;
     failedCount: number;
@@ -76,7 +78,7 @@ export function SpheroConnectionStats({
                 <button
                     className={`${styles.connectButton} ${styles[connectState]}`}
                     disabled={buttonConfig.disabled}
-                    onClick={startConnection}
+                    onClick={startConnectionDemo}
                 >
                     <FontAwesomeIcon
                         icon={buttonConfig.icon}
@@ -86,6 +88,15 @@ export function SpheroConnectionStats({
                     />
                     {buttonConfig.label}
                 </button>
+                {/* <button
+                    className={`${styles.connectButton} ${styles.demo}`}
+                    disabled={connectState === "connecting"}
+                    onClick={startConnectionDemo}
+                    title="Demo: Connect spheres at random intervals"
+                >
+                    <FontAwesomeIcon icon={faPlay} className={styles.buttonIcon} />
+                    Demo Connection
+                </button> */}
             </div>
         </div>
     );

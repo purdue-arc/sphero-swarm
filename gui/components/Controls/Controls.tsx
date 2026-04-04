@@ -18,7 +18,7 @@ export function Controls({
     spheros: SpheroStatus[];
     setSpheros: any;
 }) {
-    const { connectState, startConnection, connectedCount, pendingCount, failedCount } = useSpheroConnection(spheros, setSpheros);
+    const { connectState, startConnection, startConnectionDemo, connectedCount, pendingCount, failedCount } = useSpheroConnection(spheros, setSpheros);
 
     // helper that opens a short-lived socket to the control server and sends a JSON
     const sendControlCommand = (cmd: object) => {
@@ -50,6 +50,7 @@ export function Controls({
                 <SpheroConnectionStats
                     connectState={connectState}
                     startConnection={startConnection}
+                    startConnectionDemo={startConnectionDemo}
                     connectedCount={connectedCount}
                     pendingCount={pendingCount}
                     failedCount={failedCount}
