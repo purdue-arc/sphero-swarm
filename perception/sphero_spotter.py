@@ -148,6 +148,11 @@ def process_apriltags(frame, force_process=False):
                 bottom_right = (warped.shape[1] - 1, warped.shape[0] - 1)
                 grid = draw_grid(warped, top_left, bottom_right)
                 return grid
+            # No warped frame available, draw grid on full frame if enabled
+            if args.grid:
+                top_left = (0, 0)
+                bottom_right = (frame.shape[1] - 1, frame.shape[0] - 1)
+                return draw_grid(frame, top_left, bottom_right)
             return frame
     
     # Process April tags (full detection)
@@ -193,6 +198,13 @@ def process_apriltags(frame, force_process=False):
 
         grid = draw_grid(warped, top_left, bottom_right)
         return grid
+    
+    # No perspective correction available, draw grid on full frame if enabled
+    if args.grid:
+        top_left = (0, 0)
+        bottom_right = (frame.shape[1] - 1, frame.shape[0] - 1)
+        return draw_grid(frame, top_left, bottom_right)
+    
     return warped if warped is not None else frame
 
 def initialize_spheros():
@@ -296,6 +308,16 @@ def process_frame_async():
     global frozen
     while not stop_processing.is_set():
         try:
+            # Check for commands from GUI (e.g., grid toggle)
+            cmd = server.get_command()
+            if cmd:
+                print(f"[sphero_spotter] Received command: {cmd}")
+                if cmd.get("action") == "toggle_grid":
+                    args.grid = not args.grid
+                    print(f"[sphero_spotter] Grid toggled to: {args.grid}")
+                    if args.debug:
+                        print(f"Grid toggled: {args.grid}")
+            
             # Get latest frame (non-blocking, skip stale frames)
             try:
                 frame_data = frame_queue.get(timeout=0.1)

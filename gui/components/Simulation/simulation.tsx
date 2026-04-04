@@ -8,7 +8,7 @@ interface ServerSphero {
     id: number;       // 1-indexed
     x: number;
     y: number;
-    color: string;
+    color: string | [number, number, number];
     direction: number;
 }
 
@@ -45,6 +45,17 @@ const PADDING = 40;
 const NODE_RADIUS = 6;
 const BALL_RADIUS = 8;
 const MOVE_SPEED = 100; // pixels/sec
+
+function toCssColor(input: string | [number, number, number] | undefined, fallback: string): string {
+    if (typeof input === "string" && input.trim().length > 0) {
+        return input;
+    }
+    if (Array.isArray(input) && input.length === 3) {
+        const [r, g, b] = input;
+        return `rgb(${r}, ${g}, ${b})`;
+    }
+    return fallback;
+}
 
 export function Simulation({constants} : {constants : SpheroConstants}) {
     const [gridSize, setGridSize] = useState({ width: constants.GRID_WIDTH, height: constants.GRID_HEIGHT });
@@ -211,6 +222,7 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
                     const target = nodeIndex(s.x, s.y, gw);
                     const paletteIdx = newGroupColor.get(s.id) ?? (s.id - 1) % GROUP_PALETTE.length;
                     const palette = GROUP_PALETTE[paletteIdx];
+                    const spheroCssColor = toCssColor(s.color, palette.color);
 
                     if (balls.has(s.id)) {
                         const ball = balls.get(s.id)!;
@@ -220,14 +232,14 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
                             ball.targetNode = target;
                             ball.progress = 0;
                         }
-                        // Always sync colour (group membership may change)
-                        ball.color = palette.color;
-                        ball.glowColor = palette.glow;
+                        // Always sync colour to algorithm/driver-provided sphero color.
+                        ball.color = spheroCssColor;
+                        ball.glowColor = spheroCssColor;
                     } else {
                         balls.set(s.id, {
                             id: s.id,
-                            color: palette.color,
-                            glowColor: palette.glow,
+                            color: spheroCssColor,
+                            glowColor: spheroCssColor,
                             currentNode: target,
                             targetNode: target,
                             progress: 1,

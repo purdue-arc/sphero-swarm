@@ -50,13 +50,13 @@
     ]
   },
   "N_SPHEROS": 3,
-  "GRID_WIDTH": 8,
-  "GRID_HEIGHT": 8,
+  "GRID_WIDTH": 6,
+  "GRID_HEIGHT": 6,
   "SIM_DIST": 50,
   "FRAMES": 60,
   "SPHERO_SIM_RADIUS": 15,
-  "SIM_WIDTH": 350,
-  "SIM_HEIGHT": 350,
+  "SIM_WIDTH": 150,
+  "SIM_HEIGHT": 150,
   "EPSILON": 0.01,
   "SPHERO_SPEED": 66,
   "SPHERO_DIAGONAL_SPEED": 76,
@@ -151,8 +151,8 @@
   ],
   "INITIAL_POSITIONS": [
     [
-      7,
-      7
+      3,
+      3
     ],
     [
       0,
@@ -160,7 +160,7 @@
     ],
     [
       0,
-      5
+      3
     ]
   ],
   "INITIAL_TRAITS": [

@@ -142,11 +142,40 @@ export function Perception() {
         await window.electronAPI.stopSpheroSpotter();
     };
 
+    const isRunning = spotterStatus !== "stopped";
+
     const updateConfig = <K extends keyof PerceptionConfig>(key: K, val: PerceptionConfig[K]) => {
         setConfig(prev => ({ ...prev, [key]: val }));
+        
+        // Send grid toggle command to perception server if grid setting changed while running
+        if (key === "grid" && isRunning) {
+            console.log(`[Grid Toggle] Grid value changed to: ${val}`);
+            console.log(`[Grid Toggle] isRunning: ${isRunning}, WS state: ${telemetryWsRef.current?.readyState}, readyState.OPEN = ${WebSocket.OPEN}`);
+            if (telemetryWsRef.current?.readyState === WebSocket.OPEN) {
+                try {
+                    const msg = JSON.stringify({ action: "toggle_grid" });
+                    console.log("[Grid Toggle] Sending:", msg);
+                    telemetryWsRef.current.send(msg);
+                    console.log("[Grid Toggle] Message sent successfully");
+                } catch (e) {
+                    console.error("[Grid Toggle] Error sending message:", e);
+                }
+            } else {
+                console.warn("[Grid Toggle] WebSocket not open - retrying in 100ms");
+                // Retry after a short delay in case connection is just being established
+                setTimeout(() => {
+                    if (telemetryWsRef.current?.readyState === WebSocket.OPEN) {
+                        try {
+                            console.log("[Grid Toggle] Retry: Sending grid toggle command");
+                            telemetryWsRef.current.send(JSON.stringify({ action: "toggle_grid" }));
+                        } catch (e) {
+                            console.error("[Grid Toggle] Retry failed:", e);
+                        }
+                    }
+                }, 100);
+            }
+        }
     };
-
-    const isRunning = spotterStatus !== "stopped";
 
     // ── AprilTag colour ───────────────────────────────────────────────────────
     const tagClass =
@@ -422,7 +451,7 @@ export function Perception() {
                                         type="checkbox"
                                         checked={config.grid}
                                         onChange={e => updateConfig("grid", e.target.checked)}
-                                        disabled={isRunning}
+                                        disabled={false}
                                     />
                                     <span>Grid overlay</span>
                                 </label>

@@ -10,6 +10,7 @@ import websockets
 
 frame_queue = Queue(maxsize=1)
 status_queue = Queue(maxsize=1)
+command_queue = Queue(maxsize=10)  # Commands from GUI (e.g., grid toggle)
 
 connected_clients = set()
 telemetry_clients = set()
@@ -71,12 +72,19 @@ async def handler(websocket):
         print(f"Frame client disconnected: {websocket.remote_address}")
 
 async def telemetry_handler(websocket):
-    """Register telemetry clients."""
+    """Register telemetry clients and receive commands from GUI."""
     telemetry_clients.add(websocket)
     print(f"Telemetry client connected: {websocket.remote_address}")
     try:
-        async for _ in websocket:
-            pass
+        async for msg in websocket:
+            try:
+                cmd = json.loads(msg)
+                print(f"[Telemetry] Received message from GUI: {cmd}")
+                if cmd.get("action") == "toggle_grid":
+                    command_queue.put_nowait({"action": "toggle_grid"})
+                    print(f"[Telemetry] Grid toggle command queued for sphero_spotter")
+            except json.JSONDecodeError as e:
+                print(f"[Telemetry] JSON decode error: {e}")
     except websockets.exceptions.ConnectionClosed:
         pass
     finally:
@@ -138,3 +146,10 @@ def feed_status(data: dict):
         status_queue.put_nowait(msg)
     except Exception:
         pass
+
+def get_command():
+    """Check for pending commands from the GUI (non-blocking)."""
+    try:
+        return command_queue.get_nowait()
+    except Empty:
+        return None
