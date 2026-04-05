@@ -1,0 +1,553 @@
+.page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+    padding: 2.5rem;
+    color: #e2e8f0;
+    box-sizing: border-box;
+}
+
+/* ── Header ──────────────────────────────────── */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.title {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.03em;
+}
+
+.subtitle {
+    margin: 0.3rem 0 0;
+    font-size: 0.8rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.headerRight {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* ── Status Badge ─────────────────────────────── */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 1rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: 1.5px solid;
+}
+
+.badge.stopped {
+    color: #6b7280;
+    background: rgba(107, 114, 128, 0.1);
+    border-color: rgba(107, 114, 128, 0.3);
+}
+
+.badge.starting {
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.3);
+    animation: pulse 1.8s ease-in-out infinite;
+}
+
+.badge.started {
+    color: #10b981;
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.badgeDot {
+    font-size: 0.45rem;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+}
+
+/* ── Buttons ──────────────────────────────────── */
+.btn {
+    all: unset;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.65rem 1.4rem;
+    border-radius: 9px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid;
+    font-family: inherit;
+}
+
+.btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.btnPrimary {
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    color: #fff;
+    border-color: #8b5cf6;
+    box-shadow: 0 4px 14px rgba(139, 92, 246, 0.3);
+}
+
+.btnPrimary:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(139, 92, 246, 0.45);
+}
+
+.btnDanger {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: #fff;
+    border-color: #ef4444;
+    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);
+}
+
+.btnDanger:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+}
+
+/* ── Main 2-col grid ─────────────────────────── */
+.mainGrid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+/* ── Feed panel ──────────────────────────────── */
+.feedPanel {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    padding: 1.5rem;
+    backdrop-filter: blur(10px);
+}
+
+.panelHeader {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+}
+
+.panelIcon {
+    color: #8b5cf6;
+    font-size: 0.9rem;
+}
+
+.panelTitle {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.calibBadge {
+    margin-left: auto;
+    padding: 0.25rem 0.65rem;
+    border-radius: 10px;
+    font-size: 0.72rem;
+    font-weight: 600;
+}
+
+.calibBadge.calibrated {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.calibBadge.uncalibrated {
+    background: rgba(107, 114, 128, 0.15);
+    color: #6b7280;
+    border: 1px solid rgba(107, 114, 128, 0.3);
+}
+
+.viewerWrap {
+    width: 100%;
+    height: 420px;
+    background: #000;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+    position: relative;
+}
+
+/* ── Right status column ─────────────────────── */
+.statusColumn {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* ── Cards ───────────────────────────────────── */
+.card {
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    padding: 1.25rem 1.5rem;
+    backdrop-filter: blur(10px);
+}
+
+.cardHeader {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+}
+
+.cardIcon {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 7px;
+    background: rgba(139, 92, 246, 0.15);
+    color: #8b5cf6;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+
+.cardTitle {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+/* ── Info grid (system info) ─────────────────── */
+.infoGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.6rem;
+}
+
+.infoItem {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0.55rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.infoLabel {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+}
+
+.infoValue {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #a78bfa;
+    font-variant-numeric: tabular-nums;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ── AprilTag display ────────────────────────── */
+.tagRow {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.tagCountDisplay {
+    display: flex;
+    align-items: baseline;
+    gap: 0.2rem;
+}
+
+.tagNum {
+    font-size: 2rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+
+.tagNum.full  { color: #10b981; }
+.tagNum.partial { color: #f59e0b; }
+.tagNum.none  { color: #475569; }
+
+.tagDenom {
+    font-size: 1rem;
+    color: #475569;
+    font-weight: 600;
+}
+
+.calibStatus {
+    padding: 0.3rem 0.75rem;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.calibOk {
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.calibNo {
+    background: rgba(107, 114, 128, 0.12);
+    color: #6b7280;
+    border: 1px solid rgba(107, 114, 128, 0.25);
+}
+
+/* ── ZMQ status ──────────────────────────────── */
+.zmqRow {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0.9rem;
+    border-radius: 8px;
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.zmqOk {
+    background: rgba(16, 185, 129, 0.1);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.zmqWaiting {
+    background: rgba(107, 114, 128, 0.1);
+    color: #6b7280;
+    border: 1px solid rgba(107, 114, 128, 0.2);
+}
+
+.zmqDot {
+    font-size: 0.4rem;
+}
+
+/* ── Latency panel ───────────────────────────── */
+.latencyGrid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.6rem;
+}
+
+.latItem {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    background: rgba(255, 255, 255, 0.03);
+    padding: 0.75rem 0.5rem;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.latLabel {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.latValue {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #a78bfa;
+    font-variant-numeric: tabular-nums;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+/* ── Bottom 2-col grid ───────────────────────── */
+.bottomGrid {
+    display: grid;
+    grid-template-columns: 1fr 360px;
+    gap: 1.5rem;
+}
+
+/* ── Detections table ────────────────────────── */
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.th {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    padding: 0 0.75rem 0.6rem;
+    text-align: left;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.td {
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    vertical-align: middle;
+}
+
+.idBadge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: rgba(139, 92, 246, 0.2);
+    color: #a78bfa;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.mono {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.82rem;
+    color: #cbd5e1;
+    font-variant-numeric: tabular-nums;
+}
+
+.emptyMsg {
+    margin: 1rem 0 0;
+    font-size: 0.82rem;
+    color: #475569;
+    font-style: italic;
+}
+
+/* ── Config form ─────────────────────────────── */
+.configGrid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.formGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.label {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+}
+
+.select,
+.input {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 7px;
+    padding: 0.5rem 0.8rem;
+    color: #e2e8f0;
+    font-size: 0.875rem;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238b5cf6' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.6rem center;
+    padding-right: 2rem;
+    cursor: pointer;
+}
+
+.select:focus,
+.input:focus {
+    border-color: rgba(139, 92, 246, 0.5);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.select:disabled,
+.input:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Conf slider row: range + value side by side */
+.sliderRow {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.slider {
+    flex: 1;
+    accent-color: #8b5cf6;
+    cursor: pointer;
+    height: 4px;
+}
+
+.slider:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.sliderVal {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #a78bfa;
+    font-variant-numeric: tabular-nums;
+    min-width: 36px;
+    text-align: right;
+}
+
+/* Checkbox toggles */
+.toggleGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-top: 0.2rem;
+}
+
+.toggleItem {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    cursor: pointer;
+    font-size: 0.83rem;
+    color: #94a3b8;
+    user-select: none;
+}
+
+.toggleItem input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    accent-color: #8b5cf6;
+    cursor: pointer;
+}
+
+.toggleItem input:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.toggleItem.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}

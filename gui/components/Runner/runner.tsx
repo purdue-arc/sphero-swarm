@@ -1,121 +1,112 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import styles from "./runner.module.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlay, faStop, faCircle } from "@fortawesome/free-solid-svg-icons";
+import {
+    faPlay,
+    faStop,
+    faCircle,
+    faVideo,
+    faRobot,
+    faBrain,
+    faGear,
+    faEye,
+    faChartLine,
+    faCog,
+    faPlug,
+    faRotateRight
+} from "@fortawesome/free-solid-svg-icons";
+import { SpheroConnection } from "../SpheroConnection/SpheroConnection";
+import { StreamViewer } from "../StreamViewer/streamViewer";
+import type { SpheroConstants, SpheroStatus } from "../../types/swarm_types";
 
-interface RobotStatus {
-    id: string;
-    connected: boolean;
-    expectedPosition: { x: number; y: number };
-    actualPosition: { x: number; y: number };
-}
+export function Runner({
+    constants,
+    spheros,
+    setSpheros,
+}: {
+    constants: SpheroConstants;
+    spheros: SpheroStatus[];
+    setSpheros: any;
+}) {
+    const [perceptionRunning, setPerceptionRunning] = useState("stopped");
+    const [controlsRunning, setControlsRunning] = useState("idle");
+    const [algorithmsRunning, setAlgorithmsRunning] = useState("idle");
 
-export function Runner() {
-    const [isServerRunning, setIsServerRunning] = useState(false);
-    const [cameraImage, setCameraImage] = useState<string | null>(null);
-    const [trackingImage, setTrackingImage] = useState<string | null>(null);
-
-    // Mock data for robot statuses
-    const [robots] = useState<RobotStatus[]>([
-        { id: "ROB-001", connected: true, expectedPosition: { x: 150, y: 200 }, actualPosition: { x: 148, y: 202 } },
-        { id: "ROB-002", connected: true, expectedPosition: { x: 300, y: 450 }, actualPosition: { x: 301, y: 449 } },
-        { id: "ROB-003", connected: false, expectedPosition: { x: 500, y: 300 }, actualPosition: { x: 0, y: 0 } },
-        { id: "ROB-004", connected: true, expectedPosition: { x: 250, y: 150 }, actualPosition: { x: 252, y: 151 } },
-    ]);
-
-    const handleStartServer = () => {
-        setIsServerRunning(true);
+    const startSpotter = async () => {
+        setPerceptionRunning("starting");
+        await window.electronAPI.startSpheroSpotter();
     };
 
-    const handleStopServer = () => {
-        setIsServerRunning(false);
+    const stopSpotter = async () => {
+        setPerceptionRunning("stopped");
+        await window.electronAPI.stopSpheroSpotter();
     };
+
+    // Calculate system health
+    const connectedSpheros = spheros.filter(s => s.connection === "connected").length;
+    const totalSpheros = spheros.length;
+    const systemHealth = perceptionRunning === "started" && connectedSpheros > 0 ? "operational" : 
+                         perceptionRunning === "starting" ? "starting" :
+                         "offline";
 
     return (
-        <div className={styles.container}>
-            {/* Top Section - Camera Output */}
-            <section className={styles.topSection}>
-                <div className={styles.sectionHeader}>
-                    <h2 className={styles.sectionTitle}>Camera Output</h2>
-                    <div className={styles.serverStatus}>
-                        <FontAwesomeIcon 
-                            icon={faCircle} 
-                            className={`${styles.statusIndicator} ${isServerRunning ? styles.running : styles.stopped}`}
-                        />
-                        <span className={styles.statusText}>
-                            {isServerRunning ? "Server Running" : "Server Stopped"}
+        <div className={styles.dashboard}>
+            {/* Main Content Grid */}
+            <div className={styles.mainGrid}>
+                {/* Live Camera Feed */}
+                <div className={styles.liveFeed}>
+                    <div className={styles.sectionHeader}>
+                        <h2 className={styles.sectionTitle}>
+                            <FontAwesomeIcon icon={faVideo} className={styles.sectionIcon} />
+                            Live Camera Feed
+                        </h2>
+                        <span className={`${styles.badge} ${styles[perceptionRunning]}`}>
+                            <FontAwesomeIcon icon={faCircle} className={styles.badgeIcon} />
+                            {perceptionRunning === "started" ? "Running" :
+                             perceptionRunning === "starting" ? "Starting" :
+                             "Stopped"}
                         </span>
                     </div>
+                    <div className={styles.viewerContainer}>
+                        <StreamViewer
+                            port={6767}
+                            serverStatus={perceptionRunning}
+                            setServerStatus={setPerceptionRunning}
+                        />
+                    </div>
                 </div>
 
-                <div className={styles.imageViewer}>
-                    {cameraImage ? (
-                        <img src={cameraImage} alt="Camera feed" className={styles.image} />
-                    ) : (
-                        <div className={styles.imagePlaceholder}>
-                            <p className={styles.placeholderText}>No camera feed available</p>
+                <div className={styles.controlsPanel}>
+                    <div className={styles.controlCard}>
+                        <h3 className={styles.cardTitle}>
+                            <FontAwesomeIcon icon={faGear} className={styles.cardIcon} />
+                            System Controls
+                        </h3>
+                        <div className={styles.buttonGroup}>
+                            {perceptionRunning === "stopped" ? (
+                                <button
+                                    className={`${styles.button} ${styles.buttonPrimary}`}
+                                    onClick={startSpotter}
+                                >
+                                    <FontAwesomeIcon icon={faPlay} className={styles.buttonIcon} />
+                                    Start Perception
+                                </button>
+                            ) : (
+                                <button
+                                    className={`${styles.button} ${styles.buttonDanger}`}
+                                    onClick={stopSpotter}
+                                    disabled={perceptionRunning === "starting"}
+                                >
+                                    <FontAwesomeIcon icon={faStop} className={styles.buttonIcon} />
+                                    Stop Perception
+                                </button>
+                            )}
                         </div>
-                    )}
-                </div>
-
-                <div className={styles.controls}>
-                    <button 
-                        className={`${styles.controlButton} ${styles.startButton}`}
-                        onClick={handleStartServer}
-                        disabled={isServerRunning}
-                    >
-                        <FontAwesomeIcon icon={faPlay} className={styles.buttonIcon} />
-                        Start Server
-                    </button>
-                    <button 
-                        className={`${styles.controlButton} ${styles.stopButton}`}
-                        onClick={handleStopServer}
-                        disabled={!isServerRunning}
-                    >
-                        <FontAwesomeIcon icon={faStop} className={styles.buttonIcon} />
-                        Stop Server
-                    </button>
-                </div>
-            </section>
-
-            {/* Bottom Section - Robot Tracking */}
-            <section className={styles.bottomSection}>
-                <div className={styles.robotList}>
-                    <h3 className={styles.subsectionTitle}>Robot Status</h3>
-                    <div className={styles.robotItems}>
-                        {robots.map((robot) => (
-                            <div key={robot.id} className={styles.robotItem}>
-                                <div className={styles.robotHeader}>
-                                    <FontAwesomeIcon 
-                                        icon={faCircle} 
-                                        className={`${styles.connectionIndicator} ${robot.connected ? styles.connected : styles.disconnected}`}
-                                    />
-                                    <span className={styles.robotId}>{robot.id}</span>
-                                    <span className={styles.positionValue}>
-                                        {robot.connected 
-                                            ? `(${robot.actualPosition.x}, ${robot.actualPosition.y})`
-                                            : "N/A"
-                                        }
-                                    </span>
-                                </div>
-                            </div>
-                        ))}
                     </div>
                 </div>
+            </div>
 
-                <div className={styles.trackingViewer}>
-                    <h3 className={styles.subsectionTitle}>Position Tracking</h3>
-                    <div className={styles.imageViewer}>
-                        {trackingImage ? (
-                            <img src={trackingImage} alt="Position tracking" className={styles.image} />
-                        ) : (
-                            <div className={styles.imagePlaceholder}>
-                                <p className={styles.placeholderText}>No tracking data available</p>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </section>
+            
         </div>
     );
 }
