@@ -1,12 +1,12 @@
 import os
 os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
 
-import threading                
+import threading
 import zmq                      # for socket to connect to algs
-import depthai as dai           # for camera connection
 from queue import Queue, Empty
 from collections import deque
 
+import server
 from ultralytics import YOLO    # computer vision imports
 import cv2
 import argparse
@@ -30,12 +30,13 @@ parser.add_argument('--latency', '-t', action='store_true', help="Prints the lat
 parser.add_argument('--imgsz', type=int, default=640, help="YOLO inference image size (smaller = faster, default: 640)")
 parser.add_argument('--conf', type=float, default=0.25, help="YOLO confidence threshold (default: 0.25)")
 parser.add_argument('--device', type=str, default=None, help="Device for YOLO inference (cuda, mps, cpu, or None for auto)")
+parser.add_argument('--server', '-s', action='store_true', help="Streams video to server")
+parser.add_argument('--grid', '-g', action='store_true', help="Shows the grid overlay")
+
 
 group = parser.add_mutually_exclusive_group()
 group.add_argument('--video', '-v', type=str, help="Use provided video path as input stream")
 group.add_argument('--webcam', '-w', action='store_true', help="Use webcam as input stream")
-group.add_argument('--grid', '-g', action='store_true', help="Shows the grid overlay")
-group.add_argument('--server', '-s', action='store_true', help="Streams video to server")
 
 args = parser.parse_args()
 
@@ -76,6 +77,11 @@ arena_w_px = 500
 arena_h_px = 500
 
 last_valid_frame = None
+
+# Status tracking for GUI telemetry
+last_apriltag_count = 0
+zmq_bound = False
+last_latency = None
 
 def draw_grid(frame, top_left, bottom_right):
     global arena_h_px, arena_w_px
@@ -129,7 +135,7 @@ def draw_grid(frame, top_left, bottom_right):
     return frame
 
 def process_apriltags(frame, force_process=False):
-    global april_tag_frame_counter, last_warped_frame, last_warp_matrix
+    global april_tag_frame_counter, last_warped_frame, last_warp_matrix, last_apriltag_count
     
     # Only process April tags periodically to reduce latency
     if not force_process:
@@ -142,11 +148,17 @@ def process_apriltags(frame, force_process=False):
                 bottom_right = (warped.shape[1] - 1, warped.shape[0] - 1)
                 grid = draw_grid(warped, top_left, bottom_right)
                 return grid
+            # No warped frame available, draw grid on full frame if enabled
+            if args.grid:
+                top_left = (0, 0)
+                bottom_right = (frame.shape[1] - 1, frame.shape[0] - 1)
+                return draw_grid(frame, top_left, bottom_right)
             return frame
     
     # Process April tags (full detection)
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     results = detector.detect(gray)
+    last_apriltag_count = len(results)
     tag_points = {}
 
     for r in results:
@@ -186,6 +198,13 @@ def process_apriltags(frame, force_process=False):
 
         grid = draw_grid(warped, top_left, bottom_right)
         return grid
+    
+    # No perspective correction available, draw grid on full frame if enabled
+    if args.grid:
+        top_left = (0, 0)
+        bottom_right = (frame.shape[1] - 1, frame.shape[0] - 1)
+        return draw_grid(frame, top_left, bottom_right)
+    
     return warped if warped is not None else frame
 
 def initialize_spheros():
@@ -201,8 +220,8 @@ def listener():
     '''
     This function is started in a thread and concurrently listens for requests from Algorithm team's side.
 
-    Algorithm team will send a request containing "init" and we will wait for that. we will send back a message saying 
-    "connected" and then start listening for strings saying "coords". When we receive a string 
+    Algorithm team will send a request containing "init" and we will wait for that. we will send back a message saying
+    "connected" and then start listening for strings saying "coords". When we receive a string
     containing "exit", the listener will stop.
 
     We receive:             | We send back:
@@ -213,10 +232,12 @@ def listener():
 
 
     '''
+    global zmq_bound
     # connect to the socket
     context = zmq.Context()
     socket = context.socket(zmq.REP)
     socket.bind("tcp://*:5555")
+    zmq_bound = True
     print('sphero_spotter: socket bind success')
 
 
@@ -287,6 +308,16 @@ def process_frame_async():
     global frozen
     while not stop_processing.is_set():
         try:
+            # Check for commands from GUI (e.g., grid toggle)
+            cmd = server.get_command()
+            if cmd:
+                print(f"[sphero_spotter] Received command: {cmd}")
+                if cmd.get("action") == "toggle_grid":
+                    args.grid = not args.grid
+                    print(f"[sphero_spotter] Grid toggled to: {args.grid}")
+                    if args.debug:
+                        print(f"Grid toggled: {args.grid}")
+            
             # Get latest frame (non-blocking, skip stale frames)
             try:
                 frame_data = frame_queue.get(timeout=0.1)
@@ -361,6 +392,32 @@ def process_frame_async():
                     if args.debug:
                         print(f"ID {disp_id} | {class_name} | Center: ({int(cx)}, {int(cy)})")
             
+            # Push telemetry to GUI via server
+            if args.server:
+                status_spheros = []
+                for (cx, cy, cls_id, x1, y1, x2, y2, tid) in dets:
+                    if tid in id_map:
+                        disp_id = id_map[tid]
+                        gx, gy = pixel_to_grid_coords(cx, cy)
+                        status_spheros.append({
+                            "id": disp_id,
+                            "px": int(cx), "py": int(cy),
+                            "gx": round(gx, 2), "gy": round(gy, 2),
+                        })
+                server.feed_status({
+                    "type": "status",
+                    "ts": time.time(),
+                    "input_source": _input_source,
+                    "device": device,
+                    "model": os.path.basename(args.model),
+                    "id_mode": "locked" if args.locked else "dynamic",
+                    "apriltag_count": last_apriltag_count,
+                    "perspective_calibrated": last_warp_matrix is not None,
+                    "zmq_bound": zmq_bound,
+                    "spheros": status_spheros,
+                    "latency": last_latency,
+                })
+
             # Put result in queue (replace if queue is full)
             result_data = (frame, dets, frame_timestamp)
             if result_queue.full():
@@ -397,15 +454,18 @@ def calculateFrame(frame, frame_timestamp=None):
         
         # Display frame
         if not args.nogui:
-            cv2.imshow("Sphero IDs", result_frame)
-            key = cv2.waitKey(1) & 0xFF
-            if key == 27:  # ESC
-                raise SystemExit("Key input clicks")
-            if cv2.getWindowProperty("Sphero IDs", cv2.WND_PROP_VISIBLE) < 1:
-                raise SystemExit("Window closed")
+            if args.server:
+                server.feed_frames_from_calculateFrame(result_frame, result_timestamp)
+            else:
+                cv2.imshow("Sphero IDs", result_frame)
+                key = cv2.waitKey(1) & 0xFF
+                if key == 27:  # ESC
+                    raise SystemExit("Key input clicks")
+                if cv2.getWindowProperty("Sphero IDs", cv2.WND_PROP_VISIBLE) < 1:
+                    raise SystemExit("Window closed")
     except Empty:
         # No result yet, show last valid frame if available
-        if not args.nogui and last_valid_frame is not None:
+        if not args.nogui and last_valid_frame is not None and not args.server:
             cv2.imshow("Sphero IDs", last_valid_frame)
             key = cv2.waitKey(1) & 0xFF
             if key == 27:  # ESC
@@ -413,6 +473,8 @@ def calculateFrame(frame, frame_timestamp=None):
             if cv2.getWindowProperty("Sphero IDs", cv2.WND_PROP_VISIBLE) < 1:
                 raise SystemExit("Window closed")
 if __name__ == '__main__':
+
+    _input_source = "webcam" if args.webcam else ("video" if args.video else "oakd")
 
     if args.webcam:
         stream = WebcamStream(args.webcam)
@@ -437,6 +499,7 @@ if __name__ == '__main__':
                     continue
                 calculateFrame(frame)
         else:
+            import depthai as dai
             dai_device = dai.Device()
             with dai.Pipeline(dai_device) as pipeline:
                 outputQueues = {}
@@ -484,6 +547,11 @@ if __name__ == '__main__':
                     
                         # --- Print diagnostics ---
                         print(f"Pipeline Latency: {pipeline_latency_ms:.2f} ms | Queue Time: {queue_time_ms:.2f} ms | Total E2E Latency (to queue): {total_e2e_latency_ms:.2f} ms")
+                        last_latency = {
+                            "pipeline_ms": round(pipeline_latency_ms, 2),
+                            "queue_ms": round(queue_time_ms, 2),
+                            "e2e_ms": round(total_e2e_latency_ms, 2),
+                        }
 
 
     except KeyboardInterrupt:

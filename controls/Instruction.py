@@ -29,7 +29,14 @@ class Instruction:
                 # valid case, but this will just make a terminate command at the end of an array
                 pass
             case 0:
-                self.color = Color(args[2], args[3], args[4])
+                # Accept (r, g, b) tuple, Color object, or separate r, g, b args
+                if len(args) == 3 and hasattr(args[2], 'r'):
+                    self.color = args[2]  # Already a spherov2 Color
+                elif len(args) == 3 and isinstance(args[2], (tuple, list)) and len(args[2]) == 3:
+                    r, g, b = args[2]
+                    self.color = Color(r, g, b)
+                else:
+                    self.color = Color(args[2], args[3], args[4])
             case 1:
                 self.speed = args[2]
                 self.duration = args[3]
@@ -43,4 +50,4 @@ class Instruction:
             
     # hopefully this will make debugging easier...
     def __str__(self):
-        return("Instruction containing {}".format([self.SpheroID, self.type]))
+        return("Instruction containing {}".format([self.spheroID, self.type]))

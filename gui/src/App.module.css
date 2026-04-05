@@ -1,4 +1,32 @@
 .mainBody {
   display: grid;
-  grid-template-columns: 1fr 4fr;
+  grid-template-columns: 280px 1fr;
+  height: 100vh;
+  width: 100vw;
+  background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+  overflow: hidden;
+}
+
+.viewer {
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Custom scrollbar for the viewer */
+.viewer::-webkit-scrollbar {
+  width: 10px;
+}
+
+.viewer::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.viewer::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.4);
+  border-radius: 5px;
+}
+
+.viewer::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.6);
 }

@@ -1,18 +1,19 @@
 from .sphero import Sphero
-from .constants import *
+from .constants import constants
 import math
 
 
 class BondedGroup:
-    def __init__(self, list_spheros: list[Sphero], id: int):
+    def __init__(self, list_spheros: list[Sphero], id: int, max_monomers: int = 999):
         self.group_id = id              # groups have unique ids starting at 1
         self.spheros = list_spheros     
         self.size = len(self.spheros)   
-        self.box = [0,0,0,0]            # bounding box dimensions from center. order: U, D, L, R
+        self.max_monomers = max_monomers  # max number of spheros allowed in this bond
+        self.box = [0,0,0,0]            # bounding box dimensions from center. order: U, R, D, L
 
         self.center = self.find_center() # ID of the center sphero (1, 2, 3, ...)
         
-        self.valid_moves = ALL_DIRECTIONS.copy()       #  1-10
+        self.valid_moves = constants.ALL_DIRECTIONS.copy()       #  1-10
 
     def find_sphero(self, id):
         '''
@@ -49,10 +50,15 @@ class BondedGroup:
             max_y = max(max_y, sphero.y)
             min_x = min(min_x, sphero.x)
             min_y = min(min_y, sphero.y)
-        self.box[0] = max_y - center_sphero.y # up  TODO we have to discuss which direction is up lol
+        self.box[0] = max_y - center_sphero.y # up  
         self.box[1] = max_x - center_sphero.x # right    
         self.box[2] = center_sphero.y - min_y # down
         self.box[3] = center_sphero.x - min_x # left
+
+        # when group reaches max_monomers, all spheros in the bond turn green
+        if self.size >= self.max_monomers:
+            for s in self.spheros:
+                s.color = constants.GREEN
 
     def find_center(self) -> int:
         '''
@@ -100,10 +106,10 @@ class BondedGroup:
     def reset_valid_moves(self) -> None:
 
         # Copy all valid moves
-        self.valid_moves = ALL_DIRECTIONS.copy()
+        self.valid_moves = constants.ALL_DIRECTIONS.copy()
 
         # Remove rotations for single sphero groups
-        if len(self.spheros) <= 1 and len(ALL_DIRECTIONS) > 8:
+        if len(self.spheros) <= 1 and len(constants.ALL_DIRECTIONS) > 8:
             self.valid_moves.remove(9)
             self.valid_moves.remove(10)
 

@@ -1,7 +1,7 @@
 import pygame
-from .constants import *
+from .constants import constants
 from .algorithm import Algorithm
-from .sphero import Sphero, LinkedSphero
+from .sphero import Sphero
 from math import hypot, atan, asin, cos, sin, pi
 
 '''
@@ -21,16 +21,16 @@ def draw_grid(surface):
     Returns:
         None
     """
-    for x in range(0, SIM_WIDTH, SIM_DIST):
-        pygame.draw.line(surface=surface, color=BLACK, start_pos=(x, 0), end_pos=(x, SIM_HEIGHT))
+    for x in range(0, constants.SIM_WIDTH, constants.SIM_DIST):
+        pygame.draw.line(surface=surface, color=constants.BLACK, start_pos=(x, 0), end_pos=(x, constants.SIM_HEIGHT))
   
-    for y in range(0, SIM_HEIGHT, SIM_DIST):
-        pygame.draw.line(surface=surface, color=BLACK, start_pos=(0, y), end_pos=(SIM_WIDTH, y))
+    for y in range(0, constants.SIM_HEIGHT, constants.SIM_DIST):
+        pygame.draw.line(surface=surface, color=constants.BLACK, start_pos=(0, y), end_pos=(constants.SIM_WIDTH, y))
     
-    for x in range(0, SIM_WIDTH, SIM_DIST):
-        for y in range(0, SIM_HEIGHT, SIM_DIST):
-            pygame.draw.line(surface, BLACK, (x, y), (x + SIM_DIST, y + SIM_DIST))
-            pygame.draw.line(surface, BLACK, (x + SIM_DIST, y), (x, y + SIM_DIST))
+    for x in range(0, constants.SIM_WIDTH, constants.SIM_DIST):
+        for y in range(0, constants.SIM_HEIGHT, constants.SIM_DIST):
+            pygame.draw.line(surface, constants.BLACK, (x, y), (x + constants.SIM_DIST, y + constants.SIM_DIST))
+            pygame.draw.line(surface, constants.BLACK, (x + constants.SIM_DIST, y), (x, y + constants.SIM_DIST))
     
 def draw_pause_button(surface, color, rect, paused):
     pygame.draw.rect(surface, color, rect)
@@ -38,7 +38,7 @@ def draw_pause_button(surface, color, rect, paused):
     button_name = 'Pause'
     if (paused == True):
         button_name = 'Resume'
-    text = font.render(button_name, True, BLACK)
+    text = font.render(button_name, True, constants.BLACK)
     text_rect = text.get_rect(center=rect.center)
     surface.blit(text, text_rect)
     
@@ -53,8 +53,8 @@ def reached_target(sphero):
         (bool): Did the sphero reach it's target position?
     """
 
-    if (abs(sphero.target_x - sphero.x) <= EPSILON and
-        abs(sphero.target_y - sphero.y) <= EPSILON):
+    if (abs(sphero.target_x - sphero.x) <= constants.EPSILON and
+        abs(sphero.target_y - sphero.y) <= constants.EPSILON):
         return True
     return False
 
@@ -79,17 +79,17 @@ def moving_sphero_to_target(sphero):
 
     if sphero.direction <= 8:
         # print(f"Direction: {sphero.direction}\tx pos change: {position_change[sphero.direction][0]}")
-        sphero.x += position_change[sphero.direction][0] * (sphero.speed / SIM_DIST)
-        sphero.y += position_change[sphero.direction][1] * (sphero.speed / SIM_DIST)
-    elif not ARC_ROTATION:
+        sphero.x += constants.position_change[sphero.direction][0] * (sphero.speed / constants.SIM_DIST)
+        sphero.y += constants.position_change[sphero.direction][1] * (sphero.speed / constants.SIM_DIST)
+    elif not constants.ARC_ROTATION:
         # move sphero straight to its target for a rotation
         # I'm lazily using true_x and true_y to hold the sphero's previous location.
         dx = sphero.target_x - sphero.true_x
         dy = sphero.target_y - sphero.true_y
-        sphero.x += dx * (sphero.speed / SIM_DIST)
-        sphero.y += dy * (sphero.speed / SIM_DIST)
+        sphero.x += dx * (sphero.speed / constants.SIM_DIST)
+        sphero.y += dy * (sphero.speed / constants.SIM_DIST)
     else:
-        step_length = (sphero.speed / SIM_DIST)
+        step_length = (sphero.speed / constants.SIM_DIST)
 
         center = algorithm.find_sphero(algorithm.find_group(sphero.group_id).center)
         dx_center = sphero.x - center.x
@@ -162,7 +162,7 @@ def draw_sphero(surface, sphero):
     Returns:
         None
     """
-    pygame.draw.circle(surface, sphero.color, (sphero.x * SIM_DIST, sphero.y * SIM_DIST), SPHERO_SIM_RADIUS)
+    pygame.draw.circle(surface, sphero.color, (sphero.x * constants.SIM_DIST, sphero.y * constants.SIM_DIST), constants.SPHERO_SIM_RADIUS)
 
 spheros = []
 
@@ -170,34 +170,27 @@ if __name__ == "__main__":
     pygame.init()
     clock = pygame.time.Clock()
 
-    surface = pygame.display.set_mode((SIM_WIDTH, SIM_HEIGHT))
+    surface = pygame.display.set_mode((constants.SIM_WIDTH, constants.SIM_HEIGHT))
     pygame.display.set_caption("sphero-swarm simulation")
 
-##### Generate N_SPHEROS random spheros #########################################
-    initial_positions = INITIAL_POSITIONS
-    assert len(initial_positions) == N_SPHEROS, 'Number of initial positions does not match N_SPHEROS'
+##### Generate N_SPHEROS spheros with head/tail traits ##########################
+    initial_positions = constants.INITIAL_POSITIONS
+    assert len(initial_positions) == constants.N_SPHEROS, 'Number of initial positions does not match N_SPHEROS'
     assert len(initial_positions) == len(set(initial_positions)), 'Cannot have repeats in initial_positions'
-
-    # generate random colors for spheros
-    colors = []
-    for i in range(N_SPHEROS):
-        colors.append(COLORS[i % len(COLORS)])
- 
-    # generate random initial positions if none passed in
+    assert len(constants.INITIAL_TRAITS) == constants.N_SPHEROS, 'INITIAL_TRAITS length must match N_SPHEROS'
 
     algorithm_spheros = []
     spheros = [] # put the Linked Spheros in here
 
     id = 1
-    for (x, y), color in zip(initial_positions, colors):
-        algorithm_spheros.append(Sphero(id=id, x=x, y=y, color=color))
+    for (x, y), trait in zip(initial_positions, constants.INITIAL_TRAITS):
+        algorithm_spheros.append(Sphero(id=id, x=x, y=y, trait=trait))
         id += 1
 
-    algorithm = Algorithm(grid_width=GRID_WIDTH,
-                            grid_height=GRID_HEIGHT,
+    algorithm = Algorithm(grid_width=constants.GRID_WIDTH,
+                            grid_height=constants.GRID_HEIGHT,
                             spheros=algorithm_spheros)
     for sphero in algorithm_spheros:
-       #spheros.append(LinkedSphero(sphero))
        spheros.append(sphero)
     
     running = True
@@ -208,7 +201,7 @@ if __name__ == "__main__":
             if event.type == pygame.QUIT:
                 running = False
 
-        surface.fill(WHITE) # replace frame with empty background
+        surface.fill(constants.WHITE) # replace frame with empty background
         draw_grid(surface=surface)
 
         spheros_reached_target = True
@@ -252,13 +245,12 @@ def StartSimulation(algorithm):
     pygame.init()
     clock = pygame.time.Clock()
 
-    surface = pygame.display.set_mode((SIM_WIDTH, SIM_HEIGHT))
+    surface = pygame.display.set_mode((constants.SIM_WIDTH, constants.SIM_HEIGHT))
     pygame.display.set_caption("sphero-swarm simulation")
 
 
     algorithm_spheros = algorithm.find_all_spheros()
     for sphero in algorithm_spheros:
-        spheros.append(LinkedSphero(sphero))
         spheros.append(sphero)
     
     running = True
@@ -267,7 +259,7 @@ def StartSimulation(algorithm):
             if event.type == pygame.QUIT:
                 running = False
 
-        surface.fill(WHITE) # replace frame with empty background
+        surface.fill(constants.WHITE) # replace frame with empty background
         draw_grid(surface=surface)
 
         for sphero in spheros:
