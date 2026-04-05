@@ -24,8 +24,8 @@ This section summarizes the purpose, key components, and usage connections of th
 
 ### [constants.py](constants.py)
 
-* **Purpose:** Defines shared constants (grid dimensions, sphero counts, colors, spacing, velocities).
-* **Key Components:** `MARGIN`, `DIRECTIONS`, `N_SPHEROS`, `GRID_WIDTH`, `GRID_HEIGHT`, `SIM_DIST`, `SIM_WIDTH`, `SIM_HEIGHT`, `EPSILON`.
+* **Purpose:** Defines shared constants (grid dimensions, sphero counts, colors, spacing, velocities). Set initial sphero positions here.
+* **Key Components:** `MARGIN`, `DIRECTIONS`, `N_SPHEROS`, `GRID_WIDTH`, `GRID_HEIGHT`, `SIM_DIST`, `SIM_WIDTH`, `SIM_HEIGHT`, `EPSILON`, `INITIAL_POSITIONS`.
 * **Used by:** [`algorithm.py`](algorithm.py), [`simulation.py`](simulation.py), [`test.py`](test.py).
 
 ### [sphero.py](sphero.py)
