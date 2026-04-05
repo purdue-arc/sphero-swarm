@@ -13,10 +13,12 @@ export function Controls({
     constants,
     spheros,
     setSpheros,
+    algorithmRunning = false,
 }: {
     constants: SpheroConstants;
     spheros: SpheroStatus[];
     setSpheros: any;
+    algorithmRunning?: boolean;
 }) {
     const { connectState, startConnection, startConnectionDemo, connectedCount, pendingCount, failedCount } = useSpheroConnection(spheros, setSpheros);
 
@@ -29,11 +31,30 @@ export function Controls({
         };
     };
 
+    // Helper to send reset command to algorithm server
+    const sendAlgorithmReset = () => {
+        const ws = new WebSocket("ws://localhost:6769");
+        ws.onopen = () => {
+            ws.send(JSON.stringify({ type: "reset" }));
+            ws.close();
+        };
+    };
+
     const handleRehome = () => {
+        // If algorithm is running, reset it first
+        if (algorithmRunning) {
+            console.log("[Controls] Algorithm running - sending reset before rehome");
+            sendAlgorithmReset();
+        }
         sendControlCommand({ type: "rehome" });
     };
 
     const handleDisconnect = (id: string) => {
+        // If algorithm is running, reset it first
+        if (algorithmRunning) {
+            console.log("[Controls] Algorithm running - sending reset before disconnect");
+            sendAlgorithmReset();
+        }
         sendControlCommand({ type: "disconnect", ball: id });
         setSpheros(prev => prev.map(s => s.id === id ? { ...s, connection: "not-attempted" } : s));
     };

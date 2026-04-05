@@ -29,6 +29,7 @@ function App() {
   const [constants, setConstants] = useState<SpheroConstants | null>(null);
   const [spheros, setSpheros] = useState<SpheroStatus[]>([])
   const [authReady, setAppReady] = useState(false);
+  const [algorithmRunning, setAlgorithmRunning] = useState(false);
 
   useEffect(() => {
     async function loadConstants() {
@@ -95,15 +96,15 @@ function App() {
         )}
 
         {currentView === "configuration" && (
-          <Config constants={constants} onUpdate={setConstants} />
+          <Config constants={constants} onUpdate={setConstants} algorithmRunning={algorithmRunning} />
         )}
 
         {currentView === "controls" && (
-          <Controls constants={constants} spheros={spheros} setSpheros={setSpheros} />
+          <Controls constants={constants} spheros={spheros} setSpheros={setSpheros} algorithmRunning={algorithmRunning} />
         )}
 
         {currentView === "simulation" && (
-          <Simulation constants={constants} spheros={spheros} setSpheros={setSpheros} />
+          <Simulation constants={constants} onRunningChange={setAlgorithmRunning} />
         )}
 
         {/* Placeholder views for other sections */}

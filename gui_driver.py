@@ -78,9 +78,45 @@ def _process_next_edit_ball_move(algorithm: Algorithm, edit_ball_queue: list[tup
 
     sphero_id, (nx, ny) = edit_ball_queue.pop(0)
     moved = _set_sphero_position_if_free(algorithm, sphero_id, nx, ny)
-    if moved:
-        algorithm.bond_all_groups()
     return moved
+
+
+def _rebond_from_current_positions(algorithm: Algorithm) -> Algorithm:
+    """
+    Rebuild bonded groups from current sphero positions using canonical bonding rules.
+
+    This allows edit-ball moves to both split and merge groups correctly.
+    """
+    spheros = []
+    for s in algorithm.find_all_spheros():
+        spheros.append(
+            Sphero(
+                s.id,
+                s.x,
+                s.y,
+                target_x=s.x,
+                target_y=s.y,
+                previous_direction=s.previous_direction,
+                direction=0,
+                trait=s.trait,
+            )
+        )
+
+    spheros.sort(key=lambda s: s.id)
+    rebuilt = Algorithm(
+        grid_width=algorithm.grid_width,
+        grid_height=algorithm.grid_height,
+        spheros=spheros,
+    )
+
+    # Keep bonding until no more merges occur.
+    while True:
+        prev_count = len(rebuilt.bonded_groups)
+        rebuilt.bond_all_groups()
+        if len(rebuilt.bonded_groups) == prev_count:
+            break
+
+    return rebuilt
 
 
 def _send_controls_update(
@@ -235,6 +271,9 @@ if __name__ == "__main__":
 
             if edit_ball_queue and not processed_edit_move_this_tick:
                 if _process_next_edit_ball_move(algorithm, edit_ball_queue):
+                    # Rebuild groups from current positions so bonds reflect true
+                    # head/tail rules and can both split and merge.
+                    algorithm = _rebond_from_current_positions(algorithm)
                     if running and use_controls and controls_sock is not None:
                         _send_controls_update(
                             controls_sock,

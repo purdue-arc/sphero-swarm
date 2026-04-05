@@ -57,7 +57,7 @@ function toCssColor(input: string | [number, number, number] | undefined, fallba
     return fallback;
 }
 
-export function Simulation({constants} : {constants : SpheroConstants}) {
+export function Simulation({constants, onRunningChange} : {constants : SpheroConstants, onRunningChange?: (running: boolean) => void}) {
     const [gridSize, setGridSize] = useState({ width: constants.GRID_WIDTH, height: constants.GRID_HEIGHT });
     const [connected, setConnected] = useState(false);
     const [paused, setPaused] = useState(false);    
@@ -343,6 +343,12 @@ export function Simulation({constants} : {constants : SpheroConstants}) {
         raf = requestAnimationFrame(tick);
         return () => cancelAnimationFrame(raf);
     }, [getNodePos]);
+
+    // ── Notify parent when running state changes ────────────────────────
+
+    useEffect(() => {
+        onRunningChange?.(running);
+    }, [running, onRunningChange]);
 
     // ── Derived render values ──────────────────────────────────────────────
 

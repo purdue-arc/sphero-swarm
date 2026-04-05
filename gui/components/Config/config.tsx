@@ -22,14 +22,16 @@ const KNOWN_TAGS = [
     'SB-B11D',
     'SB-CEB2',
     'SB-BD0A',
+    'SB-E702',
 ];
 
 interface ConfigProps {
     constants: SpheroConstants;
     onUpdate: (newConstants: SpheroConstants) => void;
+    algorithmRunning?: boolean;
 }
 
-export function Config({ constants, onUpdate }: ConfigProps) {
+export function Config({ constants, onUpdate, algorithmRunning = false }: ConfigProps) {
     const [form, setForm] = useState<SpheroConstants>(constants);
     const [hasChanges, setHasChanges] = useState(false);
 
@@ -113,6 +115,16 @@ export function Config({ constants, onUpdate }: ConfigProps) {
     };
 
     const save = async () => { 
+        // If algorithm is running, send reset to algorithm server
+        if (algorithmRunning) {
+            console.log("[Config] Algorithm running - sending reset before save");
+            const ws = new WebSocket("ws://localhost:6769");
+            ws.onopen = () => {
+                ws.send(JSON.stringify({ type: "reset" }));
+                ws.close();
+            };
+        }
+
         onUpdate(form);
         await window.electronAPI.saveConstants(form);
         setHasChanges(false);
