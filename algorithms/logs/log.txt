@@ -1,0 +1,37 @@
+START SIMULATION
+
+	Step 1
+
+Group: 1	Direction: 3	Translation
+Group: 2	Direction: 4	Translation
+Group: 3	Direction: 5	Translation
+Group: 4	Direction: 1	Translation
+Group: 5	Direction: 6	Translation
+Group: 6	Direction: 7	Translation
+Group: 7	Direction: 7	Translation
+Group: 8	Direction: 8	Translation
+Group: 9	Direction: 5	Translation
+
+	Step 2
+
+Group: 1	Direction: 3	Translation
+Group: 2	Direction: 6	Translation
+Group: 3	Direction: 1	Translation
+Group: 4	Direction: 3	Translation
+Group: 5	Direction: 4	Translation
+Group: 6	Direction: 5	Translation
+Group: 7	Direction: 1	Translation
+Group: 8	Direction: 2	Translation
+Group: 9	Direction: 8	Translation
+
+	Step 3
+
+Group: 1	Direction: 7	Translation
+Group: 2	Direction: 3	Translation
+Group: 3	Direction: 3	Translation
+Group: 4	Direction: 7	Translation
+Group: 6	Direction: 7	Translation
+Group: 7	Direction: 3	Translation
+Group: 8	Direction: 1	Translation
+Group: 9	Direction: 6	Translation
+END SIMULATION

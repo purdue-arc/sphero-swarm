@@ -8,6 +8,8 @@ from math import hypot
 class Algorithm:
     def __init__(self, grid_width, grid_height, spheros: list[Sphero]):
         
+        self.log_lines = ['START SIMULATION']
+
         self.grid_width = grid_width
         self.grid_height = grid_height
 
@@ -36,6 +38,14 @@ class Algorithm:
         for group in self.bonded_groups:
             return_str += str(group) + '\n'
         return return_str
+    
+    def log(self, line):
+        '''
+        Appends argument as a new log line
+        '''
+
+        self.log_lines.append(f'\n{line}')
+        print(f'[{line.replace('\n', '\n(')}')
 
 
     def find_all_spheros(self) -> list[Sphero]:
@@ -181,7 +191,8 @@ class Algorithm:
 
             if valid_move >= 0 and valid_move <= 8: # for staying still (0) / translation (1 to 8)
 
-                print(f"Group: {group.group_id}\tDirection: {valid_move}\tTranslation")
+                # print(f"Group: {group.group_id}\tDirection: {valid_move}\tTranslation")
+                self.log(f"Group: {group.group_id}\tDirection: {valid_move}\tTranslation")
 
                 dx, dy = constants.position_change[valid_move]
 
@@ -211,7 +222,8 @@ class Algorithm:
                     update prev direction, direction.
                 '''
 
-                print(f"Group: {group.group_id}\tDirection: {valid_move}\tRotation")
+                # print(f"Group: {group.group_id}\tDirection: {valid_move}\tRotation")
+                self.log(f"Group: {group.group_id}\tDirection: {valid_move}\tRotation")
 
                 center = self.find_sphero(group.center)
 
