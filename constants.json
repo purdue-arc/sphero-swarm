@@ -64,6 +64,7 @@
   "TURN_DURATION": 0.5,
   "SIM_SPEED": 1,
   "ARC_ROTATION": false,
+  "ERROR_CORRECTION": false,
   "MAX_MONOMERS": 3,
   "COLORS": {
     "BLUE": [

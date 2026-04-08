@@ -8,12 +8,24 @@ from algorithms.sphero import Sphero
 from controls.Instruction import Instruction
 from time import sleep
 import threading
+import zmq
+from algorithms.form_instruction import nextVectorDirection                                                                                          
+from algorithms.constants import ERROR_CORRECTION
 
 def main():
     s = socket.socket()
     port = 1235
 
     s.connect(('localhost', port))
+
+    # Connect to sphero spotter
+    context = zmq.Context()                                                                                                                              
+    zmq_socket = context.socket(zmq.REQ)                                                                                                                 
+    zmq_socket.connect("tcp://localhost:5555")
+
+    zmq_socket.send_string("init")                                                                                                                       
+    response = zmq_socket.recv_string()                                                                                                                  
+    print(f"Perception connected: {response}")
 
     # FIXME What is this, is this deprecated? 
     '''
@@ -99,7 +111,38 @@ def main():
             buffer = s.recv(1024)
             
             sleep(4)
-    
+            if ERROR_CORRECTION:                                                                                                                                 
+                zmq_socket.send_string("coords")                                                                                                                 
+                data = zmq_socket.recv_json()                                                                                                                    
+                id_to_sphero = {sphero.id: sphero for sphero in algorithm.find_all_spheros()}                                                                    
+                for entry in data["spheros"]:                                                                                                                    
+                    sphero = id_to_sphero.get(entry["id"])                                                                                                       
+                    if sphero:                                                                                                                                   
+                        # update real position                                                                                                                   
+                        sphero.true_x = entry["x"]                                                                                                                    
+                        sphero.true_y = entry["y"]                                                                                                                    
+                                                                                                                                                                
+                        # distance from real position to target                                                                                                  
+                        remaining = math.sqrt((sphero.target_x - sphero.true_x)**2 + (sphero.target_y - sphero.true_y)**2)                                                 
+                        dx, dy = position_change[sphero.direction]                                                                                               
+                        original = math.sqrt(dx**2 + dy**2)                                                                                                      
+                                                                                                                                                                
+                        corrected_speed = int(SPHERO_SPEED * (remaining / original)) if original > 0 else 0                                                      
+                        corrected_speed = max(0, min(255, corrected_speed))                                                                                      
+                                                                                                                                                                
+                        angle = nextVectorDirection(                                                                                                             
+                            (sphero.true_x, sphero.true_y),                                                                                                                
+                            (sphero.target_x, sphero.target_y)                                                                                                   
+                        )                                                                                                                                        
+                                                                                                                                                                
+                        rotate_instruction = Instruction(sphero.id, 2, angle, TURN_DURATION)                                                                     
+                        roll_instruction = Instruction(sphero.id, 1, corrected_speed, ROLL_DURATION)                                                             
+                                                                                                                                                                
+                        s.send(pickle.dumps([rotate_instruction]))                                                                                               
+                        s.recv(1024)                                                                                                                             
+                        s.send(pickle.dumps([roll_instruction]))                                                                                                 
+                        s.recv(1024) 
+
             # TODO I don't believe this is necessary for the current implementation - we will see
             #for sphero in spheros:
             #    teleport_sphero_to_target(sphero)

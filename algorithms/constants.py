@@ -56,6 +56,7 @@ class Constants:
         self.INITIAL_TRAITS = ["head", "tail"]
         self.MAX_MONOMERS = 3
         self.ARC_ROTATION = False
+        self.ERROR_CORRECTION = False
         self.SIM_DIST = 50
         self.FRAMES = 60
         self.SPHERO_SIM_RADIUS = 15
@@ -79,6 +80,7 @@ class Constants:
             "INITIAL_TRAITS",
             "MAX_MONOMERS",
             "ARC_ROTATION",
+            "ERROR_CORRECTION",
             "SIM_DIST",
             "FRAMES",
             "SPHERO_SIM_RADIUS",
@@ -161,6 +163,7 @@ INITIAL_POSITIONS = constants.INITIAL_POSITIONS
 INITIAL_TRAITS = constants.INITIAL_TRAITS
 MAX_MONOMERS = constants.MAX_MONOMERS
 ARC_ROTATION = constants.ARC_ROTATION
+ERROR_CORRECTION = constants.ERROR_CORRECTION
 SIM_DIST = constants.SIM_DIST
 FRAMES = constants.FRAMES
 SPHERO_SIM_RADIUS = constants.SPHERO_SIM_RADIUS
@@ -207,6 +210,7 @@ __all__ = [
     "INITIAL_TRAITS",
     "MAX_MONOMERS",
     "ARC_ROTATION",
+    "ERROR_CORRECTION",
     "SIM_DIST",
     "FRAMES",
     "SPHERO_SIM_RADIUS",
