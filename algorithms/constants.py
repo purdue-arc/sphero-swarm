@@ -1,6 +1,6 @@
 import json
 import os
-LOG_PATH = 'algorithms\logs\log.txt'
+
 
 class Constants:
     def __init__(self) -> None:
@@ -56,6 +56,7 @@ class Constants:
         self.INITIAL_TRAITS = ["head", "tail"]
         self.MAX_MONOMERS = 3
         self.ARC_ROTATION = False
+        self.ERROR_CORRECTION = False
         self.SIM_DIST = 50
         self.FRAMES = 60
         self.SPHERO_SIM_RADIUS = 15
@@ -79,6 +80,7 @@ class Constants:
             "INITIAL_TRAITS",
             "MAX_MONOMERS",
             "ARC_ROTATION",
+            "ERROR_CORRECTION",
             "SIM_DIST",
             "FRAMES",
             "SPHERO_SIM_RADIUS",
@@ -131,3 +133,88 @@ class Constants:
 
 
 constants = Constants()
+
+MARGIN = constants.MARGIN
+DIRECTIONS = constants.DIRECTIONS
+ALL_DIRECTIONS = constants.ALL_DIRECTIONS
+position_change = constants.position_change
+EPSILON = constants.EPSILON
+
+BLUE = constants.BLUE
+RED = constants.RED
+GREEN = constants.GREEN
+YELLOW = constants.YELLOW
+PURPLE = constants.PURPLE
+ORANGE = constants.ORANGE
+BLACK = constants.BLACK
+WHITE = constants.WHITE
+GRAY = constants.GRAY
+COLORS = constants.COLORS
+
+N_SPHEROS = constants.N_SPHEROS
+GRID_WIDTH = constants.GRID_WIDTH
+GRID_HEIGHT = constants.GRID_HEIGHT
+SPHERO_SPEED = constants.SPHERO_SPEED
+SPHERO_DIAGONAL_SPEED = constants.SPHERO_DIAGONAL_SPEED
+ROLL_DURATION = constants.ROLL_DURATION
+TURN_DURATION = constants.TURN_DURATION
+SPHERO_TAGS = constants.SPHERO_TAGS
+INITIAL_POSITIONS = constants.INITIAL_POSITIONS
+INITIAL_TRAITS = constants.INITIAL_TRAITS
+MAX_MONOMERS = constants.MAX_MONOMERS
+ARC_ROTATION = constants.ARC_ROTATION
+ERROR_CORRECTION = constants.ERROR_CORRECTION
+SIM_DIST = constants.SIM_DIST
+FRAMES = constants.FRAMES
+SPHERO_SIM_RADIUS = constants.SPHERO_SIM_RADIUS
+SIM_SPEED = constants.SIM_SPEED
+SIM_WIDTH = constants.SIM_WIDTH
+SIM_HEIGHT = constants.SIM_HEIGHT
+
+
+# Backward-compatible module attribute access for old callsites importing
+# algorithms.constants as a module and reading values directly.
+def __getattr__(name: str):
+    if hasattr(constants, name):
+        return getattr(constants, name)
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
+
+
+__all__ = [
+    "Constants",
+    "constants",
+    "MARGIN",
+    "DIRECTIONS",
+    "ALL_DIRECTIONS",
+    "position_change",
+    "EPSILON",
+    "BLUE",
+    "RED",
+    "GREEN",
+    "YELLOW",
+    "PURPLE",
+    "ORANGE",
+    "BLACK",
+    "WHITE",
+    "GRAY",
+    "COLORS",
+    "N_SPHEROS",
+    "GRID_WIDTH",
+    "GRID_HEIGHT",
+    "SPHERO_SPEED",
+    "SPHERO_DIAGONAL_SPEED",
+    "ROLL_DURATION",
+    "TURN_DURATION",
+    "SPHERO_TAGS",
+    "INITIAL_POSITIONS",
+    "INITIAL_TRAITS",
+    "MAX_MONOMERS",
+    "ARC_ROTATION",
+    "ERROR_CORRECTION",
+    "SIM_DIST",
+    "FRAMES",
+    "SPHERO_SIM_RADIUS",
+    "SIM_SPEED",
+    "SIM_WIDTH",
+    "SIM_HEIGHT",
+]
