@@ -144,15 +144,22 @@ def process_apriltags(frame, force_process=False):
             # Reuse last warped frame if available
             if last_warped_frame is not None and last_warp_matrix is not None:
                 warped = cv2.warpPerspective(frame, last_warp_matrix, (500, 500))
-                top_left = (0, 0)
-                bottom_right = (warped.shape[1] - 1, warped.shape[0] - 1)
-                grid = draw_grid(warped, top_left, bottom_right)
-                return grid
+                if False:
+                # we have to draw the grid AFTER passing it through our sphero detection model. 
+                    top_left = (0, 0)
+                    bottom_right = (warped.shape[1] - 1, warped.shape[0] - 1)
+                    grid = draw_grid(warped, top_left, bottom_right)
+                    return grid
+                return frame, warped
             # No warped frame available, draw grid on full frame if enabled
             if args.grid:
-                top_left = (0, 0)
-                bottom_right = (frame.shape[1] - 1, frame.shape[0] - 1)
-                return draw_grid(frame, top_left, bottom_right)
+                # we have to draw the grid AFTER passing it through our sphero detection model. 
+                if False:
+                    top_left = (0, 0)
+                    bottom_right = (frame.shape[1] - 1, frame.shape[0] - 1)
+                    return draw_grid(frame, top_left, bottom_right)
+                return frame, frame
+                
             return frame
     
     # Process April tags (full detection)
@@ -334,7 +341,7 @@ def process_frame_async():
                     break
             
             # Process April tags
-            frame = process_apriltags(frame)
+            frame, postprocessed_dimensions = process_apriltags(frame)
             
             # Run YOLOv8 tracking with optimized settings
             results = model.track(
@@ -346,7 +353,12 @@ def process_frame_async():
                 conf=args.conf,
                 device=device
             )
-            
+
+            # draw grid AFTER processing
+            top_left = (0, 0)
+            bottom_right = (postprocessed_dimensions.shape[1] - 1, postprocessed_dimensions.shape[0] - 1)
+            frame = draw_grid(frame, top_left, bottom_right)
+
             # Process results
             dets = []  # (cx, cy, cls_id, x1, y1, x2, y2, tracker_id)
             if results and results[0].boxes is not None:
