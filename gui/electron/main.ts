@@ -105,12 +105,13 @@ function startSpheroSpotter(config: any = {}) {
 
   const pyArgs = ["sphero_spotter.py", "-s"]; // -s = WebSocket server mode
 
-  if (cfg.inputSource === "webcam") {
-    pyArgs.push("-w");
-  } else if (cfg.inputSource === "video" && cfg.videoPath) {
-    pyArgs.push("-v", cfg.videoPath);
-  }
-  // oakd = no flag needed
+
+  // if (cfg.inputSource === "webcam") {
+  //   //pyArgs.push("-w");
+  // } else if (cfg.inputSource === "video" && cfg.videoPath) {
+  //   pyArgs.push("-v", cfg.videoPath);
+  // }
+  // // oakd = no flag needed
 
   pyArgs.push("-m", cfg.model);
   pyArgs.push("--conf", String(cfg.conf));

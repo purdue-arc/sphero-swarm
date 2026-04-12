@@ -71,7 +71,7 @@ export function Controls({
                 <SpheroConnectionStats
                     connectState={connectState}
                     startConnection={startConnection}
-                    startConnectionDemo={startConnectionDemo}
+                    startConnectionDemo={startConnection}
                     connectedCount={connectedCount}
                     pendingCount={pendingCount}
                     failedCount={failedCount}
