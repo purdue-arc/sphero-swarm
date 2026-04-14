@@ -71,8 +71,19 @@ const DEFAULT_CONFIG: PerceptionConfig = {
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export function Perception() {
-    const [spotterStatus, setSpotterStatus] = useState<"stopped" | "starting" | "started">("stopped");
+export function Perception({
+    perceptionStatus,
+    setPerceptionStatus,
+    startPerception,
+    stopPerception,
+}: {
+    perceptionStatus: "stopped" | "starting" | "started";
+    setPerceptionStatus: (s: "stopped" | "starting" | "started") => void;
+    startPerception: (config?: PerceptionConfig) => Promise<void>;
+    stopPerception: () => Promise<void>;
+}) {
+    const spotterStatus = perceptionStatus;
+    const setSpotterStatus = setPerceptionStatus;
     const [config, setConfig] = useState<PerceptionConfig>(DEFAULT_CONFIG);
     const [telemetry, setTelemetry] = useState<Telemetry | null>(null);
 
@@ -132,14 +143,12 @@ export function Perception() {
 
     // ── Handlers ─────────────────────────────────────────────────────────────
     const handleStart = async () => {
-        setSpotterStatus("starting");
-        await window.electronAPI.startSpheroSpotter(config);
+        await startPerception(config);
     };
 
     const handleStop = async () => {
-        setSpotterStatus("stopped");
         setTelemetry(null);
-        await window.electronAPI.stopSpheroSpotter();
+        await stopPerception();
     };
 
     const isRunning = spotterStatus !== "stopped";

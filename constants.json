@@ -49,14 +49,14 @@
       1
     ]
   },
-  "N_SPHEROS": 6,
-  "GRID_WIDTH": 6,
-  "GRID_HEIGHT": 6,
+  "N_SPHEROS": 2,
+  "GRID_WIDTH": 5,
+  "GRID_HEIGHT": 5,
   "SIM_DIST": 50,
   "FRAMES": 60,
   "SPHERO_SIM_RADIUS": 15,
-  "SIM_WIDTH": 250,
-  "SIM_HEIGHT": 250,
+  "SIM_WIDTH": 200,
+  "SIM_HEIGHT": 200,
   "EPSILON": 0.01,
   "SPHERO_SPEED": 66,
   "SPHERO_DIAGONAL_SPEED": 76,
@@ -64,7 +64,6 @@
   "TURN_DURATION": 0.5,
   "SIM_SPEED": 1,
   "ARC_ROTATION": false,
-  "ERROR_CORRECTION": false,
   "MAX_MONOMERS": 3,
   "COLORS": {
     "BLUE": [
@@ -146,45 +145,21 @@
     ]
   ],
   "SPHERO_TAGS": [
-    "SB-E274",
     "SB-76B3",
-    "SB-1840",
-    "SB-B11D",
-    "SB-CEB2",
-    "SB-E702"
+    "SB-BD0A"
   ],
   "INITIAL_POSITIONS": [
     [
-      3,
-      5
-    ],
-    [
-      5,
-      5
-    ],
-    [
-      0,
+      1,
       3
     ],
     [
-      4,
-      0
-    ],
-    [
-      4,
-      2
-    ],
-    [
-      0,
-      0
+      3,
+      1
     ]
   ],
   "INITIAL_TRAITS": [
     "head",
-    "tail",
-    "tail",
-    "tail",
-    "tail",
-    "head"
+    "tail"
   ]
 }

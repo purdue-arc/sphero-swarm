@@ -8,6 +8,74 @@
     box-sizing: border-box;
 }
 
+/* ── Camera feed panel (side column) ── */
+.cameraPanel {
+    flex: 1;
+    min-width: 0;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    order: 2;
+}
+
+.cameraPanelHeader {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    flex-shrink: 0;
+}
+
+.cameraBadge {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 10px;
+    font-size: 0.625rem;
+    font-weight: 600;
+    margin-left: auto;
+    border: 1px solid;
+}
+
+.camera_started {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.3);
+    color: #34d399;
+}
+
+.camera_starting {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.3);
+    color: #fbbf24;
+}
+
+.camera_stopped {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+    color: #475569;
+}
+
+.cameraBadgeDot {
+    font-size: 0.4rem;
+}
+
+.cameraPanelBody {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
 /* ── Sidebar ── */
 .sidebar {
     display: flex;
@@ -21,7 +89,7 @@
     gap: 0;
     overflow-y: auto;
     box-shadow: 0 4px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.06);
-    order: 2;
+    order: 3;
 }
 
 .sidebarHeader {
@@ -376,6 +444,7 @@
 .gridWrapper {
     flex: 1;
     min-width: 0;
+    min-height: 0;
     background: rgba(0, 0, 0, 0.3);
     border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.07);

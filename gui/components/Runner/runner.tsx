@@ -23,23 +23,31 @@ export function Runner({
     constants,
     spheros,
     setSpheros,
+    perceptionStatus,
+    setPerceptionStatus,
+    startPerception,
+    stopPerception,
 }: {
     constants: SpheroConstants;
     spheros: SpheroStatus[];
     setSpheros: any;
+    perceptionStatus: "stopped" | "starting" | "started";
+    setPerceptionStatus: (s: "stopped" | "starting" | "started") => void;
+    startPerception: () => Promise<void>;
+    stopPerception: () => Promise<void>;
 }) {
-    const [perceptionRunning, setPerceptionRunning] = useState("stopped");
     const [controlsRunning, setControlsRunning] = useState("idle");
     const [algorithmsRunning, setAlgorithmsRunning] = useState("idle");
 
+    const perceptionRunning = perceptionStatus;
+    const setPerceptionRunning = setPerceptionStatus;
+
     const startSpotter = async () => {
-        setPerceptionRunning("starting");
-        await window.electronAPI.startSpheroSpotter();
+        await startPerception();
     };
 
     const stopSpotter = async () => {
-        setPerceptionRunning("stopped");
-        await window.electronAPI.stopSpheroSpotter();
+        await stopPerception();
     };
 
     // Calculate system health
