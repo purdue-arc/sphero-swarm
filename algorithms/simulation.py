@@ -214,7 +214,7 @@ if __name__ == "__main__":
         if spheros_reached_target:
 
             step += 1
-            algorithm.log(f"\n\tStep {step}\n")
+            algorithm.log(f"\n\n<  Step {step}  >\n")
 
             # update sphero positions to simulate they reached their target
             algorithm.reset_sphero_positions()
@@ -237,9 +237,11 @@ if __name__ == "__main__":
         clock.tick(60)
 
     algorithm.log('END SIMULATION')
-    with open(LOG_PATH, 'w') as log_file:
+
+    log_path = constants.LOG_PATH
+    with open(log_path, 'w') as log_file:
         log_file.writelines(algorithm.log_lines)
-        print(f'\nLog written to {LOG_PATH}\n')
+        print(f'\nLog written to {log_path}\n')
 
 def StartSimulation(algorithm):
     pygame.init()
