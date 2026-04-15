@@ -56,7 +56,7 @@ class Constants:
         self.INITIAL_TRAITS = ["head", "tail"]
         self.MAX_MONOMERS = 3
         self.ARC_ROTATION = False
-        self.ERROR_CORRECTION = True
+        self.ERROR_CORRECTION = False
         self.SIM_DIST = 50
         self.FRAMES = 60
         self.SPHERO_SIM_RADIUS = 15

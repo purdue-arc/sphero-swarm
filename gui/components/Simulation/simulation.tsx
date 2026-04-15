@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlay, faPause, faVideo, faCircle } from "@fortawesome/free-solid-svg-icons";
+import { faPlay, faPause } from "@fortawesome/free-solid-svg-icons";
 import styles from "./simulation.module.css";
 import type { SpheroConstants } from "../../types/swarm_types";
-import { StreamViewer } from "../StreamViewer/streamViewer";
 
 interface ServerSphero {
     id: number;       // 1-indexed
@@ -58,21 +57,7 @@ function toCssColor(input: string | [number, number, number] | undefined, fallba
     return fallback;
 }
 
-export function Simulation({
-    constants,
-    onRunningChange,
-    perceptionStatus,
-    setPerceptionStatus,
-    startPerception,
-    stopPerception,
-}: {
-    constants: SpheroConstants;
-    onRunningChange?: (running: boolean) => void;
-    perceptionStatus: "stopped" | "starting" | "started";
-    setPerceptionStatus: (s: "stopped" | "starting" | "started") => void;
-    startPerception: () => Promise<void>;
-    stopPerception: () => Promise<void>;
-}) {
+export function Simulation({constants, onRunningChange} : {constants : SpheroConstants, onRunningChange?: (running: boolean) => void}) {
     const [gridSize, setGridSize] = useState({ width: constants.GRID_WIDTH, height: constants.GRID_HEIGHT });
     const [connected, setConnected] = useState(false);
     const [paused, setPaused] = useState(false);    
@@ -84,7 +69,6 @@ export function Simulation({
     const [speed, setSpeed] = useState(4);                // current delay value
     const [useControls, setUseControls] = useState(false); // whether GUI commands are respected
     const [useAlgorithmColors, setUseAlgorithmColors] = useState(true); // true => match driver.py color behavior
-    const [errorCorrection, setErrorCorrection] = useState(false);
 
     const ballsRef = useRef<Map<number, Ball>>(new Map());
     const groupColorRef = useRef<Map<number, number>>(new Map());
@@ -382,9 +366,6 @@ export function Simulation({
         sendCommand({ type: "speed", value: speed });
         setRunning(true);
         setPaused(false);
-        if (perceptionStatus === "stopped") {
-            startPerception();
-        }
     };
 
     const handleStop = () => {
@@ -446,12 +427,6 @@ export function Simulation({
         const next = !useAlgorithmColors;
         setUseAlgorithmColors(next);
         sendCommand({ type: "use_algorithm_colors", value: next });
-    };
-
-    const toggleErrorCorrection = () => {
-        const next = !errorCorrection;
-        setErrorCorrection(next);
-        sendCommand({ type: "error_correction", value: next });
     };
 
     // ── Render ─────────────────────────────────────────────────────────────
@@ -600,30 +575,6 @@ export function Simulation({
             </svg>
             </div>
 
-            {/* Camera feed panel */}
-            <div className={styles.cameraPanel}>
-                <div className={styles.cameraPanelHeader}>
-                    <FontAwesomeIcon icon={faVideo} />
-                    Live Camera Feed
-                    <span className={`${styles.cameraBadge} ${
-                        perceptionStatus === "started" ? styles.camera_started :
-                        perceptionStatus === "starting" ? styles.camera_starting :
-                        styles.camera_stopped
-                    }`}>
-                        <FontAwesomeIcon icon={faCircle} className={styles.cameraBadgeDot} />
-                        {perceptionStatus === "started" ? "Live" :
-                         perceptionStatus === "starting" ? "Starting" : "Off"}
-                    </span>
-                </div>
-                <div className={styles.cameraPanelBody}>
-                    <StreamViewer
-                        port={6767}
-                        serverStatus={perceptionStatus}
-                        setServerStatus={setPerceptionStatus}
-                    />
-                </div>
-            </div>
-
             {/* Sidebar */}
             <aside className={styles.sidebar}>
                 {/* Logo / title area */}
@@ -700,29 +651,6 @@ export function Simulation({
 
                 <div className={styles.sidebarDivider} />
 
-                {/* Perception */}
-                <div className={styles.sidebarSection}>
-                    <span className={styles.sectionLabel}>Perception</span>
-                    {perceptionStatus === "stopped" ? (
-                        <button
-                            className={`${styles.sidebarButton} ${styles.play}`}
-                            onClick={startPerception}
-                        >
-                            ▶ Start Camera
-                        </button>
-                    ) : (
-                        <button
-                            className={`${styles.sidebarButton} ${styles.reset}`}
-                            onClick={stopPerception}
-                            disabled={perceptionStatus === "starting"}
-                        >
-                            ■ Stop Camera
-                        </button>
-                    )}
-                </div>
-
-                <div className={styles.sidebarDivider} />
-
                 {/* Enable controls toggle */}
                 <div className={styles.sidebarSection}>
                     <label className={styles.toggleRow}>
@@ -751,25 +679,6 @@ export function Simulation({
                             onClick={toggleUseAlgorithmColors}
                             role="switch"
                             aria-checked={useAlgorithmColors}
-                        >
-                            <div className={styles.toggleThumb} />
-                        </div>
-                    </label>
-                </div>
-
-                <div className={styles.sidebarDivider} />
-
-                {/* Error correction toggle */}
-                <div className={styles.sidebarSection}>
-                    <label className={styles.toggleRow}>
-                        <span className={styles.sectionLabel} style={{ marginBottom: 0 }}>
-                            Error Correction
-                        </span>
-                        <div
-                            className={`${styles.toggleTrack} ${errorCorrection ? styles.toggleOn : ""}`}
-                            onClick={toggleErrorCorrection}
-                            role="switch"
-                            aria-checked={errorCorrection}
                         >
                             <div className={styles.toggleThumb} />
                         </div>

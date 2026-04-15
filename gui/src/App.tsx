@@ -30,17 +30,6 @@ function App() {
   const [spheros, setSpheros] = useState<SpheroStatus[]>([])
   const [authReady, setAppReady] = useState(false);
   const [algorithmRunning, setAlgorithmRunning] = useState(false);
-  const [perceptionStatus, setPerceptionStatus] = useState<"stopped" | "starting" | "started">("stopped");
-
-  const startPerception = async (config?: PerceptionConfig) => {
-    setPerceptionStatus("starting");
-    await window.electronAPI.startSpheroSpotter(config);
-  };
-
-  const stopPerception = async () => {
-    setPerceptionStatus("stopped");
-    await window.electronAPI.stopSpheroSpotter();
-  };
 
   useEffect(() => {
     async function loadConstants() {
@@ -48,14 +37,13 @@ function App() {
         const data = await window.electronAPI.getConstants();
         setConstants(data);
         setAppReady(true);
+        // Signal to splash that render is complete, showing the button
         window.electronAPI.appRenderComplete();
-        window.electronAPI.signalAppReady();
         window.electronAPI.startControls()
       } catch (err) {
         console.error("Failed to load constants:", err);
         setAppReady(true);
         window.electronAPI.appRenderComplete();
-        window.electronAPI.signalAppReady();
       }
     }
 
@@ -104,15 +92,7 @@ function App() {
       />
       <div className={styles.viewer}>
         {currentView === "dashboard" && (
-          <Runner
-            constants={constants}
-            spheros={spheros}
-            setSpheros={setSpheros}
-            perceptionStatus={perceptionStatus}
-            setPerceptionStatus={setPerceptionStatus}
-            startPerception={startPerception}
-            stopPerception={stopPerception}
-          />
+          <Runner constants={constants} spheros={spheros} setSpheros={setSpheros} />
         )}
 
         {currentView === "configuration" && (
@@ -124,24 +104,12 @@ function App() {
         )}
 
         {currentView === "simulation" && (
-          <Simulation
-            constants={constants}
-            onRunningChange={setAlgorithmRunning}
-            perceptionStatus={perceptionStatus}
-            setPerceptionStatus={setPerceptionStatus}
-            startPerception={startPerception}
-            stopPerception={stopPerception}
-          />
+          <Simulation constants={constants} onRunningChange={setAlgorithmRunning} />
         )}
 
         {/* Placeholder views for other sections */}
         {currentView === "perception" && (
-          <Perception
-            perceptionStatus={perceptionStatus}
-            setPerceptionStatus={setPerceptionStatus}
-            startPerception={startPerception}
-            stopPerception={stopPerception}
-          />
+          <Perception />
         )}
 
         {currentView === "algorithms" && (

@@ -25,5 +25,10 @@ def nextVectorDirection(actual, next):
     degact = np.arctan2(actualv[1], actualv[0]) + np.pi
     if (degact - degnext > 0):
         theta *= -1
-    print(f"[theta] actual={actual}, next={next}, theta={theta}°")
     return theta
+
+x = input("act x")
+y = input("act y")
+nx = input("next x")
+ny = input("next y")
+nextVectorDirection((x,y), (nx,ny))

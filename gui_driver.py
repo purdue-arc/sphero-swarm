@@ -1,13 +1,9 @@
-import math
 import pickle
 import socket
 import time
 
-import zmq
-
 from algorithms.algorithm import Algorithm
-from algorithms.constants import Constants, position_change
-from algorithms.form_instruction import nextVectorDirection
+from algorithms.constants import Constants
 from algorithms.sphero import Sphero
 from controls.Instruction import Instruction
 from gui_server import get_next_command, send_algorithm_state
@@ -176,73 +172,6 @@ def _connect_controls(port: int) -> socket.socket:
     return sock
 
 
-def _make_zmq_socket() -> zmq.Socket:
-    """Create and connect a ZMQ REQ socket to the perception backend."""
-    ctx = zmq.Context.instance()
-    sock = ctx.socket(zmq.REQ)
-    sock.setsockopt(zmq.RCVTIMEO, 2000)   # 2 s receive timeout
-    sock.setsockopt(zmq.SNDTIMEO, 2000)   # 2 s send timeout
-    sock.connect("tcp://localhost:5555")
-    return sock
-
-
-def _do_error_correction(
-    controls_sock: socket.socket,
-    algorithm: Algorithm,
-    constants: Constants,
-    zmq_sock: zmq.Socket,
-) -> None:
-    """
-    Query the perception backend for actual sphero positions and send
-    proportional correction roll instructions so each sphero finishes
-    at its intended target node.
-    """
-    try:
-        zmq_sock.send_string("coords")
-        data = zmq_sock.recv_json()
-    except zmq.error.Again:
-        print("[gui_driver] error_correction: perception not responding (timeout)")
-        return
-    except Exception as exc:
-        print(f"[gui_driver] error_correction: ZMQ error – {exc}")
-        return
-
-    id_to_sphero = {s.id: s for s in algorithm.find_all_spheros()}
-    for entry in data.get("spheros", []):
-        sphero = id_to_sphero.get(entry.get("id"))
-        if sphero is None:
-            continue
-
-        sphero.true_x = entry["x"]
-        sphero.true_y = entry["y"]
-
-        dx, dy = position_change[sphero.direction]
-        original = math.sqrt(dx ** 2 + dy ** 2)
-        remaining = math.sqrt(
-            (sphero.target_x - sphero.true_x) ** 2
-            + (sphero.target_y - sphero.true_y) ** 2
-        )
-
-        corrected_speed = (
-            int(constants.SPHERO_SPEED * (remaining / original)) if original > 0 else 0
-        )
-        corrected_speed = max(0, min(255, corrected_speed))
-
-        angle = nextVectorDirection(
-            (sphero.true_x, sphero.true_y),
-            (sphero.target_x, sphero.target_y),
-        )
-
-        try:
-            controls_sock.send(pickle.dumps([Instruction(sphero.id, 2, angle, constants.TURN_DURATION)]))
-            controls_sock.recv(1024)
-            controls_sock.send(pickle.dumps([Instruction(sphero.id, 1, corrected_speed, constants.ROLL_DURATION)]))
-            controls_sock.recv(1024)
-        except Exception as exc:
-            print(f"[gui_driver] error_correction: controls send failed – {exc}")
-            break
-
-
 if __name__ == "__main__":
     constants = Constants()
     algorithm = _build_algorithm(constants)
@@ -251,12 +180,7 @@ if __name__ == "__main__":
     paused = False
     use_controls = False
     use_algorithm_colors = True
-    error_correction = constants.ERROR_CORRECTION
     controls_sock = None
-
-    # ZMQ socket for error correction – connected lazily on first use
-    zmq_sock: zmq.Socket | None = None
-    zmq_initialized = False   # True once "init" handshake has been sent
 
     step_delay = 4.0
     edit_ball_queue: list[tuple[int, tuple[int, int]]] = []
@@ -281,10 +205,6 @@ if __name__ == "__main__":
                 elif typ == "use_algorithm_colors":
                     use_algorithm_colors = bool(cmd.get("value"))
                     print(f"[gui_driver] use_algorithm_colors set to {use_algorithm_colors}")
-
-                elif typ == "error_correction":
-                    error_correction = bool(cmd.get("value"))
-                    print(f"[gui_driver] error_correction set to {error_correction}")
 
                 elif typ == "start":
                     constants = Constants()
@@ -384,28 +304,6 @@ if __name__ == "__main__":
                     )
                     sent_controls_this_tick = True
 
-                    if error_correction:
-                        # Wait for the physical roll to complete before sampling positions.
-                        time.sleep(constants.ROLL_DURATION + 0.2)
-
-                        # Lazily connect and initialise the ZMQ socket.
-                        if zmq_sock is None:
-                            zmq_sock = _make_zmq_socket()
-                            zmq_initialized = False
-
-                        if not zmq_initialized:
-                            try:
-                                zmq_sock.send_string("init")
-                                zmq_sock.recv_string()
-                                zmq_initialized = True
-                            except zmq.error.Again:
-                                print("[gui_driver] error_correction: ZMQ init timeout – skipping")
-                            except Exception as exc:
-                                print(f"[gui_driver] error_correction: ZMQ init error – {exc}")
-
-                        if zmq_initialized:
-                            _do_error_correction(controls_sock, algorithm, constants, zmq_sock)
-
                 print("NEW_MOVE")
 
             send_algorithm_state(algorithm)
@@ -416,5 +314,3 @@ if __name__ == "__main__":
     finally:
         if controls_sock is not None:
             controls_sock.close()
-        if zmq_sock is not None:
-            zmq_sock.close()
