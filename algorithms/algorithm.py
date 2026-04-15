@@ -39,13 +39,14 @@ class Algorithm:
             return_str += str(group) + '\n'
         return return_str
     
-    def log(self, line):
+    def log(self, line, indent=0):
         '''
         Appends argument as a new log line
+        Passing indent argument applies \t times its value to each line 
         '''
 
-        self.log_lines.append(f'\n{line}')
-        print(f'[{line.replace('\n', '\n(')}')
+        self.log_lines.append(f'\n{'\t'*indent + line}')
+        print(f'[ {line.replace('\n', '\n(')}')
 
 
     def find_all_spheros(self) -> list[Sphero]:
@@ -186,13 +187,15 @@ class Algorithm:
             if len(group.spheros) == 0:
                 continue #empty group
 
+            self.log('')
+
             # find a valid move for the group
             valid_move = self.find_group_move(group) # will return a valid move for group, error checking done
 
             if valid_move >= 0 and valid_move <= 8: # for staying still (0) / translation (1 to 8)
 
                 # print(f"Group: {group.group_id}\tDirection: {valid_move}\tTranslation")
-                self.log(f"Group: {group.group_id}\tDirection: {valid_move}\tTranslation")
+                self.log(f"\nGroup: {group.group_id}\tDirection: {valid_move}\tTranslation")
 
                 dx, dy = constants.position_change[valid_move]
 
@@ -223,7 +226,7 @@ class Algorithm:
                 '''
 
                 # print(f"Group: {group.group_id}\tDirection: {valid_move}\tRotation")
-                self.log(f"Group: {group.group_id}\tDirection: {valid_move}\tRotation")
+                self.log(f"\nGroup: {group.group_id}\tDirection: {valid_move}\tRotation")
 
                 center = self.find_sphero(group.center)
 
@@ -257,7 +260,6 @@ class Algorithm:
 
                     # Update box
                     group.box = rotated_box
-
 
         self.purge_grid(self.next_grid) # get rid of box placeholders for rotation
         self.edge_grid = [[0 for _ in range(constants.GRID_HEIGHT * 2)] for _ in range(constants.GRID_WIDTH * 2)]
@@ -301,7 +303,7 @@ class Algorithm:
         '''   
         # make sure it's a translation
         if move in constants.position_change.keys():
-            print(f'checking sphero {str(sphero)} and POTENTIAL direction {move}')
+            self.log(f'checking sphero {str(sphero)} and POTENTIAL direction {move}', 1)
             dx, dy = constants.position_change[move]
 
             #print('sphero next position x:', sphero.x+dx, 'y:', sphero.y+dy, '\nalgorithm width and height: ', self.grid_width, self.grid_height)
