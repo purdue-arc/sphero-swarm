@@ -1,14 +1,13 @@
 import numpy as np
 
-import numpy as np
-
+# Returns necessary change in angle to point in new direction
 def nextVectorDirection(sphero):
-    actualv = np.array([sphero.x, sphero.y], dtype=float)
-    nextv = np.array([sphero.target_x, sphero.target_y], dtype=float)
-    prev_angle = sphero.previous_int_angle
+    actualv = np.array([sphero.x, sphero.y], dtype=float) # Current position
+    nextv = np.array([sphero.target_x, sphero.target_y], dtype=float) # Next position
+    prev_angle = sphero.previous_int_angle # Current angle
 
     # Direction vector
-    direction = nextv - actualv
+    direction = nextv - actualv # Desired vector
 
     if np.linalg.norm(direction) == 0:
         return 0  # no movement → no turn
