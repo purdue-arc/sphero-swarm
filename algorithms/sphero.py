@@ -21,6 +21,7 @@ class Sphero:
         self.target_y = target_y if target_y is not None else y
         self.previous_direction = previous_direction
         self.direction = direction
+        self.previous_int_angle = 0
 
         # bonding rules. CHANGE THIS if you need to change the bonding rules
         self.bonding_directions = bonding_directions #the default: spheros can bond in all 8 directions.
@@ -89,6 +90,9 @@ class Sphero:
         Returns:
            (int): Difference between previous and current direction
         """
+        if self.direction >= 9:
+            return self.direction
+
         return self.previous_direction - self.direction
 
     def get_position_change(self):

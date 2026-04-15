@@ -7,7 +7,7 @@ class Constants:
         # Core grid and movement constants
         self.MARGIN = 0
         self.DIRECTIONS = 8
-        self.ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8]
+        self.ALL_DIRECTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 
         self.position_change = {
             0: (0, 0),
