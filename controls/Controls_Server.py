@@ -4,6 +4,9 @@
 # check out get_battery_percentage in power in the Spherov2 module
 # are we really pairing using bluetooth or are we broadcasting...
 
+import sys
+print(sys.version)
+
 # scanner to find balls
 from spherov2 import scanner
 # api itself proper
@@ -26,6 +29,7 @@ import time
 import asyncio
 import websockets
 import json
+from typing import Optional
 
 # these for interfile communication, pickle turns objects into byte streams
 import pickle
@@ -188,9 +192,17 @@ def command_gathering(valid_sphero_ids, command_array_2d):
     while (KILL_FLAG == 0):
         try:
             print(valid_sphero_ids)
-            appending_array = [None] * len(valid_sphero_ids)
+            appending_array: list[Optional[Instruction]] = [None] * len(valid_sphero_ids)
             instruction_list = pickle.loads(conn.recv(1024)) 
             for instruction in instruction_list:
+                # Some clients send singleton wrapper lists; unwrap them.
+                while isinstance(instruction, list) and len(instruction) == 1:
+                    instruction = instruction[0]
+
+                if not isinstance(instruction, Instruction):
+                    print("Ignoring malformed instruction payload")
+                    continue
+
                 print(f"ID: {instruction.spheroID}\nType: {instruction.type}\nColor: {instruction.color}\nDegree: {instruction.degrees}\nSpeed: {instruction.speed}\nDuration: {instruction.duration}\n")
                 try:
                     # immediately terminate program
@@ -199,8 +211,11 @@ def command_gathering(valid_sphero_ids, command_array_2d):
                         break
                     index = instruction.spheroID - 1 # changed to account for an off by 1 error we encountered in testing
                     print('index AHHHH = ', index)
+                    if (index < 0 or index >= len(appending_array)):
+                        print("Ignoring instruction with out-of-range spheroID")
+                        continue
                     appending_array[index] = instruction
-                except ValueError:
+                except (AttributeError, TypeError, ValueError):
                     print("Attempting to send command to not connnected ball...")
                     continue
             if (KILL_FLAG == 0):
@@ -220,47 +235,61 @@ def command_gathering(valid_sphero_ids, command_array_2d):
 # the individual method for running a command on a sphero ball
 def run_command(sb, command):
     global KILL_FLAG
-    if (command != None):
-        match (command.type):
-            case -2:
-                # really shouldn't happen, but just in case
-                KILL_FLAG = 1
-            case -1:
-                KILL_FLAG = 1
-            case 0:
-                sb.set_main_led(command.color)
-            case 1:
-                if (command.speed < 0):
-                    sb._SpheroEduAPI__toy.drive_with_heading(abs(command.speed), sb.get_heading(), DriveFlags.BACKWARD)
-                    sb.stop_roll()
-                else:
-                    sb._SpheroEduAPI__toy.drive_with_heading(abs(command.speed), sb.get_heading(), DriveFlags.FORWARD)
-                command_dur = command.duration
-                while (command_dur > 0 and KILL_FLAG == 0):
-                    time.sleep(0.01)
-                    command_dur -= 0.01
+    if isinstance(command, list):
+        command = command[0] if len(command) > 0 else None
+
+    if (command == None):
+        return
+
+    if (command.type == -2):
+        # really shouldn't happen, but just in case
+        KILL_FLAG = 1
+        return
+
+    if (command.type == -1):
+        KILL_FLAG = 1
+        return
+
+    # Ignore movement/LED commands for disconnected slots.
+    if (sb == None):
+        logging.warning("Skipping command type %s because Sphero is disconnected", command.type)
+        return
+
+    match (command.type):
+        case 0:
+            sb.set_main_led(command.color)
+        case 1:
+            if (command.speed < 0):
+                sb._SpheroEduAPI__toy.drive_with_heading(abs(command.speed), sb.get_heading(), DriveFlags.BACKWARD)
                 sb.stop_roll()
-            case 2:
-                # cannot use sb.spin here, as the KILL_FLAG doesn't really work out then, code based on it
-                # sb.spin(command.degrees, command.duration)
+            else:
+                sb._SpheroEduAPI__toy.drive_with_heading(abs(command.speed), sb.get_heading(), DriveFlags.FORWARD)
+            command_dur = command.duration
+            while (command_dur > 0 and KILL_FLAG == 0):
+                time.sleep(0.01)
+                command_dur -= 0.01
+            sb.stop_roll()
+        case 2:
+            # cannot use sb.spin here, as the KILL_FLAG doesn't really work out then, code based on it
+            # sb.spin(command.degrees, command.duration)
 
-                time_pre_rev = .45
+            time_pre_rev = .45
 
-                abs_angle = abs(command.degrees)
-                duration = max(command.duration, time_pre_rev * abs_angle / 360)
+            abs_angle = abs(command.degrees)
+            duration = max(command.duration, time_pre_rev * abs_angle / 360)
 
-                start = time.time()
-                angle_gone = 0
-                while (angle_gone < abs_angle and KILL_FLAG == 0):
-                    delta = round(min((time.time() - start) / duration, 1.) * abs_angle) - angle_gone
-                    sb.set_heading(sb.get_heading() + delta if command.degrees > 0 else sb.get_heading() - delta)
-                    angle_gone += delta
+            start = time.time()
+            angle_gone = 0
+            while (angle_gone < abs_angle and KILL_FLAG == 0):
+                delta = round(min((time.time() - start) / duration, 1.) * abs_angle) - angle_gone
+                sb.set_heading(sb.get_heading() + delta if command.degrees > 0 else sb.get_heading() - delta)
+                angle_gone += delta
 
-            case 3:
-                command_dur = command.duration
-                while (command_dur > 0 and KILL_FLAG == 0):
-                    time.sleep(0.01)
-                    command_dur -= 0.01
+        case 3:
+            command_dur = command.duration
+            while (command_dur > 0 and KILL_FLAG == 0):
+                time.sleep(0.01)
+                command_dur -= 0.01
 
 # runs one cycle of commands
 def run_multi_command(sb_list, commands):
@@ -270,7 +299,8 @@ def run_multi_command(sb_list, commands):
     threads = []
 
     for i in range(0, len(sb_list), 1):
-        thread = threading.Thread(target=run_command, args=[sb_list[i], commands[i]])
+        command = commands[i] if i < len(commands) else None
+        thread = threading.Thread(target=run_command, args=[sb_list[i], command])
         threads.append(thread)
         thread.start()
 
@@ -323,7 +353,7 @@ def get_kalman_filtering(sb_list):
 
     start = globals()['_KF_NEXT_IDX'] % n
     chosen = None
-    chosen_idx = None
+    chosen_idx: Optional[int] = None
     # find next sphero
     for offset in range(n):
         i = (start + offset) % n
@@ -333,7 +363,7 @@ def get_kalman_filtering(sb_list):
             break
     globals()['_KF_NEXT_IDX'] = (start + 1) % n
 
-    if chosen is None:
+    if chosen is None or chosen_idx is None:
         return None
 
     # call helper to sample and append one row
