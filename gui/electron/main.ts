@@ -1,46 +1,43 @@
 import { app, BrowserWindow, ipcMain } from "electron";
 import path from "path";
-import os from "os";
+import { existsSync } from "fs";
 import { fileURLToPath } from "url";
 import { spawn, spawnSync } from "child_process";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-function getPythonExecutable() {
-  const home = os.homedir();
-  const candidates = [
-    // PATH-based lookups (uses shell so conda/pyenv/brew envs are found)
-    "python3",
-    "python",
-    // macOS Homebrew (Apple Silicon)
-    "/opt/homebrew/bin/python3",
-    // macOS Homebrew (Intel)
-    "/usr/local/bin/python3",
-    // conda (common install locations)
-    `${home}/miniconda3/bin/python3`,
-    `${home}/anaconda3/bin/python3`,
-    `${home}/miniforge3/bin/python3`,
-    // pyenv shims
-    `${home}/.pyenv/shims/python3`,
-  ];
-  for (const v of candidates) {
-    const result = spawnSync(v, ["--version"], { shell: false });
-    if (result.status === 0) {
-      console.log(`Using Python executable: ${v}`);
-      return v;
-    }
+type UvCommand = {
+  executable: string;
+};
+
+function getUvCommand(): UvCommand {
+  const repoRoot = path.resolve(__dirname, "../../");
+
+  if (!existsSync(path.join(repoRoot, "pyproject.toml"))) {
+    throw new Error("pyproject.toml not found. Run the GUI from the repository root.");
   }
-  throw new Error("Python not found. Install Python 3 via Homebrew (brew install python) or conda.");
+
+  if (!existsSync(path.join(repoRoot, "uv.lock"))) {
+    throw new Error("uv.lock not found. Install dependencies with uv before launching the GUI.");
+  }
+
+  const uvCheck = spawnSync("uv", ["--version"], { shell: false });
+  if (uvCheck.status !== 0) {
+    throw new Error("uv is required but was not found on PATH.");
+  }
+
+  return { executable: "uv" };
 }
 
 function getConfig() {
   return new Promise((resolve, reject) => {
-    const pythonExec = getPythonExecutable();
+    const uvCmd = getUvCommand();
+    const repoRoot = path.resolve(__dirname, "../../");
     const moduleFolder = path.join(__dirname, "../link");
-    const pythonProcess = spawn(pythonExec, ["-m", "gui"], {
+    const pythonProcess = spawn(uvCmd.executable, ["run", "--project", repoRoot, "python", "-m", "gui"], {
       cwd: moduleFolder,
-      stdio: "pipe"
+      stdio: "pipe",
     });
 
     let dataString = "";
@@ -85,7 +82,7 @@ function normalizeConstantsForSave(raw: any) {
 
   const normalizedTraits = traits
     .slice(0, n)
-    .map((t) => (t === "head" ? "head" : "tail"));
+    .map((t: any) => (t === "head" ? "head" : "tail"));
   if (!normalizedTraits.includes("head")) normalizedTraits[0] = "head";
 
   return {
@@ -100,11 +97,11 @@ function normalizeConstantsForSave(raw: any) {
 function startSpheroSpotter(config: any = {}) {
   if (spheroProcess) { console.log("Sphero Spotter already running"); return; }
   const cfg = { ...DEFAULT_PERCEPTION_CONFIG, ...config };
-  const pythonExec = getPythonExecutable();
+  const uvCmd = getUvCommand();
+  const repoRoot = path.resolve(__dirname, "../../");
   const moduleFolder = path.join(__dirname, "../../perception");
 
-  const pyArgs = ["sphero_spotter.py", "-s"]; // -s = WebSocket server mode
-
+  const pyArgs = ["run", "--project", repoRoot, "python", "sphero_spotter.py", "-s"]; // -s = WebSocket server mode
 
   // if (cfg.inputSource === "webcam") {
   //   //pyArgs.push("-w");
@@ -120,7 +117,7 @@ function startSpheroSpotter(config: any = {}) {
   if (cfg.locked)  pyArgs.push("-l");
   if (cfg.latency) pyArgs.push("-t");
 
-  spheroProcess = spawn(pythonExec, pyArgs, { cwd: moduleFolder, stdio: "pipe" });
+  spheroProcess = spawn(uvCmd.executable, pyArgs, { cwd: moduleFolder, stdio: "pipe" });
   spheroProcess.stderr.on("data", (data: any) => { console.error(`Python error: ${data.toString()}`); });
   spheroProcess.on("close", (code: any, signal: any) => {
     console.log(`Sphero Spotter exited (code=${code}, signal=${signal})`);
@@ -139,19 +136,24 @@ function stopSpheroSpotter(force = false) {
 
 function startControls(config: any = {}) {
   if (controlsProcess) { console.log("Controls already running"); return; }
-  const pythonExec = getPythonExecutable();
+  const uvCmd = getUvCommand();
+  const repoRoot = path.resolve(__dirname, "../../");
   const moduleFolder = path.join(__dirname, "../../");
 
-  console.log(`Starting controls server with Python: ${pythonExec}`);
+  console.log(`Starting controls server with uv: uv run --project ${repoRoot} python -u -m controls.Controls_Server -s`);
 
-  controlsProcess = spawn(pythonExec, ["-u", "-m", "controls.Fall_2025_Sphero_Swarm_Server", "-s"], {
-    cwd: moduleFolder,
-    stdio: "pipe",
-    env: {
-      ...process.env,
-      PYTHONUNBUFFERED: "1",
-    },
-  });
+  controlsProcess = spawn(
+    uvCmd.executable,
+    ["run", "--project", repoRoot, "python", "-u", "-m", "controls.Controls_Server", "-s"],
+    {
+      cwd: moduleFolder,
+      stdio: "pipe",
+      env: {
+        ...process.env,
+        PYTHONUNBUFFERED: "1",
+      },
+    }
+  );
 
   controlsProcess.stdout.on("data", (data: any) => {
     process.stdout.write(data.toString());
@@ -220,7 +222,7 @@ function showMainAndCloseSplash() {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.show();
   }
-  
+
   if (splashWindow && !splashWindow.isDestroyed()) {
     setTimeout(() => {
       if (splashWindow && !splashWindow.isDestroyed()) {
@@ -263,11 +265,8 @@ function createMainWindow() {
   mainWindow.loadURL("http://localhost:5173");
   mainWindow.on("closed", () => { mainWindow = null; });
 
-  // Simulate loading progress on the splash while Vite/React loads.
-  // Cap at 95 — will jump to 100 when React is ready
   let progress = 0;
   const progressInterval = setInterval(() => {
-    // Advance quickly at first, then slow down to wait for the real ready signal
     const step = progress < 60 ? Math.random() * 12 + 4 : Math.random() * 2 + 0.5;
     progress = Math.min(progress + step, 95); // Cap at 95 — jumps to 100 on app-ready
     sendSplashProgress(Math.round(progress));

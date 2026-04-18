@@ -4,6 +4,10 @@ LOG_PATH = 'algorithms\logs\log.txt'
 
 class Constants:
     def __init__(self) -> None:
+
+        # Log paths
+        self.LOG_PATH = 'algorithms\logs\log.txt'
+
         # Core grid and movement constants
         self.MARGIN = 0
         self.DIRECTIONS = 8

@@ -57,8 +57,8 @@
   "SIM_DIST": 50,
   "FRAMES": 60,
   "SPHERO_SIM_RADIUS": 15,
-  "SIM_WIDTH": 250,
-  "SIM_HEIGHT": 250,
+  "SIM_WIDTH": 200,
+  "SIM_HEIGHT": 200,
   "EPSILON": 0.01,
   "SPHERO_SPEED": 66,
   "SPHERO_DIAGONAL_SPEED": 76,
@@ -147,39 +147,15 @@
     ]
   ],
   "SPHERO_TAGS": [
-    "SB-B5A9",
-    "SB-76B3",
-    "SB-1840",
-    "SB-E274",
-    "SB-CEB2"
+    "SB-B11D"
   ],
   "INITIAL_POSITIONS": [
     [
-      3,
-      4
-    ],
-    [
-      0,
-      0
-    ],
-    [
-      1,
-      2
-    ],
-    [
       2,
-      3
-    ],
-    [
-      4,
       2
     ]
   ],
   "INITIAL_TRAITS": [
-    "head",
-    "tail",
-    "tail",
-    "head",
-    "tail"
+    "head"
   ]
 }
