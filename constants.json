@@ -51,9 +51,9 @@
       1
     ]
   },
-  "N_SPHEROS": 5,
-  "GRID_WIDTH": 10,
-  "GRID_HEIGHT": 10,
+  "N_SPHEROS": 3,
+  "GRID_WIDTH": 5,
+  "GRID_HEIGHT": 5,
   "SIM_DIST": 50,
   "FRAMES": 60,
   "SPHERO_SIM_RADIUS": 15,
@@ -147,15 +147,27 @@
     ]
   ],
   "SPHERO_TAGS": [
-    "SB-B11D"
+    "SB-CEB2",
+    "SB-8262",
+    "SB-D950"
   ],
   "INITIAL_POSITIONS": [
     [
       2,
       2
+    ],
+    [
+      0,
+      0
+    ],
+    [
+      4,
+      2
     ]
   ],
   "INITIAL_TRAITS": [
-    "head"
+    "head",
+    "tail",
+    "tail"
   ]
 }

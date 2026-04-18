@@ -24,7 +24,24 @@ const KNOWN_TAGS = [
     'SB-BD0A',
     'SB-B5A9',
     'SB-E702',
-];
+    'SB-8262',
+    'SB-1A8C',
+    'SB-33C5',
+    'SB-5AB9',
+    'SB-D950',
+    'SB-C596',
+    'SB-1730',
+    'SB-41D3',
+    'SB-3881',
+    'SB-387B',
+    'SB-ADA3',
+    'SB-0439',
+    'SB-AD19',
+    'SB-865A',
+    'SB-4D8E',
+    'SB-7672',
+    'SB-7673',
+].toSorted();
 
 interface ConfigProps {
     constants: SpheroConstants;

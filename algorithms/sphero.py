@@ -21,7 +21,7 @@ class Sphero:
         self.target_y = target_y if target_y is not None else y
         self.previous_direction = previous_direction
         self.direction = direction
-        self.previous_int_angle = 0
+        self.previous_int_angle = 90
 
         # bonding rules. CHANGE THIS if you need to change the bonding rules
         self.bonding_directions = bonding_directions #the default: spheros can bond in all 8 directions.

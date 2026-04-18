@@ -1,12 +1,12 @@
 import json
 import os
-LOG_PATH = 'algorithms\logs\log.txt'
+LOG_PATH = 'algorithms\\logs\\log.txt'
 
 class Constants:
     def __init__(self) -> None:
 
         # Log paths
-        self.LOG_PATH = 'algorithms\logs\log.txt'
+        self.LOG_PATH = 'algorithms\\logs\\log.txt'
 
         # Core grid and movement constants
         self.MARGIN = 0

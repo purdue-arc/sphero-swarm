@@ -54,6 +54,24 @@ function getConfig() {
 let spheroProcess: any = null;
 let controlsProcess: any = null;
 
+function terminateProcessTree(child: any, force = false) {
+  if (!child || child.killed || typeof child.pid !== "number") return;
+
+  if (process.platform === "win32") {
+    // On Windows, kill the full process tree so uv and spawned python both exit.
+    const args = ["/pid", String(child.pid), "/t"];
+    if (force) args.push("/f");
+    spawnSync("taskkill", args, { shell: false, windowsHide: true });
+    return;
+  }
+
+  try {
+    child.kill(force ? "SIGKILL" : "SIGTERM");
+  } catch (error) {
+    console.error("Failed to terminate child process:", error);
+  }
+}
+
 const DEFAULT_PERCEPTION_CONFIG = {
   inputSource: "webcam",
   model: "./models/bestv3.pt",
@@ -129,8 +147,16 @@ function startSpheroSpotter(config: any = {}) {
 function stopSpheroSpotter(force = false) {
   if (!spheroProcess) return;
   console.log("Stopping Sphero Spotter...");
-  spheroProcess.kill(force ? "SIGKILL" : "SIGTERM");
+  terminateProcessTree(spheroProcess, force);
   spheroProcess = null;
+  return true;
+}
+
+function stopControls(force = false) {
+  if (!controlsProcess) return;
+  console.log("Stopping controls server...");
+  terminateProcessTree(controlsProcess, force);
+  controlsProcess = null;
   return true;
 }
 
@@ -181,6 +207,10 @@ ipcMain.handle("quit-app", () => { app.quit(); });
 ipcMain.handle("start-controls", () => {
   const started = startControls();
   return { status: started ? "started" : "already-running" };
+});
+ipcMain.handle("stop-controls", () => {
+  const stopped = stopControls();
+  return { status: stopped ? "stopped" : "not-running" };
 });
 ipcMain.handle("splash-button-clicked", () => {
   showMainAndCloseSplash();
@@ -279,6 +309,28 @@ app.whenReady().then(() => {
   createMainWindow();
 });
 
+app.on("before-quit", () => {
+  // Ensure child processes release their sockets before Electron exits.
+  stopControls(true);
+  stopSpheroSpotter(true);
+});
+
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+  if (process.platform !== "darwin") {
+    stopControls(true);
+    stopSpheroSpotter(true);
+    app.quit();
+  }
+});
+
+process.on("SIGINT", () => {
+  stopControls(true);
+  stopSpheroSpotter(true);
+  app.quit();
+});
+
+process.on("SIGTERM", () => {
+  stopControls(true);
+  stopSpheroSpotter(true);
+  app.quit();
 });

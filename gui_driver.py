@@ -313,6 +313,10 @@ if __name__ == "__main__":
                     )
                     sent_controls_this_tick = True
 
+                for sphero in algorithm.find_all_spheros():
+                    sphero.x = sphero.target_x
+                    sphero.y = sphero.target_y
+
                 print("NEW_MOVE")
 
             send_algorithm_state(algorithm)
