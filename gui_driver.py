@@ -1,6 +1,10 @@
+import json
 import pickle
 import socket
 import time
+
+import numpy as np
+import zmq
 
 from algorithms.algorithm import Algorithm
 from algorithms.constants import Constants
@@ -124,6 +128,7 @@ def _send_controls_update(
     algorithm: Algorithm,
     constants: Constants,
     use_algorithm_colors: bool,
+    actual_positions: dict | None = None,
 ) -> None:
     """Send color/rotate/roll instruction batches for the current sphero state."""
     color_instructions = []
@@ -143,10 +148,21 @@ def _send_controls_update(
             Instruction(sphero.id, 0, r, g, b)
         )
 
-        direction_change = sphero.get_direction_change()
-        rotate_instructions.append(
-            Instruction(sphero.id, 2, 45 * direction_change, constants.TURN_DURATION)
-        )
+        if constants.ERROR_CORRECTION and actual_positions is not None and sphero.direction != 0:
+            actual = actual_positions.get(sphero.id - 1)
+            if actual is not None:
+                theta = _next_vector_direction(actual, (sphero.target_x, sphero.target_y))
+                rotate_instructions.append(
+                    Instruction(sphero.id, 2, theta, constants.TURN_DURATION)
+                )
+            else:
+                rotate_instructions.append(
+                    Instruction(sphero.id, 2, 45 * sphero.get_direction_change(), constants.TURN_DURATION)
+                )
+        else:
+            rotate_instructions.append(
+                Instruction(sphero.id, 2, 45 * sphero.get_direction_change(), constants.TURN_DURATION)
+            )
 
         speed = constants.SPHERO_SPEED
         if sphero.direction > 0 and sphero.direction % 2 == 0:
@@ -172,6 +188,37 @@ def _connect_controls(port: int) -> socket.socket:
     return sock
 
 
+def _next_vector_direction(actual: tuple, target: tuple) -> float:
+    """Return signed rotation angle (degrees) to face from actual toward target."""
+    av = np.array(actual, dtype=float)
+    tv = np.array(target, dtype=float)
+    d = np.dot(tv, av)
+    theta = np.arccos(np.clip(d / (np.linalg.norm(tv) * np.linalg.norm(av)), -1.0, 1.0))
+    theta = np.round(theta * (180.0 / np.pi))
+    if np.arctan2(av[1], av[0]) - np.arctan2(tv[1], tv[0]) > 0:
+        theta *= -1
+    return float(theta)
+
+
+def _connect_perception(port: int = 5555) -> zmq.Socket:
+    ctx = zmq.Context()
+    sock = ctx.socket(zmq.REQ)
+    sock.setsockopt(zmq.RCVTIMEO, 500)
+    sock.connect(f"tcp://localhost:{port}")
+    return sock
+
+
+def _fetch_actual_positions(zmq_sock: zmq.Socket) -> dict[int, tuple[float, float]]:
+    """Query perception server; returns {perception_id: (x, y)} or {} on failure."""
+    try:
+        zmq_sock.send_string("coords")
+        data = json.loads(zmq_sock.recv_string())
+        return {s["ID"]: (s["X"], s["Y"]) for s in data.get("spheros", [])}
+    except Exception as e:
+        print(f"[gui_driver] perception fetch failed: {e}")
+        return {}
+
+
 if __name__ == "__main__":
     constants = Constants()
     algorithm = _build_algorithm(constants)
@@ -181,6 +228,7 @@ if __name__ == "__main__":
     use_controls = False
     use_algorithm_colors = True
     controls_sock = None
+    perception_sock = None
 
     step_delay = 4.0
     edit_ball_queue: list[tuple[int, tuple[int, int]]] = []
@@ -223,6 +271,12 @@ if __name__ == "__main__":
 
                     if use_controls and controls_sock is None:
                         controls_sock = _connect_controls(port)
+                    if use_controls and constants.ERROR_CORRECTION and perception_sock is None:
+                        try:
+                            perception_sock = _connect_perception()
+                            print("[gui_driver] connected to perception server")
+                        except Exception as e:
+                            print(f"[gui_driver] could not connect to perception: {e}")
                     print("[gui_driver] started")
 
                 elif typ == "reset":
@@ -231,6 +285,9 @@ if __name__ == "__main__":
                     constants = Constants()
                     algorithm = _build_algorithm(constants)
                     edit_ball_queue.clear()
+                    if perception_sock is not None:
+                        perception_sock.close()
+                        perception_sock = None
                     print("[gui_driver] reset")
 
                 elif typ == "pause" and running:
@@ -296,11 +353,15 @@ if __name__ == "__main__":
                 if use_controls and controls_sock is None:
                     controls_sock = _connect_controls(port)
                 if use_controls and controls_sock is not None and not sent_controls_this_tick:
+                    actual_positions = None
+                    if constants.ERROR_CORRECTION and perception_sock is not None:
+                        actual_positions = _fetch_actual_positions(perception_sock)
                     _send_controls_update(
                         controls_sock,
                         algorithm,
                         constants,
                         use_algorithm_colors,
+                        actual_positions,
                     )
                     sent_controls_this_tick = True
 
@@ -314,3 +375,5 @@ if __name__ == "__main__":
     finally:
         if controls_sock is not None:
             controls_sock.close()
+        if perception_sock is not None:
+            perception_sock.close()
