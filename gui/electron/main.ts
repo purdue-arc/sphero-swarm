@@ -53,15 +53,88 @@ function getConfig() {
 
 let spheroProcess: any = null;
 let controlsProcess: any = null;
+const expectedControlsExitPids = new Set<number>();
+
+function getListeningPidsForPort(port: number): number[] {
+  if (process.platform !== "win32") return [];
+
+  const result = spawnSync("netstat", ["-ano", "-p", "tcp"], {
+    shell: false,
+    windowsHide: true,
+    encoding: "utf8",
+  });
+
+  if (result.status !== 0 || !result.stdout) return [];
+
+  const suffix = `:${port}`;
+  const pids = new Set<number>();
+
+  for (const rawLine of result.stdout.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line.startsWith("TCP")) continue;
+
+    const cols = line.split(/\s+/);
+    // Expected: TCP local-address foreign-address state pid
+    if (cols.length < 5) continue;
+
+    const localAddress = cols[1] ?? "";
+    const state = cols[3] ?? "";
+    const pid = Number(cols[4]);
+
+    if (!localAddress.endsWith(suffix)) continue;
+    if (state.toUpperCase() !== "LISTENING") continue;
+    if (!Number.isInteger(pid) || pid <= 0) continue;
+
+    pids.add(pid);
+  }
+
+  return [...pids];
+}
+
+function killWindowsPidTree(pid: number, force = true) {
+  const args = ["/pid", String(pid), "/t"];
+  if (force) args.push("/f");
+  spawnSync("taskkill", args, { shell: false, windowsHide: true });
+}
+
+function cleanupOrphanedControlsServer(port = 6768) {
+  if (process.platform !== "win32") return;
+
+  const pids = getListeningPidsForPort(port);
+  if (pids.length === 0) return;
+
+  for (const pid of pids) {
+    // Best-effort cleanup for stale controls servers that survived abrupt exits.
+    killWindowsPidTree(pid, true);
+  }
+}
+
+function cleanupOrphanedPerceptionServers() {
+  if (process.platform !== "win32") return;
+
+  const perceptionPorts = [6767, 6770];
+  const pids = new Set<number>();
+
+  for (const port of perceptionPorts) {
+    for (const pid of getListeningPidsForPort(port)) {
+      pids.add(pid);
+    }
+  }
+
+  if (pids.size === 0) return;
+
+  for (const pid of pids) {
+    // Best-effort cleanup for stale perception servers that survive interrupts.
+    killWindowsPidTree(pid, true);
+  }
+}
 
 function terminateProcessTree(child: any, force = false) {
   if (!child || child.killed || typeof child.pid !== "number") return;
 
   if (process.platform === "win32") {
     // On Windows, kill the full process tree so uv and spawned python both exit.
-    const args = ["/pid", String(child.pid), "/t"];
-    if (force) args.push("/f");
-    spawnSync("taskkill", args, { shell: false, windowsHide: true });
+    killWindowsPidTree(child.pid, force);
     return;
   }
 
@@ -73,7 +146,7 @@ function terminateProcessTree(child: any, force = false) {
 }
 
 const DEFAULT_PERCEPTION_CONFIG = {
-  inputSource: "webcam",
+  inputSource: "oakd",
   model: "./models/bestv3.pt",
   conf: 0.25,
   imgsz: 640,
@@ -119,13 +192,16 @@ function startSpheroSpotter(config: any = {}) {
   const repoRoot = path.resolve(__dirname, "../../");
   const moduleFolder = path.join(__dirname, "../../perception");
 
+  // Prevent stale perception instances from keeping camera/ports active.
+  cleanupOrphanedPerceptionServers();
+
   const pyArgs = ["run", "--project", repoRoot, "python", "sphero_spotter.py", "-s"]; // -s = WebSocket server mode
 
-  // if (cfg.inputSource === "webcam") {
-  //   //pyArgs.push("-w");
-  // } else if (cfg.inputSource === "video" && cfg.videoPath) {
-  //   pyArgs.push("-v", cfg.videoPath);
-  // }
+  if (cfg.inputSource === "webcam") {
+    pyArgs.push("-w");
+  } else if (cfg.inputSource === "video" && cfg.videoPath) {
+    pyArgs.push("-v", cfg.videoPath);
+  }
   // // oakd = no flag needed
 
   pyArgs.push("-m", cfg.model);
@@ -145,18 +221,29 @@ function startSpheroSpotter(config: any = {}) {
 }
 
 function stopSpheroSpotter(force = false) {
-  if (!spheroProcess) return;
-  console.log("Stopping Sphero Spotter...");
-  terminateProcessTree(spheroProcess, force);
-  spheroProcess = null;
+  if (spheroProcess) {
+    console.log("Stopping Sphero Spotter...");
+    terminateProcessTree(spheroProcess, force);
+    spheroProcess = null;
+  }
+
+  // Also clean up stale listeners if PID tracking missed an orphaned child.
+  cleanupOrphanedPerceptionServers();
   return true;
 }
 
 function stopControls(force = false) {
-  if (!controlsProcess) return;
-  console.log("Stopping controls server...");
-  terminateProcessTree(controlsProcess, force);
-  controlsProcess = null;
+  if (controlsProcess) {
+    console.log("Stopping controls server...");
+    if (typeof controlsProcess.pid === "number") {
+      expectedControlsExitPids.add(controlsProcess.pid);
+    }
+    terminateProcessTree(controlsProcess, force);
+    controlsProcess = null;
+  }
+
+  // Also clean up any stale listener if a previous run was interrupted.
+  cleanupOrphanedControlsServer(6768);
   return true;
 }
 
@@ -165,6 +252,9 @@ function startControls(config: any = {}) {
   const uvCmd = getUvCommand();
   const repoRoot = path.resolve(__dirname, "../../");
   const moduleFolder = path.join(__dirname, "../../");
+
+  // Prevent bind failures from orphaned servers left by abrupt shutdowns.
+  cleanupOrphanedControlsServer(6768);
 
   console.log(`Starting controls server with uv: uv run --project ${repoRoot} python -u -m controls.Controls_Server -s`);
 
@@ -190,11 +280,39 @@ function startControls(config: any = {}) {
   controlsProcess.on("error", (error: any) => {
     console.error(`Controls server failed to start: ${error?.message ?? error}`);
   });
+  const startedProcessPid = typeof controlsProcess.pid === "number" ? controlsProcess.pid : null;
   controlsProcess.on("close", (code: any, signal: any) => {
-    console.log(`Controls server exited (code=${code}, signal=${signal})`);
+    if (startedProcessPid !== null && expectedControlsExitPids.has(startedProcessPid)) {
+      expectedControlsExitPids.delete(startedProcessPid);
+      console.log(`Controls server stopped (code=${code}, signal=${signal})`);
+    } else {
+      console.log(`Controls server exited (code=${code}, signal=${signal})`);
+    }
     controlsProcess = null;
   });
   return true;
+}
+
+function waitForControlsStartup(windowMs = 1200, pollMs = 100): Promise<boolean> {
+  const startedAt = Date.now();
+
+  return new Promise((resolve) => {
+    const poll = () => {
+      if (!controlsProcess) {
+        resolve(false);
+        return;
+      }
+
+      if (Date.now() - startedAt >= windowMs) {
+        resolve(true);
+        return;
+      }
+
+      setTimeout(poll, pollMs);
+    };
+
+    poll();
+  });
 }
 
 ipcMain.handle("start-sphero-spotter", async (_event, config) => { startSpheroSpotter(config); return { status: "started" }; });
@@ -211,6 +329,16 @@ ipcMain.handle("start-controls", () => {
 ipcMain.handle("stop-controls", () => {
   const stopped = stopControls();
   return { status: stopped ? "stopped" : "not-running" };
+});
+ipcMain.handle("refresh-controls", async () => {
+  stopControls(true);
+  const started = startControls();
+  if (!started) {
+    return { status: "failed" };
+  }
+
+  const ready = await waitForControlsStartup(1200, 100);
+  return { status: ready ? "started" : "failed" };
 });
 ipcMain.handle("splash-button-clicked", () => {
   showMainAndCloseSplash();
@@ -315,6 +443,11 @@ app.on("before-quit", () => {
   stopSpheroSpotter(true);
 });
 
+app.on("will-quit", () => {
+  stopControls(true);
+  stopSpheroSpotter(true);
+});
+
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     stopControls(true);
@@ -333,4 +466,9 @@ process.on("SIGTERM", () => {
   stopControls(true);
   stopSpheroSpotter(true);
   app.quit();
+});
+
+process.on("exit", () => {
+  stopControls(true);
+  stopSpheroSpotter(true);
 });

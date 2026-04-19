@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faPlay,
@@ -58,22 +58,19 @@ const MODELS = [
 const IMGSZ_OPTIONS = [320, 416, 640, 1280];
 const PERCEPTION_TELEMETRY_PORT = 6770;
 
-const DEFAULT_CONFIG: PerceptionConfig = {
-    inputSource: "webcam",
-    videoPath: "",
-    model: "./models/bestv3.pt",
-    conf: 0.25,
-    imgsz: 640,
-    grid: false,
-    locked: false,
-    latency: false,
-};
-
 // ── Component ────────────────────────────────────────────────────────────────
 
-export function Perception() {
-    const [spotterStatus, setSpotterStatus] = useState<"stopped" | "starting" | "started">("stopped");
-    const [config, setConfig] = useState<PerceptionConfig>(DEFAULT_CONFIG);
+export function Perception({
+    spotterStatus,
+    setSpotterStatus,
+    config,
+    setConfig,
+}: {
+    spotterStatus: "stopped" | "starting" | "started";
+    setSpotterStatus: (status: "stopped" | "starting" | "started") => void;
+    config: PerceptionConfig;
+    setConfig: Dispatch<SetStateAction<PerceptionConfig>>;
+}) {
     const [telemetry, setTelemetry] = useState<Telemetry | null>(null);
 
     const telemetryWsRef    = useRef<WebSocket | null>(null);
@@ -206,7 +203,6 @@ export function Perception() {
                         <button
                             className={`${s.btn} ${s.btnDanger}`}
                             onClick={handleStop}
-                            disabled={spotterStatus === "starting"}
                         >
                             <FontAwesomeIcon icon={faStop} /> Stop
                         </button>

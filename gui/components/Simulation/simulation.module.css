@@ -8,6 +8,15 @@
     box-sizing: border-box;
 }
 
+.compact {
+    padding: 0;
+}
+
+.compact .gridWrapper {
+    min-height: 420px;
+    height: 100%;
+}
+
 /* ── Sidebar ── */
 .sidebar {
     display: flex;

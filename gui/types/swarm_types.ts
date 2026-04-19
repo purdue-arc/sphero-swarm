@@ -57,3 +57,18 @@ export interface SpheroStatus {
     expectedPosition: [number, number];
     actualPosition: [number, number];
 }
+
+export interface SimulationSpheroSnapshot {
+  id: number;
+  x: number;
+  y: number;
+  color: string | [number, number, number];
+  direction: number;
+}
+
+export interface SimulationSnapshot {
+  timestamp: number;
+  grid: { width: number; height: number };
+  spheros: SimulationSpheroSnapshot[];
+  bonded_groups: number[][];
+}

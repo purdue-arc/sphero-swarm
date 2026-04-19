@@ -16,6 +16,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   },
   startControls: () =>
     ipcRenderer.invoke("start-controls"),
+  stopControls: () =>
+    ipcRenderer.invoke("stop-controls"),
+  refreshControls: () =>
+    ipcRenderer.invoke("refresh-controls"),
   appRenderComplete: () =>
     ipcRenderer.invoke("app-render-complete"),
   signalAppReady: () =>

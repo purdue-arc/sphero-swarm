@@ -74,6 +74,7 @@ export function StreamViewer({
             };
 
             wsRef.current.onmessage = (event: MessageEvent) => {
+                if (!shouldConnectRef.current) return;
                 setImageSrc(`data:image/jpeg;base64,${event.data}`);
                 frameCountRef.current++;
                 setFrameCount(prev => prev + 1);
@@ -113,10 +114,11 @@ export function StreamViewer({
     }, [serverStatus, port]);
 
     useEffect(() => {
-        if (imageSrc !== "") {
+        // Avoid reviving the stream state from late frames after a stop request.
+        if (imageSrc !== "" && shouldConnectRef.current && serverStatus !== "stopped") {
             setServerStatus("started");
         }
-    }, [imageSrc, setServerStatus]);
+    }, [imageSrc, serverStatus, setServerStatus]);
 
     return (
         <div
