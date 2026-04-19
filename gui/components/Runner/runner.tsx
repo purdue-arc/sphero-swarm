@@ -20,6 +20,12 @@ export function Runner({
     setPerceptionStatus,
     latestSimulationSnapshot,
     onSimulationSnapshot,
+    speed,
+    onSpeedChange,
+    useControls,
+    onUseControlsChange,
+    useAlgorithmColors,
+    onUseAlgorithmColorsChange,
 }: {
     constants: SpheroConstants;
     spheros: SpheroStatus[];
@@ -27,6 +33,12 @@ export function Runner({
     setPerceptionStatus: (status: "stopped" | "starting" | "started") => void;
     latestSimulationSnapshot: SimulationSnapshot | null;
     onSimulationSnapshot: (payload: SimulationSnapshot) => void;
+    speed: number;
+    onSpeedChange: (value: number) => void;
+    useControls: boolean;
+    onUseControlsChange: (value: boolean) => void;
+    useAlgorithmColors: boolean;
+    onUseAlgorithmColorsChange: (value: boolean) => void;
 }) {
     const connectedSpheros = spheros.filter(s => s.connection === "connected").length;
 
@@ -71,6 +83,12 @@ export function Runner({
                             compact
                             latestSnapshot={latestSimulationSnapshot}
                             onSnapshot={onSimulationSnapshot}
+                            speed={speed}
+                            onSpeedChange={onSpeedChange}
+                            useControls={useControls}
+                            onUseControlsChange={onUseControlsChange}
+                            useAlgorithmColors={useAlgorithmColors}
+                            onUseAlgorithmColorsChange={onUseAlgorithmColorsChange}
                         />
                     </div>
                 </div>

@@ -48,12 +48,24 @@ export function Simulation({
     compact = false,
     latestSnapshot,
     onSnapshot,
+    speed,
+    onSpeedChange,
+    useControls,
+    onUseControlsChange,
+    useAlgorithmColors,
+    onUseAlgorithmColorsChange,
 } : {
     constants : SpheroConstants,
     onRunningChange?: (running: boolean) => void,
     compact?: boolean,
     latestSnapshot?: SimulationSnapshot | null,
     onSnapshot?: (payload: SimulationSnapshot) => void,
+    speed: number,
+    onSpeedChange: (value: number) => void,
+    useControls: boolean,
+    onUseControlsChange: (value: boolean) => void,
+    useAlgorithmColors: boolean,
+    onUseAlgorithmColorsChange: (value: boolean) => void,
 }) {
     const [gridSize, setGridSize] = useState({ width: constants.GRID_WIDTH, height: constants.GRID_HEIGHT });
     const [connected, setConnected] = useState(false);
@@ -63,9 +75,6 @@ export function Simulation({
     const [editBall, setEditBall] = useState(false);
     const [selectedEditBallId, setSelectedEditBallId] = useState<number | null>(null);
     const [isPathDrawing, setIsPathDrawing] = useState(false);
-    const [speed, setSpeed] = useState(4);                // current delay value
-    const [useControls, setUseControls] = useState(false); // whether GUI commands are respected
-    const [useAlgorithmColors, setUseAlgorithmColors] = useState(true); // true => match driver.py color behavior
 
     const ballsRef = useRef<Map<number, Ball>>(new Map());
     const groupColorRef = useRef<Map<number, number>>(new Map());
@@ -81,6 +90,21 @@ export function Simulation({
 
     const wsRef = useRef<WebSocket | null>(null);
     const svgRef = useRef<SVGSVGElement | null>(null);
+    const speedRef = useRef(speed);
+    const useControlsRef = useRef(useControls);
+    const useAlgorithmColorsRef = useRef(useAlgorithmColors);
+
+    useEffect(() => {
+        speedRef.current = speed;
+    }, [speed]);
+
+    useEffect(() => {
+        useControlsRef.current = useControls;
+    }, [useControls]);
+
+    useEffect(() => {
+        useAlgorithmColorsRef.current = useAlgorithmColors;
+    }, [useAlgorithmColors]);
 
     const nodeIndex = useCallback((x: number, y: number, gw: number) => y * gw + x, []);
 
@@ -281,7 +305,15 @@ export function Simulation({
             ws = new WebSocket(WS_URL);
             wsRef.current = ws;
 
-            ws.onopen = () => { if (!dead) setConnected(true); };
+            ws.onopen = () => {
+                if (dead) return;
+                setConnected(true);
+
+                // Re-apply GUI control state on every fresh connection.
+                ws.send(JSON.stringify({ type: "use_controls", value: useControlsRef.current }));
+                ws.send(JSON.stringify({ type: "use_algorithm_colors", value: useAlgorithmColorsRef.current }));
+                ws.send(JSON.stringify({ type: "speed", value: speedRef.current }));
+            };
             ws.onclose = () => {
                 setConnected(false);
                 if (!dead) setTimeout(connect, 1500);
@@ -386,7 +418,7 @@ export function Simulation({
 
     const handleSpeedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = parseFloat(e.target.value);
-        setSpeed(val);
+        onSpeedChange(val);
         sendCommand({ type: "speed", value: val });
     };
 
@@ -411,7 +443,7 @@ export function Simulation({
 
     const toggleUseControls = () => {
         const next = !useControls;
-        setUseControls(next);
+        onUseControlsChange(next);
         sendCommand({ type: "use_controls", value: next });
         if (!next) {
             setRunning(false);
@@ -425,7 +457,7 @@ export function Simulation({
 
     const toggleUseAlgorithmColors = () => {
         const next = !useAlgorithmColors;
-        setUseAlgorithmColors(next);
+        onUseAlgorithmColorsChange(next);
         sendCommand({ type: "use_algorithm_colors", value: next });
     };
 

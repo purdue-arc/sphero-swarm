@@ -44,6 +44,9 @@ function App() {
     latency: false,
   });
   const [latestSimulationSnapshot, setLatestSimulationSnapshot] = useState<SimulationSnapshot | null>(null);
+  const [simulationSpeed, setSimulationSpeed] = useState(6);
+  const [useControls, setUseControls] = useState(false);
+  const [useAlgorithmColors, setUseAlgorithmColors] = useState(true);
 
   useEffect(() => {
     async function loadConstants() {
@@ -149,6 +152,12 @@ function App() {
             setPerceptionStatus={setPerceptionStatus}
             latestSimulationSnapshot={latestSimulationSnapshot}
             onSimulationSnapshot={setLatestSimulationSnapshot}
+            speed={simulationSpeed}
+            onSpeedChange={setSimulationSpeed}
+            useControls={useControls}
+            onUseControlsChange={setUseControls}
+            useAlgorithmColors={useAlgorithmColors}
+            onUseAlgorithmColorsChange={setUseAlgorithmColors}
           />
         )}
 
@@ -166,6 +175,12 @@ function App() {
             onRunningChange={setAlgorithmRunning}
             latestSnapshot={latestSimulationSnapshot}
             onSnapshot={setLatestSimulationSnapshot}
+            speed={simulationSpeed}
+            onSpeedChange={setSimulationSpeed}
+            useControls={useControls}
+            onUseControlsChange={setUseControls}
+            useAlgorithmColors={useAlgorithmColors}
+            onUseAlgorithmColorsChange={setUseAlgorithmColors}
           />
         )}
 

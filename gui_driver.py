@@ -191,7 +191,7 @@ if __name__ == "__main__":
     use_algorithm_colors = True
     controls_sock = None
 
-    step_delay = 4.0
+    step_delay = 6.0
     edit_ball_queue: list[tuple[int, tuple[int, int]]] = []
     port = 1235
 
