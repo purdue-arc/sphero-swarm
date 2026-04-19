@@ -51,9 +51,9 @@
       1
     ]
   },
-  "N_SPHEROS": 3,
-  "GRID_WIDTH": 5,
-  "GRID_HEIGHT": 5,
+  "N_SPHEROS": 10,
+  "GRID_WIDTH": 10,
+  "GRID_HEIGHT": 10,
   "SIM_DIST": 50,
   "FRAMES": 60,
   "SPHERO_SIM_RADIUS": 15,
@@ -147,26 +147,68 @@
     ]
   ],
   "SPHERO_TAGS": [
-    "SB-CEB2",
+    "SB-1730",
+    "SB-E1F3",
     "SB-8262",
-    "SB-D950"
+    "SB-3881",
+    "SB-C596",
+    "SB-7672",
+    "SB-387B",
+    "SB-33C5",
+    "SB-CEB2",
+    "SB-B11D"
   ],
   "INITIAL_POSITIONS": [
-    [
-      2,
-      2
-    ],
     [
       0,
       0
     ],
     [
-      4,
+      1,
+      1
+    ],
+    [
+      2,
       2
+    ],
+    [
+      3,
+      3
+    ],
+    [
+      4,
+      4
+    ],
+    [
+      5,
+      5
+    ],
+    [
+      6,
+      6
+    ],
+    [
+      7,
+      7
+    ],
+    [
+      8,
+      8
+    ],
+    [
+      9,
+      9
     ]
   ],
   "INITIAL_TRAITS": [
     "head",
+    "tail",
+    "tail",
+    "tail",
+    "tail",
+    "tail",
+    "tail",
+    "tail",
     "tail",
     "tail"
   ]

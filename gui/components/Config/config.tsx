@@ -41,6 +41,7 @@ const KNOWN_TAGS = [
     'SB-4D8E',
     'SB-7672',
     'SB-7673',
+    'SB-E1F3'
 ].toSorted();
 
 interface ConfigProps {
