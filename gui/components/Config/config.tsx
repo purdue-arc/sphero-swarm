@@ -22,6 +22,7 @@ const KNOWN_TAGS = [
     'SB-B11D',
     'SB-CEB2',
     'SB-BD0A',
+    'SB-B5A9',
     'SB-E702',
 ];
 
