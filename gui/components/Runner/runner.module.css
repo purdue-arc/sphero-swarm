@@ -132,12 +132,12 @@
 
 /* Live Feed */
 .liveFeed {
-    grid-column: span 8;
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 16px;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    padding: 1.75rem;
-    backdrop-filter: blur(10px);
+    grid-column: span 6;
+    background: transparent;
+    border: none;
+    padding: 0;
+    border-radius: 0;
+    backdrop-filter: none;
 }
 
 .sectionHeader {
@@ -204,12 +204,27 @@
     position: relative;
 }
 
-/* Controls Panel */
-.controlsPanel {
-    grid-column: span 4;
+/* Simulation Panel */
+.simulationPanel {
+    grid-column: span 6;
+    background: transparent;
+    border: none;
+    padding: 0;
+    border-radius: 0;
+    backdrop-filter: none;
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+}
+
+.simulationContainer {
+    flex: 1;
+    min-height: 400px;
+}
+
+.simMeta {
+    color: #94a3b8;
+    font-size: 0.8125rem;
+    font-weight: 600;
 }
 
 .controlCard {
@@ -490,9 +505,12 @@
         grid-column: span 1;
     }
     
-    .controlsPanel {
+    .simulationPanel {
         grid-column: span 1;
-        flex-direction: row;
+    }
+
+    .simulationContainer {
+        min-height: 360px;
     }
 }
 
@@ -515,8 +533,8 @@
         font-size: 2rem;
     }
     
-    .controlsPanel {
-        flex-direction: column;
+    .simulationContainer {
+        min-height: 320px;
     }
     
     .spheroGrid {

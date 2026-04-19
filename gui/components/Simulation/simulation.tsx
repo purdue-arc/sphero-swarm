@@ -2,22 +2,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlay, faPause } from "@fortawesome/free-solid-svg-icons";
 import styles from "./simulation.module.css";
-import type { SpheroConstants } from "../../types/swarm_types";
-
-interface ServerSphero {
-    id: number;       // 1-indexed
-    x: number;
-    y: number;
-    color: string | [number, number, number];
-    direction: number;
-}
-
-interface ServerPayload {
-    timestamp: number;
-    grid: { width: number; height: number };
-    spheros: ServerSphero[];
-    bonded_groups: number[][];  // arrays of 1-indexed ids
-}
+import type { SpheroConstants, SimulationSnapshot } from "../../types/swarm_types";
 
 interface Ball {
     id: number;          // matches server id (1-indexed)
@@ -57,7 +42,19 @@ function toCssColor(input: string | [number, number, number] | undefined, fallba
     return fallback;
 }
 
-export function Simulation({constants, onRunningChange} : {constants : SpheroConstants, onRunningChange?: (running: boolean) => void}) {
+export function Simulation({
+    constants,
+    onRunningChange,
+    compact = false,
+    latestSnapshot,
+    onSnapshot,
+} : {
+    constants : SpheroConstants,
+    onRunningChange?: (running: boolean) => void,
+    compact?: boolean,
+    latestSnapshot?: SimulationSnapshot | null,
+    onSnapshot?: (payload: SimulationSnapshot) => void,
+}) {
     const [gridSize, setGridSize] = useState({ width: constants.GRID_WIDTH, height: constants.GRID_HEIGHT });
     const [connected, setConnected] = useState(false);
     const [paused, setPaused] = useState(false);    
@@ -75,6 +72,7 @@ export function Simulation({constants, onRunningChange} : {constants : SpheroCon
     const bondLinesRef = useRef<[number, number][]>([]);
     const prevPosMapRef = useRef<Map<number, { x: number; y: number }>>(new Map());
     const bondMoveCountRef = useRef<Map<string, number>>(new Map());
+    const lastAppliedTimestampRef = useRef<number | null>(null);
 
     const gridRef = useRef({ width: 10, height: 10 });
 
@@ -106,6 +104,99 @@ export function Simulation({constants, onRunningChange} : {constants : SpheroCon
         const row = Math.floor(index / gw);
         return { x: PADDING + col * xStep, y: PADDING + row * yStep };
     }, []);
+
+    const applyPayload = useCallback((payload: SimulationSnapshot) => {
+        if (lastAppliedTimestampRef.current === payload.timestamp) return;
+        lastAppliedTimestampRef.current = payload.timestamp;
+
+        const gw = payload.grid.width;
+        const gh = payload.grid.height;
+        gridRef.current = { width: gw, height: gh };
+        setGridSize({ width: gw, height: gh });
+
+        const newGroupColor = new Map<number, number>();
+        payload.bonded_groups.forEach((group, groupIdx) => {
+            const paletteIdx = groupIdx % GROUP_PALETTE.length;
+            group.forEach(id => newGroupColor.set(id, paletteIdx));
+        });
+        groupColorRef.current = newGroupColor;
+
+        const balls = ballsRef.current;
+        const seenIds = new Set<number>();
+
+        payload.spheros.forEach((s) => {
+            seenIds.add(s.id);
+            const target = nodeIndex(s.x, s.y, gw);
+            const paletteIdx = newGroupColor.get(s.id) ?? (s.id - 1) % GROUP_PALETTE.length;
+            const palette = GROUP_PALETTE[paletteIdx];
+            const spheroCssColor = toCssColor(s.color, palette.color);
+
+            if (balls.has(s.id)) {
+                const ball = balls.get(s.id)!;
+                if (ball.targetNode !== target) {
+                    ball.currentNode = ball.targetNode;
+                    ball.targetNode = target;
+                    ball.progress = 0;
+                }
+                ball.color = spheroCssColor;
+                ball.glowColor = spheroCssColor;
+            } else {
+                balls.set(s.id, {
+                    id: s.id,
+                    color: spheroCssColor,
+                    glowColor: spheroCssColor,
+                    currentNode: target,
+                    targetNode: target,
+                    progress: 1,
+                });
+            }
+        });
+
+        for (const id of balls.keys()) {
+            if (!seenIds.has(id)) balls.delete(id);
+        }
+
+        const posMap = new Map<number, { x: number; y: number }>();
+        payload.spheros.forEach(s => posMap.set(s.id, { x: s.x, y: s.y }));
+
+        const lines: [number, number][] = [];
+        const seen = new Set<string>();
+
+        payload.bonded_groups.forEach((group) => {
+            if (group.length < 2) return;
+            for (let i = 0; i < group.length; i++) {
+                for (let j = i + 1; j < group.length; j++) {
+                    const a = group[i], b = group[j];
+                    const pa = posMap.get(a), pb = posMap.get(b);
+                    if (!pa || !pb) continue;
+                    const dx = Math.abs(pa.x - pb.x);
+                    const dy = Math.abs(pa.y - pb.y);
+                    if ((dx === 1 && dy === 0) || (dx === 0 && dy === 1) || (dx === 1 && dy === 1)) {
+                        const key = `${Math.min(a, b)}-${Math.max(a, b)}`;
+
+                        const prevA = prevPosMapRef.current.get(a);
+                        const prevB = prevPosMapRef.current.get(b);
+                        if (prevA && prevB) {
+                            const movedA = prevA.x !== pa.x || prevA.y !== pa.y;
+                            const movedB = prevB.x !== pb.x || prevB.y !== pb.y;
+                            if (movedA && movedB) {
+                                const prevCount = bondMoveCountRef.current.get(key) || 0;
+                                bondMoveCountRef.current.set(key, prevCount + 1);
+                            }
+                        }
+
+                        const count = bondMoveCountRef.current.get(key) || 0;
+                        if (count > 1 && !seen.has(key)) {
+                            seen.add(key);
+                            lines.push([a, b]);
+                        }
+                    }
+                }
+            }
+        });
+        bondLinesRef.current = lines;
+        prevPosMapRef.current = posMap;
+    }, [nodeIndex]);
 
     const getNodeFromPointer = useCallback((clientX: number, clientY: number) => {
         if (COLS <= 1 || ROWS <= 1) return null;
@@ -198,112 +289,21 @@ export function Simulation({constants, onRunningChange} : {constants : SpheroCon
             ws.onerror = () => ws.close();
 
             ws.onmessage = (evt) => {
-                let payload: ServerPayload;
+                let payload: SimulationSnapshot;
                 try { payload = JSON.parse(evt.data); } catch { return; }
-                console.log(payload)
-
-                const gw = payload.grid.width;
-                const gh = payload.grid.height;
-                gridRef.current = { width: gw, height: gh };
-                setGridSize({ width: gw, height: gh });
-
-                const newGroupColor = new Map<number, number>();
-                payload.bonded_groups.forEach((group, groupIdx) => {
-                    const paletteIdx = groupIdx % GROUP_PALETTE.length;
-                    group.forEach(id => newGroupColor.set(id, paletteIdx));
-                });
-                groupColorRef.current = newGroupColor;
-
-                const balls = ballsRef.current;
-                const seenIds = new Set<number>();
-
-                payload.spheros.forEach((s) => {
-                    seenIds.add(s.id);
-                    const target = nodeIndex(s.x, s.y, gw);
-                    const paletteIdx = newGroupColor.get(s.id) ?? (s.id - 1) % GROUP_PALETTE.length;
-                    const palette = GROUP_PALETTE[paletteIdx];
-                    const spheroCssColor = toCssColor(s.color, palette.color);
-
-                    if (balls.has(s.id)) {
-                        const ball = balls.get(s.id)!;
-                        // Only update target if the sphero actually moved
-                        if (ball.targetNode !== target) {
-                            ball.currentNode = ball.targetNode;
-                            ball.targetNode = target;
-                            ball.progress = 0;
-                        }
-                        // Always sync colour to algorithm/driver-provided sphero color.
-                        ball.color = spheroCssColor;
-                        ball.glowColor = spheroCssColor;
-                    } else {
-                        balls.set(s.id, {
-                            id: s.id,
-                            color: spheroCssColor,
-                            glowColor: spheroCssColor,
-                            currentNode: target,
-                            targetNode: target,
-                            progress: 1,
-                        });
-                    }
-                });
-
-                // Remove balls for spheros no longer in payload
-                for (const id of balls.keys()) {
-                    if (!seenIds.has(id)) balls.delete(id);
-                }
-
-                const posMap = new Map<number, { x: number; y: number }>();
-                payload.spheros.forEach(s => posMap.set(s.id, { x: s.x, y: s.y }));
-
-                const lines: [number, number][] = [];
-                const seen = new Set<string>();
-
-                // traverse groups to build bond lines, but only include bonds that
-                // have been "activated" by moving together at least once
-                payload.bonded_groups.forEach((group) => {
-                    if (group.length < 2) return;
-                    for (let i = 0; i < group.length; i++) {
-                        for (let j = i + 1; j < group.length; j++) {
-                            const a = group[i], b = group[j];
-                            const pa = posMap.get(a), pb = posMap.get(b);
-                            if (!pa || !pb) continue;
-                            const dx = Math.abs(pa.x - pb.x);
-                            const dy = Math.abs(pa.y - pb.y);
-                            // Cardinal and diagonal neighbours
-                            if ((dx === 1 && dy === 0) || (dx === 0 && dy === 1) || (dx === 1 && dy === 1)) {
-                                const key = `${Math.min(a, b)}-${Math.max(a, b)}`;
-
-                                // count joint moves for this bond
-                                const prevA = prevPosMapRef.current.get(a);
-                                const prevB = prevPosMapRef.current.get(b);
-                                if (prevA && prevB) {
-                                    const movedA = prevA.x !== pa.x || prevA.y !== pa.y;
-                                    const movedB = prevB.x !== pb.x || prevB.y !== pb.y;
-                                    if (movedA && movedB) {
-                                        const prevCount = bondMoveCountRef.current.get(key) || 0;
-                                        bondMoveCountRef.current.set(key, prevCount + 1);
-                                    }
-                                }
-
-                                const count = bondMoveCountRef.current.get(key) || 0;
-                                if (count > 1 && !seen.has(key)) {
-                                    seen.add(key);
-                                    lines.push([a, b]);
-                                }
-                            }
-                        }
-                    }
-                });
-                bondLinesRef.current = lines;
-
-                // update previous positions for next tick
-                prevPosMapRef.current = posMap;
+                onSnapshot?.(payload);
+                applyPayload(payload);
             };
         }
 
         connect();
         return () => { dead = true; ws?.close(); };
-    }, [nodeIndex]);
+    }, [applyPayload, onSnapshot]);
+
+    useEffect(() => {
+        if (!latestSnapshot) return;
+        applyPayload(latestSnapshot);
+    }, [latestSnapshot, applyPayload]);
 
     // helper to toggle pause/resume on the server
     const togglePause = () => {
@@ -432,7 +432,7 @@ export function Simulation({constants, onRunningChange} : {constants : SpheroCon
     // ── Render ─────────────────────────────────────────────────────────────
 
     return (
-        <div className={styles.simulationContainer}>
+        <div className={`${styles.simulationContainer} ${compact ? styles.compact : ""}`}>
             {/* Grid canvas */}
             <div className={styles.gridWrapper}>
                 {paused && (
@@ -576,7 +576,7 @@ export function Simulation({constants, onRunningChange} : {constants : SpheroCon
             </div>
 
             {/* Sidebar */}
-            <aside className={styles.sidebar}>
+            {!compact && <aside className={styles.sidebar}>
                 {/* Logo / title area */}
                 <div className={styles.sidebarHeader}>
                     <span className={styles.sidebarTitle}>Swarm</span>
@@ -684,7 +684,7 @@ export function Simulation({constants, onRunningChange} : {constants : SpheroCon
                         </div>
                     </label>
                 </div>
-            </aside>
+            </aside>}
 
         </div>
     );

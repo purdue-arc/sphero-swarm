@@ -7,7 +7,7 @@ import { Simulation } from "../components/Simulation/simulation"
 import { Perception } from "../components/Perception/perception"
 
 import { useState, useEffect } from 'react'
-import type { SpheroConstants, SpheroStatus, PerceptionConfig } from '../types/swarm_types'
+import type { SpheroConstants, SpheroStatus, PerceptionConfig, SimulationSnapshot } from '../types/swarm_types'
 
 declare global {
   interface Window {
@@ -18,6 +18,8 @@ declare global {
       startSpheroSpotter: (config?: PerceptionConfig) => Promise<any>;
       stopSpheroSpotter: () => Promise<any>;
       startControls: () => Promise<any>;
+      stopControls: () => Promise<any>;
+      refreshControls: () => Promise<any>;
       quitApp: () => Promise<any>;
       saveConstants: (form: any) => Promise<any>;
     };
@@ -30,6 +32,18 @@ function App() {
   const [spheros, setSpheros] = useState<SpheroStatus[]>([])
   const [authReady, setAppReady] = useState(false);
   const [algorithmRunning, setAlgorithmRunning] = useState(false);
+  const [perceptionStatus, setPerceptionStatus] = useState<"stopped" | "starting" | "started">("stopped");
+  const [perceptionConfig, setPerceptionConfig] = useState<PerceptionConfig>({
+    inputSource: "oakd",
+    videoPath: "",
+    model: "./models/bestv3.pt",
+    conf: 0.25,
+    imgsz: 640,
+    grid: false,
+    locked: false,
+    latency: false,
+  });
+  const [latestSimulationSnapshot, setLatestSimulationSnapshot] = useState<SimulationSnapshot | null>(null);
 
   useEffect(() => {
     async function loadConstants() {
@@ -64,6 +78,42 @@ function App() {
     );
   }, [constants])
 
+  useEffect(() => {
+    let ws: WebSocket | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let dead = false;
+
+    const connect = () => {
+      if (dead) return;
+      ws = new WebSocket("ws://localhost:6769");
+
+      ws.onmessage = (event) => {
+        try {
+          const payload: SimulationSnapshot = JSON.parse(event.data);
+          setLatestSimulationSnapshot(payload);
+        } catch {
+          // ignore malformed payloads
+        }
+      };
+
+      ws.onclose = () => {
+        if (!dead) {
+          reconnectTimer = setTimeout(connect, 1000);
+        }
+      };
+
+      ws.onerror = () => ws?.close();
+    };
+
+    connect();
+
+    return () => {
+      dead = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      ws?.close();
+    };
+  }, []);
+
   if (constants == null || !authReady) {
     return (
       <div style={{
@@ -92,7 +142,14 @@ function App() {
       />
       <div className={styles.viewer}>
         {currentView === "dashboard" && (
-          <Runner constants={constants} spheros={spheros} setSpheros={setSpheros} />
+          <Runner
+            constants={constants}
+            spheros={spheros}
+            perceptionStatus={perceptionStatus}
+            setPerceptionStatus={setPerceptionStatus}
+            latestSimulationSnapshot={latestSimulationSnapshot}
+            onSimulationSnapshot={setLatestSimulationSnapshot}
+          />
         )}
 
         {currentView === "configuration" && (
@@ -104,12 +161,22 @@ function App() {
         )}
 
         {currentView === "simulation" && (
-          <Simulation constants={constants} onRunningChange={setAlgorithmRunning} />
+          <Simulation
+            constants={constants}
+            onRunningChange={setAlgorithmRunning}
+            latestSnapshot={latestSimulationSnapshot}
+            onSnapshot={setLatestSimulationSnapshot}
+          />
         )}
 
         {/* Placeholder views for other sections */}
         {currentView === "perception" && (
-          <Perception />
+          <Perception
+            spotterStatus={perceptionStatus}
+            setSpotterStatus={setPerceptionStatus}
+            config={perceptionConfig}
+            setConfig={setPerceptionConfig}
+          />
         )}
 
         {currentView === "algorithms" && (

@@ -6,6 +6,7 @@ import { SpheroConnectionStats } from "../SpheroConnection/SpheroConnectionStats
 import { SpheroConnectionList } from "../SpheroConnection/SpheroConnectionList";
 import { useSpheroConnection } from "../SpheroConnection/useSpheroConnection";
 import type { SpheroConstants, SpheroStatus } from "../../types/swarm_types";
+import { useState } from "react";
 
 import styles from "./controls.module.css"
 
@@ -21,6 +22,7 @@ export function Controls({
     algorithmRunning?: boolean;
 }) {
     const { connectState, startConnection, startConnectionDemo, connectedCount, pendingCount, failedCount } = useSpheroConnection(spheros, setSpheros);
+    const [refreshState, setRefreshState] = useState<"idle" | "refreshing" | "started" | "failed">("idle");
 
     // helper that opens a short-lived socket to the control server and sends a JSON
     const sendControlCommand = (cmd: object) => {
@@ -59,6 +61,20 @@ export function Controls({
         setSpheros(prev => prev.map(s => s.id === id ? { ...s, connection: "not-attempted" } : s));
     };
 
+    const handleRefreshControls = async () => {
+        setRefreshState("refreshing");
+        try {
+            const response = await window.electronAPI.refreshControls();
+            if (response?.status === "started") {
+                setRefreshState("started");
+                return;
+            }
+            setRefreshState("failed");
+        } catch {
+            setRefreshState("failed");
+        }
+    };
+
     return (
         <>
             <div className={styles.spheroSection}>
@@ -83,6 +99,20 @@ export function Controls({
                 >
                     Re‑home All
                 </button>
+                <div className={styles.controlsServerRow}>
+                    <button
+                        className={styles.refreshButton}
+                        onClick={handleRefreshControls}
+                        disabled={refreshState === "refreshing"}
+                    >
+                        {refreshState === "refreshing" ? "Refreshing..." : "Refresh Controls Script"}
+                    </button>
+                    <span
+                        className={`${styles.serverLight} ${refreshState === "started" ? styles.serverLightGreen : ""}`}
+                        aria-label="Controls script refresh status"
+                        title={refreshState === "started" ? "Controls script running" : "Controls script not confirmed"}
+                    />
+                </div>
             </div>
             <div className={styles.spheroSection}>
                 <SpheroConnectionList spheros={spheros} onDisconnect={handleDisconnect} />

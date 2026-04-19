@@ -2,6 +2,7 @@ import pickle
 import socket
 import math
 from algorithms.algorithm import Algorithm
+from algorithms.form_instruction import nextVectorDirection
 from algorithms.constants import *
 from algorithms.simulation import StartSimulation, spheros, teleport_sphero_to_target
 from algorithms.sphero import Sphero
@@ -56,6 +57,7 @@ def main():
 
             spheros = algorithm.find_all_spheros()
             for sphero in spheros:
+                translation = True
                 # Set LED to sphero's color (from algorithm: head=RED, tail=BLUE)
                 color_instruction = Instruction(sphero.id, 0, sphero.color[0], sphero.color[1], sphero.color[2])
                 color_instructions.append(color_instruction)
@@ -63,7 +65,9 @@ def main():
                 # we also may want to rethink how we do this.
                 direction_change = sphero.get_direction_change() 
 
-                translation = True
+                if direction_change >= 9:
+                    translation = False
+
                 if translation:
                     # also, make sure controls still wants the id passed in to be 1,2,3... instead of SB-B11D
                     rotate_instruction = Instruction(sphero.id, 2, 45 * direction_change, TURN_DURATION)
@@ -79,9 +83,13 @@ def main():
                     print(str(sphero))
                     roll_instructions.append(roll_instruction)
 
-                else: # rotation 
-                    # TODO implement @Alan @John
-                    pass
+                else:
+                    t_x, t_y = sphero.target_x, sphero.target_y
+                    x, y = sphero.x, sphero.y
+                    
+                    theta = nextVectorDirection([x, y], [t_x, t_y])
+                    rotate_instruction = Instruction(sphero.id, 2, 45 * direction_change, TURN_DURATION)
+                    rotate_instructions.append(rotate_instruction)
 
 
             # send color instructions first so LEDs update before movement
