@@ -11,6 +11,7 @@ dependencies = [
     "pupil-apriltags>=1.0.4.post11",
     "pygame>=2.6.1",
     "spherov2>=0.12.1",
+    "lap>=0.5.12",
     "ultralytics>=8.4.37",
     "websockets>=16.0",
     "zmq>=0.0.0",
