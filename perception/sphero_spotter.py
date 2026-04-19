@@ -21,6 +21,16 @@ detector = Detector()
 from SpheroCoordinate import SpheroCoordinate
 from input_streams import WebcamStream, VideoFileStream
 
+# Load N_SPHEROS from shared constants file
+_constants_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'gui', 'constants.json')
+try:
+    with open(_constants_path) as _f:
+        N_SPHEROS = json.load(_f).get('N_SPHEROS', 3)
+    print(f"sphero_spotter: N_SPHEROS={N_SPHEROS} (from constants.json)")
+except Exception as _e:
+    N_SPHEROS = 3
+    print(f"sphero_spotter: could not read constants.json ({_e}), defaulting N_SPHEROS={N_SPHEROS}")
+
 parser = argparse.ArgumentParser(description="Sphero Spotter")
 parser.add_argument('--nogui', '-n', action='store_true', help="Run the Sphero Spotter without opening any GUI windows.")
 parser.add_argument('--locked', '-l', action='store_true', help="Freeze the initial Sphero ID assignments. No new IDs will be assigned after the first frame.")
@@ -208,13 +218,7 @@ def process_apriltags(frame, force_process=False):
     return warped if warped is not None else frame
 
 def initialize_spheros():
-    '''
-    TODO @anthony
-    initializes global sphero object array.
-    Returns number of spheros found.
-    '''
-    n_found = 0
-    return n_found
+    return N_SPHEROS
 
 def listener():
     '''
@@ -289,7 +293,8 @@ if device != 'cpu':
     except Exception as e:
         print(f"Warning: Could not optimize model for {device}: {e}")
 
-current_id = 0
+next_display_id = 0
+lost_spheros = {}  # disp_id -> (last_cx, last_cy)
 
 # Threading for async processing
 frame_queue = Queue(maxsize=2)  # Only keep latest 2 frames
@@ -361,36 +366,54 @@ def process_frame_async():
                     dets.append((cx, cy, cls_id, x1, y1, x2, y2, tid))
             
 
+            global next_display_id, lost_spheros
+
             if not frozen and dets:
-                dets_sorted = sorted(dets, key=lambda t: (t[0], t[1]))
-                for (cx, cy, cls_id, x1, y1, x2, y2, tid) in dets_sorted:
-                    if tid not in id_map:
-                        id_map[tid] = len(id_map)
+                # First frame: assign IDs sorted by position for deterministic ordering
+                for (cx, cy, cls_id, x1, y1, x2, y2, tid) in sorted(dets, key=lambda t: (t[0], t[1])):
+                    if tid not in id_map and next_display_id < N_SPHEROS:
+                        id_map[tid] = next_display_id
+                        next_display_id += 1
                 frozen = True
 
-            # Update spheros dictionary and draw detections on frame
+            # Assign IDs to new tracker IDs: prefer recovering a lost sphero by
+            # nearest distance, then create a fresh ID if under cap and not locked.
             for (cx, cy, cls_id, x1, y1, x2, y2, tid) in dets:
-                if tid in id_map:
-                    disp_id = id_map[tid]
-                else:
-                    if ASSIGN_NEW_IDS_AFTER_FIRST_FRAME:
-                        id_map[tid] = len(id_map)
-                        disp_id = len(id_map)
-                    else:
-                        disp_id = None
+                if tid not in id_map:
+                    if lost_spheros:
+                        nearest = min(
+                            lost_spheros,
+                            key=lambda did: (cx - lost_spheros[did][0])**2 + (cy - lost_spheros[did][1])**2
+                        )
+                        id_map[tid] = nearest
+                        del lost_spheros[nearest]
+                    elif ASSIGN_NEW_IDS_AFTER_FIRST_FRAME and next_display_id < N_SPHEROS:
+                        id_map[tid] = next_display_id
+                        next_display_id += 1
 
-                if disp_id is not None:
-                    spheros[disp_id] = SpheroCoordinate(disp_id, int(cx), int(cy))
-                    
-                    # Draw detection boxes and labels on frame
-                    class_name = model.names[cls_id]
-                    cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
-                    cv2.circle(frame, (int(cx), int(cy)), 3, (0, 255, 0), -1)
-                    label = f"{disp_id} {class_name} | Center: ({int(cx)}, {int(cy)})"
-                    cv2.putText(frame, label, (int(x1), int(y1) - 6),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2, cv2.LINE_AA)
-                    if args.debug:
-                        print(f"ID {disp_id} | {class_name} | Center: ({int(cx)}, {int(cy)})")
+            # Update spheros dictionary and draw detections on frame
+            detected_disp_ids = set()
+            for (cx, cy, cls_id, x1, y1, x2, y2, tid) in dets:
+                if tid not in id_map:
+                    continue
+                disp_id = id_map[tid]
+                detected_disp_ids.add(disp_id)
+                spheros[disp_id] = SpheroCoordinate(disp_id, int(cx), int(cy))
+                lost_spheros.pop(disp_id, None)
+
+                class_name = model.names[cls_id]
+                cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
+                cv2.circle(frame, (int(cx), int(cy)), 3, (0, 255, 0), -1)
+                label = f"{disp_id} {class_name} | Center: ({int(cx)}, {int(cy)})"
+                cv2.putText(frame, label, (int(x1), int(y1) - 6),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2, cv2.LINE_AA)
+                if args.debug:
+                    print(f"ID {disp_id} | {class_name} | Center: ({int(cx)}, {int(cy)})")
+
+            # Record last known position of any sphero not seen this frame
+            for disp_id, coord in spheros.items():
+                if disp_id not in detected_disp_ids and disp_id not in lost_spheros:
+                    lost_spheros[disp_id] = (coord.x_coordinate, coord.y_coordinate)
             
             # Push telemetry to GUI via server
             if args.server:
@@ -428,8 +451,9 @@ def process_frame_async():
             result_queue.put(result_data)
             
         except Exception as e:
-            if args.debug:
-                print(f"Error in processing thread: {e}")
+            import traceback
+            print(f"Error in processing thread: {e}")
+            traceback.print_exc()
 
 def calculateFrame(frame, frame_timestamp=None):
     """Main frame processing function - now uses async processing"""
@@ -464,14 +488,18 @@ def calculateFrame(frame, frame_timestamp=None):
                 if cv2.getWindowProperty("Sphero IDs", cv2.WND_PROP_VISIBLE) < 1:
                     raise SystemExit("Window closed")
     except Empty:
-        # No result yet, show last valid frame if available
-        if not args.nogui and last_valid_frame is not None and not args.server:
-            cv2.imshow("Sphero IDs", last_valid_frame)
-            key = cv2.waitKey(1) & 0xFF
-            if key == 27:  # ESC
-                raise SystemExit("Key input clicks")
-            if cv2.getWindowProperty("Sphero IDs", cv2.WND_PROP_VISIBLE) < 1:
-                raise SystemExit("Window closed")
+        # No YOLO result yet — stream the raw frame so the GUI shows the feed immediately
+        if not args.nogui:
+            display = last_valid_frame if last_valid_frame is not None else frame
+            if args.server:
+                server.feed_frames_from_calculateFrame(display, frame_timestamp)
+            else:
+                cv2.imshow("Sphero IDs", display)
+                key = cv2.waitKey(1) & 0xFF
+                if key == 27:  # ESC
+                    raise SystemExit("Key input clicks")
+                if cv2.getWindowProperty("Sphero IDs", cv2.WND_PROP_VISIBLE) < 1:
+                    raise SystemExit("Window closed")
 if __name__ == '__main__':
 
     _input_source = "webcam" if args.webcam else ("video" if args.video else "oakd")
