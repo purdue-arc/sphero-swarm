@@ -51,10 +51,9 @@ class Constants:
         self.TURN_DURATION = 0.5
 
         self.SPHERO_TAGS = [
-            "SB-B11D",
-            "SB-BD0A",
+            "SB-1730"
         ]
-        self.INITIAL_POSITIONS = [(0, 0), (0, 2)]
+        self.INITIAL_POSITIONS = [(0, 0)]
 
         # Bonding/simulation controls used by algorithm modules
         self.INITIAL_TRAITS = ["head", "tail"]

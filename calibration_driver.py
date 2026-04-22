@@ -2,7 +2,7 @@ import pickle
 import socket
 import math
 from algorithms.algorithm import Algorithm
-from algorithms.constants import Constants
+from algorithms.constants import Constants as const
 from algorithms.simulation import StartSimulation, spheros, teleport_sphero_to_target
 from algorithms.sphero import Sphero
 from controls.Instruction import Instruction
@@ -11,32 +11,33 @@ import threading
 import pygame
 
 def main():
-    algorithm.log('STARTING CALIBRATION DRIVER')
 
     s = socket.socket()
     port = 1235
 
     s.connect(('localhost', port))
 
+
+
     # sanity checks
-    assert len(Constants.INITIAL_POSITIONS) == Constants.N_SPHEROS, 'Number of initial positions does not match N_SPHEROS'
-    assert len(Constants.INITIAL_POSITIONS) == len(set(Constants.INITIAL_POSITIONS)), 'Cannot have repeats in initial_positions'
+    assert len(const.INITIAL_POSITIONS) == const.N_SPHEROS, 'Number of initial positions does not match N_SPHEROS'
+    assert len(const.INITIAL_POSITIONS) == len(set(const.INITIAL_POSITIONS)), 'Cannot have repeats in initial_positions'
 
     # generate random colors for spheros. FIXME NOT SURE IF THIS IS USED/NECESSARY
     colors = []
-    for i in range(Constants.N_SPHEROS):
-        colors.append(Constants.COLORS[i % len(Constants.COLORS)])
+    for i in range(const.N_SPHEROS):
+        colors.append(const.COLORS[i % len(const.COLORS)])
 
     # make a list of spheros to pass into algorithm using constant INITIAL_POSITIONS
     spheros = []
     id = 1
-    for x, y in Constants.INITIAL_POSITIONS:
+    for x, y in const.INITIAL_POSITIONS:
         spheros.append(Sphero(id, x, y, direction=1)) # initialize spheros to be pointing to direction positive y
         id += 1
 
 
-    algorithm = Algorithm(grid_width=Constants.GRID_WIDTH,
-                            grid_height=Constants.GRID_HEIGHT,
+    algorithm = Algorithm(grid_width=const.GRID_WIDTH,
+                            grid_height=const.GRID_HEIGHT,
                             spheros=spheros)
     algorithm.log("init success")
 
@@ -58,9 +59,9 @@ def main():
             spheros = algorithm.find_all_spheros()
             for sphero in spheros:    
 
-                speed = Constants.SPHERO_SPEED
+                speed = const.SPHERO_SPEED
 
-                roll_instruction = Instruction(sphero.id, 1, speed, Constants.ROLL_DURATION)
+                roll_instruction = Instruction(sphero.id, 1, speed, const.ROLL_DURATION)
                 algorithm.log(str(sphero))
                 roll_instructions.append(roll_instruction)
 
