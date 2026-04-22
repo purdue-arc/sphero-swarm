@@ -10,13 +10,11 @@ from controls.Instruction import Instruction
 import math
 from gui_server import get_next_command, send_algorithm_state
 
-
 def _to_int(value, default=None):
     try:
         return int(value)
     except Exception:
         return default
-
 
 def _extract_path_nodes(cmd_path, grid_w, grid_h):
     """Return validated list of (x, y) waypoints from GUI payload."""
@@ -181,7 +179,7 @@ def _connect_controls(port: int) -> socket.socket:
     return sock
 
 
-if __name__ == "__main__":
+def main_server():
     constants = Constants()
     algorithm = _build_algorithm(constants)
 
@@ -327,3 +325,6 @@ if __name__ == "__main__":
     finally:
         if controls_sock is not None:
             controls_sock.close()
+
+if __name__ == "__main__":
+    main_server()

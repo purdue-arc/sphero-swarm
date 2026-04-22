@@ -29,16 +29,18 @@ The project is divided into five subteams, each focusing on specific aspects:
 This project is licensed under the Creative Commons CC0 1.0 Universal License. See the LICENSE file for more details.
 
 ## GUI Controls
+- /gui/README.md
 
-The simulation includes a web-based control panel that communicates with the Python algorithm driver via WebSockets.  Controls are only honoured when the **Use controls** toggle is enabled:
-
-- **Start** — initialize or restart the algorithm.  When running, balls will begin stepping through the simulation.
-- **Stop** — halt the simulation (driver stops updating positions).
-- **Pause / Resume** — temporarily freeze the simulation without resetting state.
-- **Speed** slider — adjusts the delay between each algorithm step (affects `time.sleep` in `gui_driver.py`).
-- **Use controls** toggle — when off, the driver ignores all other commands and the UI buttons are disabled.
-
-These commands are sent as simple JSON objects over the same socket used for state broadcasting; the driver automatically enqueues and processes them.
+## Driver Running
+- Update config file
+- Update sphero id list in controls.Controls Server
+```bash
+uv run python -m controls.Controls_Server
+```
+- Wait until spheros connect
+```bash
+uv run python -m driver
+```
 
 ## Acknowledgments
 - Special thanks to Imagination Labs for their collaboration and support.
