@@ -153,6 +153,7 @@ const DEFAULT_PERCEPTION_CONFIG = {
   grid: false,
   locked: false,
   latency: false,
+  colorFilter: true,
 };
 
 function normalizeConstantsForSave(raw: any) {
@@ -204,9 +205,16 @@ function startSpheroSpotter(config: any = {}) {
   }
   // // oakd = no flag needed
 
-  pyArgs.push("-m", cfg.model);
-  pyArgs.push("--conf", String(cfg.conf));
-  pyArgs.push("--imgsz", String(cfg.imgsz));
+  if (cfg.colorFilter) {
+    // Colour filtering replaces the model: the filter's blobs are the
+    // detections handed to the algorithms. --hide-mask keeps the filtered
+    // image out of the stream, so the GUI only shows what it framed.
+    pyArgs.push("-b", "--hide-mask");
+  } else {
+    pyArgs.push("-m", cfg.model);
+    pyArgs.push("--conf", String(cfg.conf));
+    pyArgs.push("--imgsz", String(cfg.imgsz));
+  }
   if (cfg.grid)    pyArgs.push("-g");
   if (cfg.locked)  pyArgs.push("-l");
   if (cfg.latency) pyArgs.push("-t");

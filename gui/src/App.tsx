@@ -42,6 +42,7 @@ function App() {
     grid: false,
     locked: false,
     latency: false,
+    colorFilter: true,
   });
   const [latestSimulationSnapshot, setLatestSimulationSnapshot] = useState<SimulationSnapshot | null>(null);
   const [simulationSpeed, setSimulationSpeed] = useState(6);

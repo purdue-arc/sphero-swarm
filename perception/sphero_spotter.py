@@ -5,6 +5,7 @@ import threading
 import zmq                      # for socket to connect to algs
 from queue import Queue, Empty
 from collections import deque
+from types import SimpleNamespace
 
 import server
 from ultralytics import YOLO    # computer vision imports
@@ -20,16 +21,41 @@ detector = Detector()
 
 from SpheroCoordinate import SpheroCoordinate
 from input_streams import WebcamStream, VideoFileStream
+import blob_merge
 
-# Load N_SPHEROS from shared constants file
+# Brightness-mode tuning. Lives in constants.json under "PERCEPTION" so it can
+# be changed without editing code or passing a wall of flags; the values below
+# are the fallbacks when the file or a key is missing. The mask-window sliders
+# write straight into this at runtime.
+PERCEPTION_DEFAULTS = {
+    "BRIGHT_THRESH": 200,        # brightness cutoff 0-255, at or below = background
+    "BRIGHT_MIN_AREA": 50.0,     # smallest blob accepted as a sphero, in pixels
+    "BRIGHT_MAX_AREA": 0.0,      # largest blob accepted, 0 = no upper limit
+    "BRIGHT_BLUR": 5,            # gaussian blur kernel before thresholding, 0 = off
+    "BRIGHT_MATCH_DIST": 80.0,   # max px a blob may move and keep its track id
+    "BRIGHT_MAX_BLOBS": 0,       # blobs kept, largest first; 0 = use N_SPHEROS
+    "MERGE_SPLIT": True,         # split blobs holding two touching spheros
+    "MERGE_AREA_RATIO": 1.5,     # blob this many x one sphero = a merge
+    "MERGE_PEAK_SEP": 6,         # min px between the two peaks used to split
+}
+
+# Load N_SPHEROS and the perception tuning from the shared constants file
 _constants_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'gui', 'constants.json')
 try:
     with open(_constants_path) as _f:
-        N_SPHEROS = json.load(_f).get('N_SPHEROS', 3)
+        _constants = json.load(_f)
+    N_SPHEROS = _constants.get('N_SPHEROS', 3)
     print(f"sphero_spotter: N_SPHEROS={N_SPHEROS} (from constants.json)")
 except Exception as _e:
+    _constants = {}
     N_SPHEROS = 3
     print(f"sphero_spotter: could not read constants.json ({_e}), defaulting N_SPHEROS={N_SPHEROS}")
+
+_perception = _constants.get('PERCEPTION', {})
+tune = SimpleNamespace(**{k: _perception.get(k, v) for k, v in PERCEPTION_DEFAULTS.items()})
+if _perception:
+    _overrides = [k for k in PERCEPTION_DEFAULTS if k in _perception]
+    print(f"sphero_spotter: PERCEPTION settings from constants.json: {', '.join(_overrides)}")
 
 parser = argparse.ArgumentParser(description="Sphero Spotter")
 parser.add_argument('--nogui', '-n', action='store_true', help="Run the Sphero Spotter without opening any GUI windows.")
@@ -43,12 +69,6 @@ parser.add_argument('--device', type=str, default=None, help="Device for YOLO in
 parser.add_argument('--server', '-s', action='store_true', help="Streams video to server")
 parser.add_argument('--grid', '-g', action='store_true', help="Shows the grid overlay")
 parser.add_argument('--brightness', '-b', action='store_true', help="Detect spheros by pixel brightness instead of YOLO: dark background is thresholded away and each blob of bright pixels is reported as a sphero.")
-parser.add_argument('--bright-thresh', type=int, default=200, help="Brightness cutoff 0-255: pixels at or below this are treated as background (default: %(default)s).")
-parser.add_argument('--bright-min-area', type=float, default=50.0, help="Smallest blob area in pixels to accept as a sphero (default: %(default)s).")
-parser.add_argument('--bright-max-area', type=float, default=0.0, help="Largest blob area in pixels to accept, or 0 for no upper limit (default: %(default)s).")
-parser.add_argument('--bright-blur', type=int, default=5, help="Gaussian blur kernel applied before thresholding, 0 to disable (default: %(default)s).")
-parser.add_argument('--bright-match-dist', type=float, default=80.0, help="Max pixel distance a blob may move between frames and still keep its track ID (default: %(default)s).")
-parser.add_argument('--bright-max-blobs', type=int, default=0, help="Max blobs to keep, largest first; 0 means use N_SPHEROS (default: %(default)s).")
 parser.add_argument('--hide-mask', action='store_true', help="In --brightness mode, don't show the filtered (thresholded) view. By default it is shown alongside the camera image with live tuning sliders.")
 
 
@@ -321,24 +341,120 @@ last_warp_matrix = None
 # below --bright-thresh is dropped, the mask is cleaned up with morphology, and
 # each surviving blob inside the area limits becomes one detection.
 bright_tracks = {}   # tracker_id -> (cx, cy) from the previous frame
+bright_vels = {}     # tracker_id -> (vx, vy), smoothed, for merge predictions
 next_bright_tid = 0
+single_area = blob_merge.SingleAreaEstimator()   # running size of one sphero
+_merge_state = {}    # frozenset of merged tracker ids -> how it was last split
 
 def class_name_for(cls_id):
     if cls_id < 0 or model is None:
         return "bright"
     return model.names[cls_id]
 
+# Predicted track positions inside this many pixels of a blob's box count as
+# "this track is in that blob" when deciding whether the blob is a merge.
+MERGE_NEAR_MARGIN = 8
+
+def resolve_merged_blobs(mask, blobs):
+    """Split blobs that hold two spheros, between blob extraction and matching.
+
+    Returns (entries, vis): entries are blob tuples with a forced tracker id
+    appended (None = let the normal matching decide), vis is what the mask
+    window should draw for each merge being resolved.
+    """
+    global _merge_state
+
+    est = single_area.estimate
+    preds = {tid: blob_merge.predict(pos, bright_vels.get(tid, (0.0, 0.0)))
+             for tid, pos in bright_tracks.items()}
+
+    entries = []
+    vis = []
+    seen = {}
+    claimed = set()
+    coasting = {}   # tracker_id -> dead-reckoned position, while fully occluded
+    for area, cx, cy, x1, y1, x2, y2 in blobs:
+        near = [t for t, p in preds.items()
+                if t not in claimed
+                and x1 - MERGE_NEAR_MARGIN <= p[0] <= x2 + MERGE_NEAR_MARGIN
+                and y1 - MERGE_NEAR_MARGIN <= p[1] <= y2 + MERGE_NEAR_MARGIN]
+
+        if not (tune.MERGE_SPLIT and blob_merge.is_merged(area, est, tune.MERGE_AREA_RATIO, len(near))):
+            single_area.update(area)   # unambiguously one sphero: size reference
+            entries.append((area, cx, cy, x1, y1, x2, y2, None))
+            continue
+
+        # The two tracks this blob is holding: nearest predictions to its centre
+        pair = sorted(near, key=lambda t: (preds[t][0] - cx)**2 + (preds[t][1] - cy)**2)[:2]
+
+        pieces, peaks = blob_merge.split_blob(mask, (x1, y1, x2, y2), tune.MERGE_PEAK_SEP)
+        mode = "watershed"
+        if not blob_merge.pieces_plausible(pieces, est):
+            # Peaks were wrong or the halves were lopsided: fall back to where
+            # each track was heading and cut the pixels by nearest prediction.
+            pieces = blob_merge.split_by_prediction(mask, (x1, y1, x2, y2),
+                                                    [preds[t] for t in pair]) if len(pair) == 2 else None
+            mode = "predicted"
+        if pieces is None:
+            mode = "unsplit"
+            entries.append((area, cx, cy, x1, y1, x2, y2, None))
+        elif len(pair) == 2:
+            order = blob_merge.assign_pieces(pieces, [preds[t] for t in pair])
+            for tid, piece in zip(pair, (pieces[order[0]], pieces[order[1]])):
+                entries.append(piece + (tid,))
+                claimed.add(tid)
+                if mode == "predicted":
+                    # One peak for two spheros means they are on top of each
+                    # other. The half each track gets is always the side it is
+                    # already on, so feeding those centroids back in would stall
+                    # the crossing: carry the track on dead reckoning instead,
+                    # clamped to the blob, and still report the measured half.
+                    coasting[tid] = blob_merge.clamp_to_box(preds[tid], (x1, y1, x2, y2))
+            vis.append((pieces[order[0]], pieces[order[1]], (x1, y1, x2, y2), mode, tuple(pair)))
+        else:
+            # Split worked but we don't know whose halves these are (e.g. first
+            # frame) - let the normal matching hand out ids.
+            for piece in pieces:
+                entries.append(piece + (None,))
+            vis.append((pieces[0], pieces[1], (x1, y1, x2, y2), mode, tuple(pair)))
+
+        key = frozenset(pair) if pair else frozenset()
+        seen[key] = mode
+        if _merge_state.get(key) != mode or args.debug:
+            ratio = f"{area / est:.2f}x" if est else "no size estimate yet"
+            ids = ",".join(str(t) for t in pair) if pair else "unassigned"
+            print(f"[merge] blob area={int(area)} ({ratio}) peaks={peaks} -> {mode}, ids {ids}")
+    _merge_state = seen
+
+    # Forced ids first, so a neighbouring blob can't take one by proximity
+    entries.sort(key=lambda e: e[7] is None)
+    return entries, vis, claimed, coasting
+
+MERGE_COLOURS = ((255, 0, 255), (255, 255, 0))   # magenta / cyan, one per half
+MERGE_BOX_COLOUR = (0, 165, 255)                 # orange, the blob they came from
+
+def draw_merge_overlay(mask_view, merge_vis):
+    """Mark every merge being resolved on the filtered view."""
+    for piece_a, piece_b, (mx1, my1, mx2, my2), mode, pair in merge_vis:
+        cv2.rectangle(mask_view, (int(mx1), int(my1)), (int(mx2), int(my2)),
+                      MERGE_BOX_COLOUR, 1)
+        for piece, colour in zip((piece_a, piece_b), MERGE_COLOURS):
+            cv2.circle(mask_view, (int(piece[1]), int(piece[2])), 4, colour, -1)
+        label = "MERGED (" + mode + ")" + (f" {pair[0]}/{pair[1]}" if len(pair) == 2 else "")
+        cv2.putText(mask_view, label, (int(mx1), max(12, int(my1) - 5)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, MERGE_BOX_COLOUR, 1, cv2.LINE_AA)
+
 def detect_bright_blobs(frame):
-    """Return (dets, mask) where dets matches the YOLO tuple layout."""
-    global bright_tracks, next_bright_tid
+    """Return (dets, mask, merge_vis) where dets matches the YOLO tuple layout."""
+    global bright_tracks, bright_vels, next_bright_tid
 
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    k = args.bright_blur
+    k = tune.BRIGHT_BLUR
     if k > 0:
         k = k if k % 2 == 1 else k + 1   # GaussianBlur needs an odd kernel
         gray = cv2.GaussianBlur(gray, (k, k), 0)
 
-    _, mask = cv2.threshold(gray, args.bright_thresh, 255, cv2.THRESH_BINARY)
+    _, mask = cv2.threshold(gray, tune.BRIGHT_THRESH, 255, cv2.THRESH_BINARY)
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)    # kill speckle
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)   # fill holes
@@ -348,9 +464,9 @@ def detect_bright_blobs(frame):
     blobs = []  # (area, cx, cy, x1, y1, x2, y2)
     for c in contours:
         area = cv2.contourArea(c)
-        if area < args.bright_min_area:
+        if area < tune.BRIGHT_MIN_AREA:
             continue
-        if args.bright_max_area > 0 and area > args.bright_max_area:
+        if tune.BRIGHT_MAX_AREA > 0 and area > tune.BRIGHT_MAX_AREA:
             continue
         x, y, w, h = cv2.boundingRect(c)
         m = cv2.moments(c)
@@ -363,31 +479,50 @@ def detect_bright_blobs(frame):
 
     # Largest first, so leftover glare loses to the actual spheros
     blobs.sort(key=lambda b: b[0], reverse=True)
-    limit = args.bright_max_blobs if args.bright_max_blobs > 0 else N_SPHEROS
+    limit = tune.BRIGHT_MAX_BLOBS if tune.BRIGHT_MAX_BLOBS > 0 else N_SPHEROS
     blobs = blobs[:limit]
+
+    # A merged blob is two spheros in one contour: split it and pin each half
+    # to its own track before the ordinary matching runs.
+    blobs, merge_vis, merged_tids, coasting = resolve_merged_blobs(mask, blobs)
 
     # Greedy nearest-neighbour association with the previous frame, so the
     # downstream ID logic sees stable tracker IDs like YOLO's tracker provides.
     new_tracks = {}
+    new_vels = {}
     available = dict(bright_tracks)
     dets = []
-    for area, cx, cy, x1, y1, x2, y2 in blobs:
+    for area, cx, cy, x1, y1, x2, y2, forced_tid in blobs:
         tid = None
-        if available:
+        if forced_tid is not None and forced_tid in available:
+            tid = forced_tid
+            del available[tid]
+        elif available:
             cand = min(available,
                        key=lambda t: (cx - available[t][0])**2 + (cy - available[t][1])**2)
             px, py = available[cand]
-            if (cx - px)**2 + (cy - py)**2 <= args.bright_match_dist**2:
+            if (cx - px)**2 + (cy - py)**2 <= tune.BRIGHT_MATCH_DIST**2:
                 tid = cand
                 del available[cand]
         if tid is None:
             tid = next_bright_tid
             next_bright_tid += 1
-        new_tracks[tid] = (cx, cy)
+        if tid in merged_tids:
+            # Split centroids sit outside the true ones and converge as the
+            # spheros touch, so re-estimating velocity here bleeds away the
+            # momentum that carries them past each other. Hold it instead.
+            new_vels[tid] = bright_vels.get(tid, (0.0, 0.0))
+        elif tid in bright_tracks:
+            new_vels[tid] = blob_merge.update_velocity(bright_vels.get(tid, (0.0, 0.0)),
+                                                       bright_tracks[tid], (cx, cy))
+        else:
+            new_vels[tid] = (0.0, 0.0)
+        new_tracks[tid] = coasting.get(tid, (cx, cy))
         dets.append((cx, cy, -1, x1, y1, x2, y2, tid))
 
     bright_tracks = new_tracks
-    return dets, mask
+    bright_vels = new_vels
+    return dets, mask, merge_vis
 
 def process_frame_async():
     """Background thread for YOLO inference"""
@@ -428,7 +563,7 @@ def process_frame_async():
 
             if args.brightness:
                 # Brightness thresholding instead of YOLO
-                dets, bright_mask = detect_bright_blobs(frame)
+                dets, bright_mask, merge_vis = detect_bright_blobs(frame)
                 if show_mask_view():
                     # Colour copy of the mask with every accepted blob outlined,
                     # so the sliders show what each setting is actually keeping.
@@ -437,9 +572,10 @@ def process_frame_async():
                         cv2.rectangle(mask_view, (int(bx1), int(by1)), (int(bx2), int(by2)),
                                       (0, 255, 0), 1)
                         cv2.circle(mask_view, (int(bcx), int(bcy)), 3, (0, 0, 255), -1)
+                    draw_merge_overlay(mask_view, merge_vis)
                     cv2.putText(mask_view,
-                                f"thresh={args.bright_thresh} min_area={int(args.bright_min_area)}"
-                                f" blur={args.bright_blur} blobs={len(dets)}",
+                                f"thresh={tune.BRIGHT_THRESH} min_area={int(tune.BRIGHT_MIN_AREA)}"
+                                f" blur={tune.BRIGHT_BLUR} blobs={len(dets)}",
                                 (8, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 255), 1,
                                 cv2.LINE_AA)
             else:
@@ -533,7 +669,7 @@ def process_frame_async():
                     "ts": time.time(),
                     "input_source": _input_source,
                     "device": device,
-                    "model": "brightness" if args.brightness else os.path.basename(args.model),
+                    "model": "color filter" if args.brightness else os.path.basename(args.model),
                     "id_mode": "locked" if args.locked else "dynamic",
                     "apriltag_count": last_apriltag_count,
                     "perspective_calibrated": last_warp_matrix is not None,
@@ -567,16 +703,22 @@ def show_mask_view():
     return args.brightness and not args.hide_mask and not args.nogui
 
 def _set_thresh(v):
-    args.bright_thresh = int(v)
+    tune.BRIGHT_THRESH = int(v)
 
 def _set_min_area(v):
-    args.bright_min_area = float(v)
+    tune.BRIGHT_MIN_AREA = float(v)
 
 def _set_blur(v):
-    args.bright_blur = int(v)
+    tune.BRIGHT_BLUR = int(v)
 
 def _set_match_dist(v):
-    args.bright_match_dist = float(max(v, 1))
+    tune.BRIGHT_MATCH_DIST = float(max(v, 1))
+
+def _set_merge_ratio(v):
+    tune.MERGE_AREA_RATIO = max(v, 10) / 10.0   # slider is in tenths
+
+def _set_merge_peak_sep(v):
+    tune.MERGE_PEAK_SEP = int(max(v, 1))
 
 def ensure_mask_window():
     """Create the mask window and its sliders once, on the display thread."""
@@ -585,10 +727,12 @@ def ensure_mask_window():
         return
     cv2.namedWindow(MASK_WINDOW, cv2.WINDOW_NORMAL)
     # Sliders write straight into args, which the worker thread re-reads each frame
-    cv2.createTrackbar("Brightness cutoff", MASK_WINDOW, int(args.bright_thresh), 255, _set_thresh)
-    cv2.createTrackbar("Min blob area", MASK_WINDOW, int(args.bright_min_area), 2000, _set_min_area)
-    cv2.createTrackbar("Blur kernel", MASK_WINDOW, int(args.bright_blur), 31, _set_blur)
-    cv2.createTrackbar("Track match dist", MASK_WINDOW, int(args.bright_match_dist), 300, _set_match_dist)
+    cv2.createTrackbar("Brightness cutoff", MASK_WINDOW, int(tune.BRIGHT_THRESH), 255, _set_thresh)
+    cv2.createTrackbar("Min blob area", MASK_WINDOW, int(tune.BRIGHT_MIN_AREA), 2000, _set_min_area)
+    cv2.createTrackbar("Blur kernel", MASK_WINDOW, int(tune.BRIGHT_BLUR), 31, _set_blur)
+    cv2.createTrackbar("Track match dist", MASK_WINDOW, int(tune.BRIGHT_MATCH_DIST), 300, _set_match_dist)
+    cv2.createTrackbar("Merge area ratio x10", MASK_WINDOW, int(tune.MERGE_AREA_RATIO * 10), 30, _set_merge_ratio)
+    cv2.createTrackbar("Min peak separation", MASK_WINDOW, int(tune.MERGE_PEAK_SEP), 40, _set_merge_peak_sep)
     _mask_window_ready = True
 
 def side_by_side(frame, mask_view):

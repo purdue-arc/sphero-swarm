@@ -140,6 +140,9 @@ export function Perception({
     };
 
     const isRunning = spotterStatus !== "stopped";
+    // The model is bypassed entirely while colour filtering is on, so its
+    // settings are greyed out rather than silently ignored.
+    const yoloDisabled = isRunning || config.colorFilter;
 
     const updateConfig = <K extends keyof PerceptionConfig>(key: K, val: PerceptionConfig[K]) => {
         setConfig(prev => ({ ...prev, [key]: val }));
@@ -397,12 +400,14 @@ export function Perception({
                         )}
 
                         <div className={s.formGroup}>
-                            <label className={s.label}>YOLO Model</label>
+                            <label className={s.label}>
+                                YOLO Model{config.colorFilter ? " — unused (colour filtering on)" : ""}
+                            </label>
                             <select
                                 className={s.select}
                                 value={config.model}
                                 onChange={e => updateConfig("model", e.target.value)}
-                                disabled={isRunning}
+                                disabled={yoloDisabled}
                             >
                                 {MODELS.map(m => (
                                     <option key={m.value} value={m.value}>{m.label}</option>
@@ -419,7 +424,7 @@ export function Perception({
                                     min={0.05} max={0.95} step={0.05}
                                     value={config.conf}
                                     onChange={e => updateConfig("conf", parseFloat(e.target.value))}
-                                    disabled={isRunning}
+                                    disabled={yoloDisabled}
                                 />
                                 <span className={s.sliderVal}>{config.conf.toFixed(2)}</span>
                             </div>
@@ -431,7 +436,7 @@ export function Perception({
                                 className={s.select}
                                 value={config.imgsz}
                                 onChange={e => updateConfig("imgsz", parseInt(e.target.value))}
-                                disabled={isRunning}
+                                disabled={yoloDisabled}
                             >
                                 {IMGSZ_OPTIONS.map(sz => (
                                     <option key={sz} value={sz}>{sz}px</option>
@@ -442,6 +447,15 @@ export function Perception({
                         <div className={s.formGroup}>
                             <label className={s.label}>Options</label>
                             <div className={s.toggleGroup}>
+                                <label className={`${s.toggleItem} ${isRunning ? s.disabled : ""}`}>
+                                    <input
+                                        type="checkbox"
+                                        checked={config.colorFilter}
+                                        onChange={e => updateConfig("colorFilter", e.target.checked)}
+                                        disabled={isRunning}
+                                    />
+                                    <span>Colour filtering (instead of YOLO model)</span>
+                                </label>
                                 <label className={`${s.toggleItem} ${isRunning ? s.disabled : ""}`}>
                                     <input
                                         type="checkbox"
