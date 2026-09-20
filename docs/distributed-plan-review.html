@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Distributed Plan — Verified Against Code</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --color-paper:    oklch(14% 0.012 250);
+    --color-paper-2:  oklch(18% 0.014 250);
+    --color-rule:     oklch(30% 0.012 250);
+    --color-neutral:  oklch(58% 0.010 250);
+    --color-muted:    oklch(74% 0.008 250);
+    --color-ink:      oklch(94% 0.006 250);
+    --color-accent:   oklch(75% 0.15 70);
+    --color-danger:   oklch(66% 0.15 25);
+    --color-good:     oklch(72% 0.14 150);
+
+    --font-display: "JetBrains Mono", ui-monospace, monospace;
+    --font-body:    "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+
+    --text-sm:  0.8rem;
+    --text-base: 1rem;
+    --text-md:  1.25rem;
+    --text-lg:  1.5625rem;
+    --text-xl:  1.9531rem;
+    --text-display: clamp(2rem, 3vw + 1rem, 3.2rem);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-body);
+    font-weight: 400;
+    font-size: var(--text-base);
+    line-height: 1.6;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    max-width: 980px;
+    margin: 0 auto;
+    padding: clamp(1.25rem, 4vw, 3rem);
+  }
+
+  .eyebrow {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: var(--text-sm);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-accent);
+    margin: 0 0 0.75rem;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: var(--text-display);
+    line-height: 1.08;
+    letter-spacing: -0.01em;
+    margin: 0 0 1rem;
+    border-bottom: 1px solid var(--color-rule);
+    padding-bottom: 1.25rem;
+  }
+
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: var(--text-xl);
+    letter-spacing: -0.01em;
+    margin-top: 3.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: var(--text-md);
+    color: var(--color-accent);
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+  }
+
+  p { max-width: 72ch; color: var(--color-muted); }
+  p.lede { color: var(--color-ink); max-width: 75ch; }
+
+  .verdict-banner {
+    background: var(--color-paper-2);
+    border: 1px solid var(--color-danger);
+    border-left: 4px solid var(--color-danger);
+    border-radius: 6px;
+    padding: 1.25rem 1.5rem;
+    margin: 1.5rem 0 2.5rem;
+  }
+  .verdict-banner .label {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: var(--text-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-danger);
+    margin: 0 0 0.5rem;
+  }
+  .verdict-banner p { color: var(--color-ink); max-width: none; margin: 0; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1.25rem 0 2rem;
+    font-size: 0.92rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 0.7rem 0.9rem;
+    border-bottom: 1px solid var(--color-rule);
+    vertical-align: top;
+  }
+  th {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: var(--text-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-neutral);
+    border-bottom: 1px solid var(--color-accent);
+  }
+  td { color: var(--color-muted); }
+  td:first-child { color: var(--color-ink); font-weight: 600; white-space: nowrap; }
+  .status { font-family: var(--font-display); font-weight: 600; font-size: 0.85em; white-space: nowrap; }
+  .status.exists { color: var(--color-good); }
+  .status.partial { color: var(--color-accent); }
+  .status.missing { color: var(--color-danger); }
+
+  .diagram {
+    background: var(--color-paper-2);
+    border: 1px solid var(--color-rule);
+    border-radius: 6px;
+    padding: 1rem;
+    margin: 1.25rem 0;
+    overflow-x: auto;
+  }
+
+  .diagram-endpoints {
+    background: var(--color-paper-2);
+    border: 1px solid var(--color-rule);
+    border-radius: 6px;
+    padding: 1.25rem 1.5rem;
+    margin: 1.25rem 0;
+  }
+  .diagram-endpoints div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--color-rule);
+    font-size: 0.9rem;
+    flex-wrap: wrap;
+  }
+  .diagram-endpoints div:last-child { border-bottom: none; }
+
+  code {
+    font-family: var(--font-display);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.88em;
+    background: var(--color-paper-2);
+    border: 1px solid var(--color-rule);
+    padding: 0.05rem 0.4rem;
+    border-radius: 3px;
+    color: var(--color-accent);
+  }
+
+  ol, ul { padding-left: 1.3rem; max-width: 72ch; color: var(--color-muted); }
+  li { margin-bottom: 0.5rem; }
+  li b, li strong { color: var(--color-ink); }
+
+  .note {
+    font-size: var(--text-sm);
+    color: var(--color-neutral);
+    border-left: 2px solid var(--color-accent);
+    padding: 0.75rem 0 0.75rem 1rem;
+    margin: 2.5rem 0 1rem;
+    max-width: 72ch;
+  }
+
+  a { color: var(--color-accent); }
+  ::selection { background: var(--color-accent); color: var(--color-paper); }
+</style>
+</head>
+<body>
+
+<p class="eyebrow">Plan verification · Sphero Swarm</p>
+<h1>Distributed control plan, checked against the code</h1>
+<p class="lede">"Pi owns Bluetooth, mini-PC coordinates over the network." Verified line-by-line against <code>Controls_Server.py</code>, <code>gui_server.py</code>, <code>gui_driver.py</code>, <code>perception/server.py</code>, and <code>gui/electron/main.ts</code> — not guessed.</p>
+
+<div class="verdict-banner">
+  <p class="label">The one thing that blocks everything</p>
+  <p>Every network endpoint in this codebase binds to <code>'localhost'</code> only. None of it is reachable from another machine today, and Electron's process model only knows how to launch <em>local</em> child processes. This has to change before any part of the distributed plan works — independent of every other design decision below.</p>
+</div>
+
+<div class="diagram-endpoints">
+  <div><span><code>Controls_Server.py:190</code> — Instruction protocol, TCP 1235</span><span><code>'localhost'</code></span></div>
+  <div><span><code>Controls_Server.py:573</code> — control-plane websocket, 6768</span><span><code>"localhost"</code></span></div>
+  <div><span><code>gui_server.py:124</code> — simulation websocket, 6769</span><span><code>"localhost"</code></span></div>
+  <div><span><code>perception/server.py:18,20</code> — frame/telemetry websockets, 6767/6770</span><span><code>"localhost"</code></span></div>
+  <div><span><code>gui_driver.py:180</code> + every GUI websocket URL — client side</span><span><code>ws://localhost:PORT</code></span></div>
+</div>
+
+<h2>Requirement-by-requirement verdict</h2>
+<table>
+  <tr><th>Plan §</th><th>Requirement</th><th>Status</th><th>Notes</th></tr>
+  <tr>
+    <td>§2</td>
+    <td>Pi owns BLE, one process per Pi</td>
+    <td><span class="status partial">COMPATIBLE, NOT BUILT</span></td>
+    <td>The connect/threading core needs no change, but one process currently manages <em>all</em> balls from one global <code>constants.json</code>. Per-Pi ball-subset config doesn't exist yet.</td>
+  </tr>
+  <tr>
+    <td>§2</td>
+    <td>Mini-PC coordinates, no direct BLE</td>
+    <td><span class="status partial">SHAPE ALREADY EXISTS</span></td>
+    <td><code>gui_driver.py</code> (computes) → <code>Controls_Server.py</code> (executes BLE) is already this split — just both on one machine over loopback today.</td>
+  </tr>
+  <tr>
+    <td>§8</td>
+    <td>New HTTP/JSON REST API</td>
+    <td><span class="status missing">DOESN'T EXIST</span></td>
+    <td>Current protocol: websocket JSON control-plane + pickled <code>Instruction</code> lists over raw TCP. Real decision: build the new API, or reuse the existing protocol as the Pi↔mini-PC wire format (less new code, but pickle now crosses a real machine boundary — a code-execution risk their own §19 doesn't address).</td>
+  </tr>
+  <tr>
+    <td>§9.1</td>
+    <td>Command timeout / auto-stop</td>
+    <td><span class="status exists">ALREADY BUILT</span></td>
+    <td>Every roll/turn/wait <code>Instruction</code> is duration-bounded, polls <code>KILL_FLAG</code>, self-stops via <code>stop_roll()</code>. No change needed.</td>
+  </tr>
+  <tr>
+    <td>§9.2</td>
+    <td>Watchdog / heartbeat</td>
+    <td><span class="status exists">ALREADY BUILT (different mechanism)</span></td>
+    <td><code>command_gathering()</code>'s <code>except EOFError</code> kills every ball when the client disconnects — a TCP-drop watchdog, not an explicit heartbeat, but functionally sufficient.</td>
+  </tr>
+  <tr>
+    <td>§9.3</td>
+    <td>Emergency stop</td>
+    <td><span class="status partial">PARTIAL</span></td>
+    <td><code>disconnect_all</code> exists but is the heavy version (full teardown, reconnect required) — not the lighter "halt motion, stay connected" the plan implies. Decide which one you want.</td>
+  </tr>
+  <tr>
+    <td>§9.4</td>
+    <td>Auto-reconnect with backoff</td>
+    <td><span class="status missing">DOESN'T EXIST</span></td>
+    <td>Current retries are fixed-count, at startup only. Mid-session drop-and-reconnect with increasing delay is new work.</td>
+  </tr>
+  <tr>
+    <td>§9.5/9.6</td>
+    <td>Safe startup / shutdown</td>
+    <td><span class="status exists">ALREADY BUILT</span></td>
+    <td>Connect never moves anything; <code>try/finally</code> guarantees teardown; in-flight commands stop themselves before disconnect.</td>
+  </tr>
+  <tr>
+    <td>§12</td>
+    <td>Identify exact Sphero model</td>
+    <td><span class="status exists">ALREADY ANSWERED</span></td>
+    <td><code>SB-</code> tag naming + <code>bolt.*</code> conventions throughout the demos already point to Sphero BOLT — write it down, don't re-derive it.</td>
+  </tr>
+  <tr>
+    <td>§20</td>
+    <td>Systemd autostart on boot</td>
+    <td><span class="status missing">DOESN'T EXIST</span></td>
+    <td><code>Controls_Server.py</code> only starts because Electron's <code>spawn()</code> chose to. A Pi running headless after reboot needs its own unit file, decoupled from Electron entirely.</td>
+  </tr>
+</table>
+
+<h2>The admin dashboard question</h2>
+<p>One already exists — the Electron + React GUI. It already gives you per-ball connection status and manual connect/disconnect/rehome (Controls tab), live algorithm/simulation state (Simulation tab), a camera stream (Perception tab), and constants editing (Config tab).</p>
+<p>What it can't do yet: know about <em>multiple</em> Pis, keep a robot↔Pi registry, or start/stop a remote process — all downstream of the <code>spawn()</code>-is-local constraint above. The unified-gateway design sketched in <a href="architecture.html">architecture.html</a> (built for a different problem — five uncoordinated <em>local</em> endpoints) turns out to be the right shape here too: one gateway on the mini-PC aggregating N Pi-side services behind a single websocket the existing GUI already knows how to consume.</p>
+
+<h2>Target architecture — where things end up</h2>
+<p>This is the end state after the "fix localhost / decide the protocol / per-Pi config" steps below are done. Two concrete calls are made here that the verdict table above left open:</p>
+<ul>
+  <li><strong>The API lives on each Pi, and it's HTTP/JSON — not the old pickle-over-TCP socket.</strong> Pickle deserializing data that now crosses a real machine boundary is a code-execution risk; JSON isn't. Each Pi's Controls Service exposes the §8-style endpoints (<code>/robots/:id/drive</code>, <code>/stop</code>, <code>/led</code>, <code>/health</code>) bound to its real LAN address.</li>
+  <li><strong>The algorithm/simulation "brain" (today's unmanaged <code>gui_driver.py</code>) moves into the mini-PC's Coordinator process</strong> — a supervised service, not a script someone remembers to launch in a terminal. It's the natural place for it: the Coordinator already holds the robot registry and is where perception feedback needs to land anyway.</li>
+</ul>
+
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+    subgraph MiniPC["Mini-PC"]
+        GUI["Electron + React GUI<br/>admin dashboard - UI mostly unchanged"]
+        Coordinator["Coordinator / Gateway service<br/>robot registry: robot_id -> Pi + MAC<br/>algorithm/simulation brain<br/>(absorbs today's gui_driver.py role)"]
+        Perception["Perception service<br/>ball position tracking<br/>(stays centralized - one camera, one view of the whole play surface)"]
+    end
+
+    subgraph Pi1["Raspberry Pi #1"]
+        API1["Controls Service<br/>HTTP/JSON API - OUR API LIVES HERE<br/>bound to LAN IP, not localhost<br/>systemd autostart on boot"]
+        BLE1["spherov2 + Bleak + threading<br/>(unchanged BLE/connect core)"]
+    end
+
+    subgraph Pi2["Raspberry Pi #2"]
+        API2["Controls Service<br/>HTTP/JSON API<br/>systemd autostart"]
+        BLE2["spherov2 + Bleak + threading"]
+    end
+
+    Camera["Overhead camera"]
+    SpherosA["Sphero A, B<br/>assigned to Pi #1"]
+    SpherosB["Sphero C, D<br/>assigned to Pi #2"]
+
+    GUI -- "local websocket, JSON<br/>same shape as today's :6768/:6769" --> Coordinator
+    Coordinator -- "HTTP/JSON<br/>POST /robots/:id/drive .../stop .../led<br/>GET /robots .../health" --> API1
+    Coordinator -- "HTTP/JSON" --> API2
+    Camera -- video --> Perception
+    Perception -- "ball positions" --> Coordinator
+
+    API1 --> BLE1
+    API2 --> BLE2
+    BLE1 -- BLE --> SpherosA
+    BLE2 -- BLE --> SpherosB
+
+    style API1 fill:#173a1c,stroke:#5ac95a,stroke-width:2px
+    style API2 fill:#173a1c,stroke:#5ac95a,stroke-width:2px
+</pre>
+</div>
+
+<p>Everything downstream of "Controls Service" on each Pi — the threading model, spherov2/Bleak connection handling, duration-bounded auto-stop, the disconnect watchdog — is the part of <code>Controls_Server.py</code> that already works and doesn't move. What changes is what wraps it: an HTTP layer facing the network instead of a loopback-only websocket + pickle socket, and a per-Pi robot subset instead of one global list.</p>
+
+<h2>Recommended order</h2>
+<ol>
+  <li><strong>Fix the <code>'localhost'</code> bindings</strong> — mandatory first step. Touches <code>Controls_Server.py</code>, <code>gui_server.py</code>, <code>perception/server.py</code>, <code>gui_driver.py</code>, and every GUI websocket URL.</li>
+  <li><strong>Decide the HTTP-API-vs-existing-protocol question (§8) explicitly</strong> — don't let it default silently either way.</li>
+  <li><strong>Build the per-Pi ball-roster config</strong> (their <code>robots.yaml</code> idea) — needed either way.</li>
+  <li><strong>Add reconnect-with-backoff (§9.4) and the systemd unit (§20)</strong> — needed either way.</li>
+  <li><strong>Decide what "emergency stop" actually does (§9.3)</strong> before building it — <code>disconnect_all</code> already does the heavy version.</li>
+  <li><strong>Only then</strong> extend the existing GUI into a multi-Pi-aware gateway consumer.</li>
+</ol>
+
+<p class="note">Everything else in the plan — safety timeouts, safe start/shutdown, the BLE/threading core, the model choice — is either already correct or already decided. Don't re-derive it; build on it.</p>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'dark' });
+</script>
+</body>
+</html>

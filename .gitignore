@@ -166,3 +166,14 @@ perception/annotated_test_frames/
 
 # weird mac thing
 *.DS_Store
+.grepai/
+
+# RFC phase-loop run state/logs (local, not part of the RFC itself)
+loop/.state/
+loop/.logs/
+
+# Claude Code config (agents, skills) — treated as local-only, not shared via git
+.claude/
+
+# Obsidian brain scaffold (cckit brain) — machine-local
+brain/

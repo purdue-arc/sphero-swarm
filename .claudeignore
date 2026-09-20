@@ -1,0 +1,33 @@
+# Directories Claude should not read (token savers)
+node_modules/
+dist/
+build/
+.next/
+out/
+target/
+__pycache__/
+.venv/
+venv/
+coverage/
+.git/
+vendor/
+.turbo/
+.cache/
+# Lockfiles + generated + binaries
+*.lock
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+Cargo.lock
+poetry.lock
+*.min.js
+*.min.css
+*.map
+*.generated.*
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.pdf
+*.zip
+*.woff*

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sphero Swarm — Service Architecture</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    /* Technical tone, cool anchor (hue 250) + one warm signal accent (hue 70), one danger accent (hue 25) — never more than two. */
+    --color-paper:    oklch(14% 0.012 250);
+    --color-paper-2:  oklch(18% 0.014 250);
+    --color-rule:     oklch(30% 0.012 250);
+    --color-neutral:  oklch(58% 0.010 250);
+    --color-muted:    oklch(74% 0.008 250);
+    --color-ink:      oklch(94% 0.006 250);
+    --color-accent:   oklch(75% 0.15 70);
+    --color-danger:   oklch(66% 0.15 25);
+
+    --font-display: "JetBrains Mono", ui-monospace, monospace;
+    --font-body:    "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+
+    --text-sm:  0.8rem;
+    --text-base: 1rem;
+    --text-md:  1.25rem;
+    --text-lg:  1.5625rem;
+    --text-xl:  1.9531rem;
+    --text-display: clamp(2rem, 3vw + 1rem, 3.2rem);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-body);
+    font-weight: 400;
+    font-size: var(--text-base);
+    line-height: 1.6;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    max-width: 920px;
+    margin: 0 auto;
+    padding: clamp(1.25rem, 4vw, 3rem);
+  }
+
+  .eyebrow {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: var(--text-sm);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--color-accent);
+    margin: 0 0 0.75rem;
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: var(--text-display);
+    line-height: 1.08;
+    letter-spacing: -0.01em;
+    margin: 0 0 1rem;
+    border-bottom: 1px solid var(--color-rule);
+    padding-bottom: 1.25rem;
+  }
+
+  h2 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: var(--text-xl);
+    letter-spacing: -0.01em;
+    margin-top: 3.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: var(--text-md);
+    color: var(--color-accent);
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+  }
+
+  p { max-width: 65ch; color: var(--color-muted); }
+  p.lede { color: var(--color-ink); max-width: 70ch; }
+
+  .diagram {
+    background: var(--color-paper-2);
+    border: 1px solid var(--color-rule);
+    border-radius: 6px;
+    padding: 1rem;
+    margin: 1.25rem 0;
+    overflow-x: auto;
+  }
+
+  ul { padding-left: 0; margin: 0; list-style: none; max-width: 70ch; }
+  li {
+    position: relative;
+    padding: 0.55rem 0 0.55rem 1.3rem;
+    margin-bottom: 0.15rem;
+    border-bottom: 1px solid var(--color-rule);
+    color: var(--color-muted);
+  }
+  li:last-child { border-bottom: none; }
+  li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 1.05rem;
+    width: 6px;
+    height: 6px;
+    background: var(--color-accent);
+  }
+  ul.bad li::before { background: var(--color-danger); }
+  li b { color: var(--color-ink); font-weight: 600; }
+
+  code {
+    font-family: var(--font-display);
+    font-variant-numeric: tabular-nums;
+    font-size: 0.88em;
+    background: var(--color-paper-2);
+    border: 1px solid var(--color-rule);
+    padding: 0.05rem 0.4rem;
+    border-radius: 3px;
+    color: var(--color-accent);
+  }
+
+  .note {
+    font-size: var(--text-sm);
+    color: var(--color-neutral);
+    border-left: 2px solid var(--color-accent);
+    padding: 0.75rem 0 0.75rem 1rem;
+    margin: 2.5rem 0 1rem;
+    max-width: 70ch;
+  }
+
+  a { color: var(--color-accent); }
+
+  ::selection { background: var(--color-accent); color: var(--color-paper); }
+</style>
+</head>
+<body>
+
+<p class="eyebrow">System map · Sphero Swarm</p>
+<h1>How the services actually talk to each other</h1>
+<p class="lede">One process tree, five uncoordinated network endpoints, and one manually-launched service the diagram below doesn't let you forget. Verified against current source — <code>gui/electron/main.ts</code>, <code>perception/server.py</code>, <code>controls/Controls_Server.py</code>, <code>gui_server.py</code> — not guessed.</p>
+
+<h2>Current — as it runs today</h2>
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+    subgraph Electron["Electron app (gui/electron/main.ts)"]
+        Main["Main process<br/>(spawn + ipcMain handlers)"]
+        Renderer["React renderer<br/>(each component opens its own websocket)"]
+    end
+
+    subgraph Managed["Spawned and supervised by Electron"]
+        GuiPy["gui/link/gui.py<br/>one-shot: prints constants.json, exits"]
+        Spotter["perception/sphero_spotter.py<br/>long-running"]
+        ControlsServer["controls/Controls_Server.py<br/>long-running BLE control server"]
+    end
+
+    subgraph Unmanaged["NOT spawned by Electron — run manually in a terminal"]
+        GuiDriver["gui_driver.py<br/>algorithm / simulation driver"]
+        GuiServer["gui_server.py<br/>imported by gui_driver.py"]
+    end
+
+    subgraph Hardware["Physical layer"]
+        Spheros["Sphero robots<br/>BLE via spherov2 + Bleak"]
+        Camera["Camera / OAK-D"]
+    end
+
+    ConstantsFile[("constants.json")]
+
+    Main -- "spawn (start/stop IPC)" --> GuiPy
+    Main -- "spawn (start/stop-sphero-spotter)" --> Spotter
+    Main -- "spawn (start/stop-controls)" --> ControlsServer
+    GuiPy -- "stdout JSON" --> Main
+    Main -- "get-constants (IPC)" --> Renderer
+    Renderer -- "save-constants (IPC)" --> ConstantsFile
+
+    Renderer -- "ws :6768 — connect/disconnect/rehome" --> ControlsServer
+    Renderer -- "ws :6769 — dashboard + Simulation tab" --> GuiServer
+    Renderer -- "ws :6767 — video frames" --> Spotter
+    Renderer -- "ws :6770 — telemetry" --> Spotter
+
+    ControlsServer -- "BLE, one thread per ball" --> Spheros
+    Spotter -- "video feed" --> Camera
+
+    GuiDriver -- imports --> GuiServer
+    GuiDriver -- "TCP :1235 — pickled Instruction lists<br/>(only when 'Use Controls' is on)" --> ControlsServer
+    GuiDriver -- reads --> ConstantsFile
+    ControlsServer -- reads --> ConstantsFile
+    GuiPy -- reads --> ConstantsFile
+
+    style Unmanaged fill:#2a1c1c,stroke:#c9605a,stroke-width:2px
+</pre>
+</div>
+
+<h3>What's actually bad about this</h3>
+<ul class="bad">
+<li><b>gui_driver.py / gui_server.py run outside Electron's lifecycle.</b> No auto-start, no auto-restart, no signal in the GUI they're supposed to be running. Forget to launch them and the Simulation tab just says "Reconnecting…" forever.</li>
+<li><b>Five uncoordinated network endpoints</b> — raw pickle TCP on <code>1235</code>, websockets on <code>6767</code> / <code>6768</code> / <code>6769</code> / <code>6770</code> — no shared registry, no auth, no version negotiation on any wire format.</li>
+<li><b>pickle over a raw socket is a latent code-execution risk</b> if port <code>1235</code> were ever reachable beyond localhost.</li>
+<li><b>Every component opens its own websocket.</b> <code>Controls.tsx</code> alone opens both <code>:6768</code> and <code>:6769</code> itself; <code>App.tsx</code> opens <code>:6769</code> again, separately.</li>
+<li><b>No protocol versioning.</b> A new <code>Instruction.type</code> or message shape breaks silently until both ends redeploy in lockstep.</li>
+<li><b>Two disconnected sources of truth</b> for what's running: Electron's IPC process table, and whatever's still open in a developer's terminal.</li>
+</ul>
+
+<h2>Proposed — one gateway, one process table</h2>
+<div class="diagram">
+<pre class="mermaid">
+flowchart TB
+    subgraph Electron["Electron app"]
+        Main["Main process<br/>supervises ALL python services<br/>(auto-restart, live status per service)"]
+        Renderer["React renderer<br/>single shared WS client/context"]
+    end
+
+    subgraph Gateway["Unified control-plane gateway (one process, one port)"]
+        WS["Single websocket server<br/>versioned, typed messages —<br/>replaces :6767/:6768/:6769/:6770 + TCP :1235"]
+    end
+
+    subgraph Services["Supervised services (all Electron-managed)"]
+        ControlsSvc["Controls service<br/>BLE via spherov2 + Bleak + threading"]
+        AlgoSvc["Algorithm / Simulation service<br/>today's gui_driver.py role"]
+        PerceptionSvc["Perception service<br/>camera + detection"]
+    end
+
+    ConstantsFile[("constants.json<br/>single source of truth")]
+
+    subgraph Hardware["Physical layer"]
+        Spheros["Sphero robots"]
+        Camera["Camera / OAK-D"]
+    end
+
+    Main -- "spawn + supervise (all three)" --> Services
+    Renderer -- "one ws connection,<br/>typed + versioned messages" --> WS
+    WS -- routes --> ControlsSvc
+    WS -- routes --> AlgoSvc
+    WS -- routes --> PerceptionSvc
+
+    ControlsSvc -- BLE --> Spheros
+    PerceptionSvc -- video --> Camera
+    AlgoSvc -- "structured, versioned commands<br/>replaces pickle/TCP :1235" --> ControlsSvc
+
+    Services -- "read/write" --> ConstantsFile
+</pre>
+</div>
+
+<h3>Why this is better</h3>
+<ul>
+<li><b>One supervised process table.</b> The algorithm driver becomes a real Electron-managed service — status visible in the GUI, restarts on crash, no "did I remember to start this" failure mode.</li>
+<li><b>One connection per renderer, one gateway process.</b> Components subscribe to message types through shared context instead of each opening its own socket.</li>
+<li><b>Structured, versioned messages replace raw pickle.</b> Kills the deserialize-arbitrary-code risk; a new command type stops breaking whichever end hasn't redeployed yet.</li>
+<li><b>Same domain boundaries, less accidental coupling.</b> Controls still owns BLE, perception still owns the camera — the gateway routes, it doesn't absorb either service's logic.</li>
+</ul>
+
+<p class="note">A direction, not a mandate — a real refactor (new gateway process, message schema, Electron process-supervision changes) worth its own RFC via the <code>controls-rfc</code> skill before touching anything, not a same-day change.</p>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      background: '#191f27',
+      primaryColor: '#232b35',
+      primaryTextColor: '#e4e9ee',
+      primaryBorderColor: '#3c4753',
+      lineColor: '#5c6773',
+      secondaryColor: '#232b35',
+      tertiaryColor: '#232b35',
+      clusterBkg: '#1d232b',
+      clusterBorder: '#3c4753',
+      edgeLabelBackground: '#191f27',
+      fontFamily: 'JetBrains Mono, ui-monospace, monospace',
+      fontSize: '13px'
+    },
+    flowchart: { curve: 'basis' }
+  });
+</script>
+</body>
+</html>
