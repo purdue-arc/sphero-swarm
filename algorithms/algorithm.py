@@ -1,4 +1,6 @@
 import random
+
+import numpy as np
 from .constants import constants
 from .sphero import Sphero
 from .bonded_group import BondedGroup
@@ -47,6 +49,39 @@ class Algorithm:
 
         self.log_lines.append(f'\n{'\t'*indent + line}')
         print(f'[ {line.replace('\n', '\n(')}')
+              
+        # Returns necessary change in angle to point in new direction
+    def calculate_angle_change(self, sphero):
+        if (sphero.target_x == sphero.x and sphero.target_y == sphero.y) == 0:
+            return 0  # no movement → no turn
+
+        prev_angle = np.arctan2(sphero.true_y - sphero.prev_true_y, sphero.true_x - sphero.prev_true_x) # Current position
+        target_angle = np.arctan2(sphero.target_y - sphero.true_y, sphero.target_x - sphero.true_x) # Next position
+        
+        sphero.prev_true_x = sphero.true_x
+        sphero.prev_true_y = sphero.true_y
+
+        # Compute smallest angle difference
+        theta = target_angle - prev_angle
+
+        # Normalize to [-180, 180]
+        theta = (theta + 180) % 360 - 180
+
+        return int(round(theta))
+        
+    def calculate_speed(self, sphero):
+        distance = math.hypot(sphero.target_x - sphero.true_x, sphero.target_y - sphero.true_y)
+        return int(constants.SPHERO_SPEED * distance)
+        
+        
+    def set_true_positions(self, data):
+        id_to_sphero = {sphero.id: sphero for sphero in self.find_all_spheros()}                                                                    
+        for entry in data["spheros"]:                                                                                                                    
+            sphero = id_to_sphero.get(entry["id"])                                                                                                       
+            if sphero:                                                                                                                                   
+                # update real position                                                                                                     
+                sphero.true_x = entry["x"]                                                                                                                    
+                sphero.true_y = entry["y"]
 
 
     def find_all_spheros(self) -> list[Sphero]:
@@ -265,7 +300,14 @@ class Algorithm:
         self.edge_grid = [[0 for _ in range(constants.GRID_HEIGHT * 2)] for _ in range(constants.GRID_WIDTH * 2)]
         # all groups are moved. only thing left to do is flip the grids to get ready for the next iteration.
         self.current_grid = self.next_grid.copy()
-        self.next_grid = [ [0 for _ in range(self.grid_height)] for _ in range(self.grid_width)] 
+        self.next_grid = [ [0 for _ in range(self.grid_height)] for _ in range(self.grid_width)]
+        
+        for group in self.bonded_groups:
+            for sphero in group.spheros:
+                sphero.delta_angle = self.calculate_angle_change(sphero)
+                sphero.speed = self.calculate_speed(sphero)
+        
+        
         print('yea we moved!\n')
 
     def find_group_move(self, group: BondedGroup) -> int:

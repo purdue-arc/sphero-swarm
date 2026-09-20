@@ -15,13 +15,15 @@ class Sphero:
         # position values
         self.x = x
         self.y = y
+        self.prev_true_x = x
+        self.prev_true_y = y
         self.true_x = x
         self.true_y = y
         self.target_x = target_x if target_x is not None else x
         self.target_y = target_y if target_y is not None else y
         self.previous_direction = previous_direction
         self.direction = direction
-        self.previous_int_angle = 90
+        self.delta_angle = 0
 
         # bonding rules. CHANGE THIS if you need to change the bonding rules
         self.bonding_directions = bonding_directions #the default: spheros can bond in all 8 directions.

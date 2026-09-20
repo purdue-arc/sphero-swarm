@@ -1,6 +1,7 @@
 import pickle
 import socket
 import time
+import zmq
 
 from algorithms.algorithm import Algorithm
 from algorithms.constants import Constants
@@ -142,19 +143,13 @@ def _send_controls_update(
         color_instructions.append(
             Instruction(sphero.id, 0, r, g, b)
         )
-
-        direction_change = sphero.get_direction_change()
             
-        delta_angle = nextVectorDirection(sphero)
         rotate_instructions.append(
-            Instruction(sphero.id, 2, delta_angle, constants.TURN_DURATION)
+            Instruction(sphero.id, 2, sphero.delta_angle, constants.TURN_DURATION)
         )
 
-
-        speed = int(abs(constants.SPHERO_SPEED * math.hypot((sphero.y - sphero.target_y), (sphero.x - sphero.target_x))))
-
         roll_instructions.append(
-            Instruction(sphero.id, 1, speed, constants.ROLL_DURATION)
+            Instruction(sphero.id, 1, sphero.speed, constants.ROLL_DURATION)
         )
 
     sock.send(pickle.dumps(color_instructions))
@@ -176,6 +171,12 @@ def _connect_controls(port: int) -> socket.socket:
 def main_server():
     constants = Constants()
     algorithm = _build_algorithm(constants)
+    
+    context = zmq.Context()
+    socket = context.socket(zmq.REQ)
+    socket.connect("tcp://127.0.0.1:5555")
+
+    print("Connected to ZeroMQ server")
 
     running = False
     paused = False
@@ -287,6 +288,10 @@ def main_server():
                     print("NEW EDIT BALL MOVE")
 
             elif running and not paused:
+                socket.send_string("coords")
+                response = socket.recv()
+                algorithm.set_true_positions(response)
+                
                 for sphero in algorithm.find_all_spheros():
                     sphero.x = sphero.target_x
                     sphero.y = sphero.target_y
