@@ -144,20 +144,14 @@ def _send_controls_update(
         )
 
         direction_change = sphero.get_direction_change()
-        rotation = False
-        if direction_change >= 9:
-            rotation = True
             
         delta_angle = nextVectorDirection(sphero)
         rotate_instructions.append(
             Instruction(sphero.id, 2, delta_angle, constants.TURN_DURATION)
         )
 
-        speed = constants.SPHERO_SPEED
-        if sphero.direction > 0 and sphero.direction % 2 == 0:
-            speed = constants.SPHERO_DIAGONAL_SPEED
-        if rotation:
-            speed = int(abs(constants.SPHERO_SPEED * math.hypot((sphero.y - sphero.target_y), (sphero.x - sphero.target_x))))
+
+        speed = int(abs(constants.SPHERO_SPEED * math.hypot((sphero.y - sphero.target_y), (sphero.x - sphero.target_x))))
 
         roll_instructions.append(
             Instruction(sphero.id, 1, speed, constants.ROLL_DURATION)

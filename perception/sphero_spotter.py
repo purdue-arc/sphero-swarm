@@ -232,10 +232,10 @@ def process_apriltags(frame, force_process=False):
     # Process April tags (full detection)
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     results = detector.detect(gray)
-    last_apriltag_count = len(results)
+    last_apriltag_count = len(results) # type: ignore
     tag_points = {}
 
-    for r in results:
+    for r in results: # type: ignore
         corners = r.corners.astype(int)
         tag_id = r.tag_id
         cX, cY = int(r.center[0]), int(r.center[1])
@@ -860,6 +860,9 @@ if __name__ == '__main__':
     # Start async processing thread
     processing_thread = threading.Thread(target=process_frame_async, daemon=True)
     processing_thread.start()
+
+    pipeline_latency_ms = 0
+    processing_start_time = 0
     
     try:
         if stream is not None:
@@ -892,7 +895,7 @@ if __name__ == '__main__':
                         capture_timestamp = videoIn.getTimestamp()
                         
                         # 2. Get host time *now* (when frame arrived)
-                        host_receive_time = dai.Clock.now()
+                        host_receive_time = dai.Clock.now() # type: ignore
                         
                         # 3. Calculate pipeline latency (device capture -> host receive)
                         pipeline_latency_ms = (host_receive_time - capture_timestamp).total_seconds() * 1000
