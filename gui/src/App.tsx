@@ -22,6 +22,8 @@ declare global {
       refreshControls: () => Promise<any>;
       quitApp: () => Promise<any>;
       saveConstants: (form: any) => Promise<any>;
+      getPerceptionTuning: () => Promise<Record<string, number | boolean>>;
+      savePerceptionTuning: (values: Record<string, number | boolean>) => Promise<any>;
     };
   }
 }
@@ -43,6 +45,7 @@ function App() {
     locked: false,
     latency: false,
     colorFilter: true,
+    brightThresh: 200,
   });
   const [latestSimulationSnapshot, setLatestSimulationSnapshot] = useState<SimulationSnapshot | null>(null);
   const [simulationSpeed, setSimulationSpeed] = useState(6);
@@ -54,6 +57,17 @@ function App() {
       try {
         const data = await window.electronAPI.getConstants();
         setConstants(data);
+
+        // Perception's tuning lives in gui/constants.json rather than the
+        // constants above, so the slider comes back where it was left.
+        try {
+          const tuning = await window.electronAPI.getPerceptionTuning();
+          if (typeof tuning?.BRIGHT_THRESH === "number") {
+            setPerceptionConfig(prev => ({ ...prev, brightThresh: tuning.BRIGHT_THRESH as number }));
+          }
+        } catch (err) {
+          console.error("Failed to load perception tuning:", err);
+        }
         setAppReady(true);
         // Signal to splash that render is complete, showing the button
         window.electronAPI.appRenderComplete();

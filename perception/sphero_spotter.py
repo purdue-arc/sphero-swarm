@@ -70,6 +70,10 @@ parser.add_argument('--server', '-s', action='store_true', help="Streams video t
 parser.add_argument('--grid', '-g', action='store_true', help="Shows the grid overlay")
 parser.add_argument('--brightness', '-b', action='store_true', help="Detect spheros by pixel brightness instead of YOLO: dark background is thresholded away and each blob of bright pixels is reported as a sphero.")
 parser.add_argument('--hide-mask', action='store_true', help="In --brightness mode, don't show the filtered (thresholded) view. By default it is shown alongside the camera image with live tuning sliders.")
+parser.add_argument('--bright-thresh', type=int, default=None, help="Brightness cutoff 0-255 for --brightness mode; at or below this is background (default: from constants.json).")
+parser.add_argument('--bright-min-area', type=float, default=None, help="Smallest blob accepted as a sphero, in pixels (default: from constants.json).")
+parser.add_argument('--bright-blur', type=int, default=None, help="Gaussian blur kernel applied before thresholding, 0 = off (default: from constants.json).")
+parser.add_argument('--bright-match-dist', type=float, default=None, help="Max pixels a blob may move between frames and keep its track id (default: from constants.json).")
 
 
 group = parser.add_mutually_exclusive_group()
@@ -77,6 +81,38 @@ group.add_argument('--video', '-v', type=str, help="Use provided video path as i
 group.add_argument('--webcam', '-w', action='store_true', help="Use webcam as input stream")
 
 args = parser.parse_args()
+
+def apply_tuning(values):
+    """Write tuning values into `tune`, coerced to the type of each default.
+
+    Used by the command line flags and by the GUI's live sliders, which send
+    {"action": "set_tuning", "values": {...}} over the telemetry socket.
+    Unknown keys are ignored so a stale GUI can't set arbitrary attributes.
+    """
+    applied = {}
+    for key, value in (values or {}).items():
+        default = PERCEPTION_DEFAULTS.get(key)
+        if default is None and key not in PERCEPTION_DEFAULTS:
+            continue
+        try:
+            cast = type(default)(value) if not isinstance(default, bool) else bool(value)
+        except (TypeError, ValueError):
+            continue
+        setattr(tune, key, cast)
+        applied[key] = cast
+    return applied
+
+# Command line beats constants.json for the brightness settings, so the GUI can
+# launch with whatever the user last had on the sliders.
+_cli_tuning = {
+    "BRIGHT_THRESH": args.bright_thresh,
+    "BRIGHT_MIN_AREA": args.bright_min_area,
+    "BRIGHT_BLUR": args.bright_blur,
+    "BRIGHT_MATCH_DIST": args.bright_match_dist,
+}
+_cli_tuning = {k: v for k, v in _cli_tuning.items() if v is not None}
+if _cli_tuning:
+    print(f"sphero_spotter: tuning from command line: {apply_tuning(_cli_tuning)}")
 
 # CONSTANTS
 GRID_DIM_X = 12 # TODO finalize dimensions
@@ -538,6 +574,10 @@ def process_frame_async():
                     print(f"[sphero_spotter] Grid toggled to: {args.grid}")
                     if args.debug:
                         print(f"Grid toggled: {args.grid}")
+                elif cmd.get("action") == "set_tuning":
+                    # Live slider moves from the GUI; picked up on the next frame
+                    applied = apply_tuning(cmd.get("values"))
+                    print(f"[sphero_spotter] Tuning updated: {applied}")
             
             # Get latest frame (non-blocking, skip stale frames)
             try:
@@ -676,6 +716,9 @@ def process_frame_async():
                     "zmq_bound": zmq_bound,
                     "spheros": status_spheros,
                     "latency": last_latency,
+                    # Lets the GUI show what the filter is actually running with
+                    "tuning": {k: getattr(tune, k) for k in PERCEPTION_DEFAULTS},
+                    "mask_streaming": mask_view is not None,
                 })
 
             # Put result in queue (replace if queue is full)
@@ -699,8 +742,16 @@ last_valid_mask = None
 _mask_window_ready = False
 
 def show_mask_view():
-    """True when the filtered view should be produced and displayed."""
-    return args.brightness and not args.hide_mask and not args.nogui
+    """True when the filtered view should be produced and displayed.
+
+    Under --server there is no local window: the mask goes out on its own
+    stream, and it is only worth drawing while the GUI has that view open.
+    """
+    if not args.brightness or args.hide_mask:
+        return False
+    if args.server:
+        return server.mask_view_wanted()
+    return not args.nogui
 
 def _set_thresh(v):
     tune.BRIGHT_THRESH = int(v)
@@ -735,24 +786,16 @@ def ensure_mask_window():
     cv2.createTrackbar("Min peak separation", MASK_WINDOW, int(tune.MERGE_PEAK_SEP), 40, _set_merge_peak_sep)
     _mask_window_ready = True
 
-def side_by_side(frame, mask_view):
-    """Stack the camera view and the filtered view for single-stream output."""
-    if mask_view is None:
-        return frame
-    m = mask_view
-    if m.shape[0] != frame.shape[0]:
-        scale = frame.shape[0] / m.shape[0]
-        m = cv2.resize(m, (int(m.shape[1] * scale), frame.shape[0]))
-    return np.hstack((frame, m))
-
 def display_frames(frame, mask_view, timestamp):
     """Show/stream the camera view, plus the filtered view in brightness mode."""
     if args.nogui:
         return
 
     if args.server:
-        # One video stream to the web GUI, so pack both views into one image
-        server.feed_frames_from_calculateFrame(side_by_side(frame, mask_view), timestamp)
+        # The GUI has a stream per view: camera on 6767, filter mask on 6771
+        server.feed_frames_from_calculateFrame(frame, timestamp)
+        if mask_view is not None:
+            server.feed_mask_frame(mask_view, timestamp)
         return
 
     cv2.imshow(MAIN_WINDOW, frame)
@@ -769,6 +812,11 @@ def display_frames(frame, mask_view, timestamp):
 def calculateFrame(frame, frame_timestamp=None):
     """Main frame processing function - now uses async processing"""
     global last_valid_frame, last_valid_mask
+
+    if not show_mask_view():
+        # Filter view was turned off (or the GUI closed it): drop the last one
+        # so a stale mask can't be re-sent while waiting on the next result.
+        last_valid_mask = None
 
     # Add frame to processing queue (drop if queue is full = we're behind)
     frame_data = (frame.copy(), frame_timestamp if frame_timestamp else time.time())

@@ -112,7 +112,7 @@ function cleanupOrphanedControlsServer(port = 6768) {
 function cleanupOrphanedPerceptionServers() {
   if (process.platform !== "win32") return;
 
-  const perceptionPorts = [6767, 6770];
+  const perceptionPorts = [6767, 6770, 6771];
   const pids = new Set<number>();
 
   for (const port of perceptionPorts) {
@@ -154,6 +154,7 @@ const DEFAULT_PERCEPTION_CONFIG = {
   locked: false,
   latency: false,
   colorFilter: true,
+  brightThresh: 200,
 };
 
 function normalizeConstantsForSave(raw: any) {
@@ -207,9 +208,12 @@ function startSpheroSpotter(config: any = {}) {
 
   if (cfg.colorFilter) {
     // Colour filtering replaces the model: the filter's blobs are the
-    // detections handed to the algorithms. --hide-mask keeps the filtered
-    // image out of the stream, so the GUI only shows what it framed.
-    pyArgs.push("-b", "--hide-mask");
+    // detections handed to the algorithms. The mask goes out on its own
+    // stream, which perception only renders while the GUI is showing it.
+    pyArgs.push("-b");
+    if (Number.isFinite(cfg.brightThresh)) {
+      pyArgs.push("--bright-thresh", String(Math.round(cfg.brightThresh)));
+    }
   } else {
     pyArgs.push("-m", cfg.model);
     pyArgs.push("--conf", String(cfg.conf));
@@ -361,6 +365,76 @@ ipcMain.handle("save-constants", async (_event, constants) => {
     return { status: "saved" };
   } catch (error) { console.error("Error saving constants:", error); throw error; }
 });
+// Perception reads its tuning from gui/constants.json (not the root
+// constants.json that save-constants writes), so the sliders persist there.
+const PERCEPTION_TUNING_KEYS = [
+  "BRIGHT_THRESH",
+  "BRIGHT_MIN_AREA",
+  "BRIGHT_MAX_AREA",
+  "BRIGHT_BLUR",
+  "BRIGHT_MATCH_DIST",
+  "BRIGHT_MAX_BLOBS",
+  "MERGE_SPLIT",
+  "MERGE_AREA_RATIO",
+  "MERGE_PEAK_SEP",
+];
+
+function perceptionConstantsPath() {
+  return path.join(__dirname, "../constants.json");
+}
+
+ipcMain.handle("get-perception-tuning", async () => {
+  try {
+    const fs = await import("fs/promises");
+    const raw = JSON.parse(await fs.readFile(perceptionConstantsPath(), "utf8"));
+    return raw?.PERCEPTION ?? {};
+  } catch (error) {
+    console.error("Error reading perception tuning:", error);
+    return {};
+  }
+});
+
+// Slider writes land here. Serialised so a fast drag can't interleave a
+// read-modify-write and lose a value.
+let perceptionTuningWrite: Promise<any> = Promise.resolve();
+
+ipcMain.handle("save-perception-tuning", async (_event, values) => {
+  const clean: Record<string, number | boolean> = {};
+  for (const key of PERCEPTION_TUNING_KEYS) {
+    const v = values?.[key];
+    if (typeof v === "number" && Number.isFinite(v)) clean[key] = v;
+    else if (typeof v === "boolean") clean[key] = v;
+  }
+  if (Object.keys(clean).length === 0) return { status: "nothing-to-save" };
+
+  const write = async () => {
+    const fs = await import("fs/promises");
+    const constantsPath = perceptionConstantsPath();
+    // Merge, so the rest of the file (and untouched tuning keys) survive
+    let existing: any = {};
+    try {
+      existing = JSON.parse(await fs.readFile(constantsPath, "utf8"));
+    } catch (error) {
+      console.error("Could not read constants for tuning merge, rewriting:", error);
+    }
+    existing.PERCEPTION = { ...(existing.PERCEPTION ?? {}), ...clean };
+    await fs.writeFile(constantsPath, JSON.stringify(existing, null, 2));
+    return { status: "saved", saved: clean };
+  };
+
+  // Queue behind the previous write whether it succeeded or not, so one
+  // failure doesn't poison every later save.
+  const queued = perceptionTuningWrite.then(write, write);
+  perceptionTuningWrite = queued.catch(() => undefined);
+
+  try {
+    return await queued;
+  } catch (error) {
+    console.error("Error saving perception tuning:", error);
+    throw error;
+  }
+});
+
 ipcMain.handle("app-render-complete", () => {
   sendSplashProgress(100);
   return { status: "progress-complete" };
