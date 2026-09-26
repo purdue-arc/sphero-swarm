@@ -24,8 +24,9 @@ class WebcamStream(InputStream):
 
 
 class VideoFileStream(InputStream):
-    def __init__(self, path):
+    def __init__(self, path, loop=True):
         self.cap = cv2.VideoCapture(path)
+        self.loop = loop
         self.fps = self.cap.get(cv2.CAP_PROP_FPS)
         if self.fps <= 0:
             self.fps = 30  # default fallback
@@ -40,7 +41,13 @@ class VideoFileStream(InputStream):
         if elapsed >= self.frame_interval:
             ret, frame = self.cap.read()
             if not ret:
-                return None
+                if not self.loop:
+                    return None
+                # End of video: rewind and keep playing from the first frame
+                self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                ret, frame = self.cap.read()
+                if not ret:
+                    return None
             self.last_frame_time = current_time
             return frame
         

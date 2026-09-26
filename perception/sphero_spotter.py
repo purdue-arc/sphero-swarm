@@ -5,6 +5,7 @@ import threading
 import zmq                      # for socket to connect to algs
 from queue import Queue, Empty
 from collections import deque
+from types import SimpleNamespace
 
 import server
 from ultralytics import YOLO    # computer vision imports
@@ -20,16 +21,41 @@ detector = Detector()
 
 from SpheroCoordinate import SpheroCoordinate
 from input_streams import WebcamStream, VideoFileStream
+import blob_merge
 
-# Load N_SPHEROS from shared constants file
+# Brightness-mode tuning. Lives in constants.json under "PERCEPTION" so it can
+# be changed without editing code or passing a wall of flags; the values below
+# are the fallbacks when the file or a key is missing. The mask-window sliders
+# write straight into this at runtime.
+PERCEPTION_DEFAULTS = {
+    "BRIGHT_THRESH": 200,        # brightness cutoff 0-255, at or below = background
+    "BRIGHT_MIN_AREA": 50.0,     # smallest blob accepted as a sphero, in pixels
+    "BRIGHT_MAX_AREA": 0.0,      # largest blob accepted, 0 = no upper limit
+    "BRIGHT_BLUR": 5,            # gaussian blur kernel before thresholding, 0 = off
+    "BRIGHT_MATCH_DIST": 80.0,   # max px a blob may move and keep its track id
+    "BRIGHT_MAX_BLOBS": 0,       # blobs kept, largest first; 0 = use N_SPHEROS
+    "MERGE_SPLIT": True,         # split blobs holding two touching spheros
+    "MERGE_AREA_RATIO": 1.5,     # blob this many x one sphero = a merge
+    "MERGE_PEAK_SEP": 6,         # min px between the two peaks used to split
+}
+
+# Load N_SPHEROS and the perception tuning from the shared constants file
 _constants_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'gui', 'constants.json')
 try:
     with open(_constants_path) as _f:
-        N_SPHEROS = json.load(_f).get('N_SPHEROS', 3)
+        _constants = json.load(_f)
+    N_SPHEROS = _constants.get('N_SPHEROS', 3)
     print(f"sphero_spotter: N_SPHEROS={N_SPHEROS} (from constants.json)")
 except Exception as _e:
+    _constants = {}
     N_SPHEROS = 3
     print(f"sphero_spotter: could not read constants.json ({_e}), defaulting N_SPHEROS={N_SPHEROS}")
+
+_perception = _constants.get('PERCEPTION', {})
+tune = SimpleNamespace(**{k: _perception.get(k, v) for k, v in PERCEPTION_DEFAULTS.items()})
+if _perception:
+    _overrides = [k for k in PERCEPTION_DEFAULTS if k in _perception]
+    print(f"sphero_spotter: PERCEPTION settings from constants.json: {', '.join(_overrides)}")
 
 parser = argparse.ArgumentParser(description="Sphero Spotter")
 parser.add_argument('--nogui', '-n', action='store_true', help="Run the Sphero Spotter without opening any GUI windows.")
@@ -42,6 +68,12 @@ parser.add_argument('--conf', type=float, default=0.25, help="YOLO confidence th
 parser.add_argument('--device', type=str, default=None, help="Device for YOLO inference (cuda, mps, cpu, or None for auto)")
 parser.add_argument('--server', '-s', action='store_true', help="Streams video to server")
 parser.add_argument('--grid', '-g', action='store_true', help="Shows the grid overlay")
+parser.add_argument('--brightness', '-b', action='store_true', help="Detect spheros by pixel brightness instead of YOLO: dark background is thresholded away and each blob of bright pixels is reported as a sphero.")
+parser.add_argument('--hide-mask', action='store_true', help="In --brightness mode, don't show the filtered (thresholded) view. By default it is shown alongside the camera image with live tuning sliders.")
+parser.add_argument('--bright-thresh', type=int, default=None, help="Brightness cutoff 0-255 for --brightness mode; at or below this is background (default: from constants.json).")
+parser.add_argument('--bright-min-area', type=float, default=None, help="Smallest blob accepted as a sphero, in pixels (default: from constants.json).")
+parser.add_argument('--bright-blur', type=int, default=None, help="Gaussian blur kernel applied before thresholding, 0 = off (default: from constants.json).")
+parser.add_argument('--bright-match-dist', type=float, default=None, help="Max pixels a blob may move between frames and keep its track id (default: from constants.json).")
 
 
 group = parser.add_mutually_exclusive_group()
@@ -49,6 +81,38 @@ group.add_argument('--video', '-v', type=str, help="Use provided video path as i
 group.add_argument('--webcam', '-w', action='store_true', help="Use webcam as input stream")
 
 args = parser.parse_args()
+
+def apply_tuning(values):
+    """Write tuning values into `tune`, coerced to the type of each default.
+
+    Used by the command line flags and by the GUI's live sliders, which send
+    {"action": "set_tuning", "values": {...}} over the telemetry socket.
+    Unknown keys are ignored so a stale GUI can't set arbitrary attributes.
+    """
+    applied = {}
+    for key, value in (values or {}).items():
+        default = PERCEPTION_DEFAULTS.get(key)
+        if default is None and key not in PERCEPTION_DEFAULTS:
+            continue
+        try:
+            cast = type(default)(value) if not isinstance(default, bool) else bool(value)
+        except (TypeError, ValueError):
+            continue
+        setattr(tune, key, cast)
+        applied[key] = cast
+    return applied
+
+# Command line beats constants.json for the brightness settings, so the GUI can
+# launch with whatever the user last had on the sliders.
+_cli_tuning = {
+    "BRIGHT_THRESH": args.bright_thresh,
+    "BRIGHT_MIN_AREA": args.bright_min_area,
+    "BRIGHT_BLUR": args.bright_blur,
+    "BRIGHT_MATCH_DIST": args.bright_match_dist,
+}
+_cli_tuning = {k: v for k, v in _cli_tuning.items() if v is not None}
+if _cli_tuning:
+    print(f"sphero_spotter: tuning from command line: {apply_tuning(_cli_tuning)}")
 
 # CONSTANTS
 GRID_DIM_X = 12 # TODO finalize dimensions
@@ -272,7 +336,7 @@ def listener():
 ASSIGN_NEW_IDS_AFTER_FIRST_FRAME = not args.locked
 frozen = False
 id_map = {}
-model = YOLO(args.model)
+model = YOLO(args.model) if not args.brightness else None
 
 # Optimize model device
 if args.device is None:
@@ -308,6 +372,194 @@ APRIL_TAG_PROCESS_INTERVAL = 5  # Process April tags every N frames
 last_warped_frame = None
 last_warp_matrix = None
 
+# --- Brightness-threshold detection ------------------------------------------
+# Treats the scene as bright spheros on a dark background: everything at or
+# below --bright-thresh is dropped, the mask is cleaned up with morphology, and
+# each surviving blob inside the area limits becomes one detection.
+bright_tracks = {}   # tracker_id -> (cx, cy) from the previous frame
+bright_vels = {}     # tracker_id -> (vx, vy), smoothed, for merge predictions
+next_bright_tid = 0
+single_area = blob_merge.SingleAreaEstimator()   # running size of one sphero
+_merge_state = {}    # frozenset of merged tracker ids -> how it was last split
+
+def class_name_for(cls_id):
+    if cls_id < 0 or model is None:
+        return "bright"
+    return model.names[cls_id]
+
+# Predicted track positions inside this many pixels of a blob's box count as
+# "this track is in that blob" when deciding whether the blob is a merge.
+MERGE_NEAR_MARGIN = 8
+
+def resolve_merged_blobs(mask, blobs):
+    """Split blobs that hold two spheros, between blob extraction and matching.
+
+    Returns (entries, vis): entries are blob tuples with a forced tracker id
+    appended (None = let the normal matching decide), vis is what the mask
+    window should draw for each merge being resolved.
+    """
+    global _merge_state
+
+    est = single_area.estimate
+    preds = {tid: blob_merge.predict(pos, bright_vels.get(tid, (0.0, 0.0)))
+             for tid, pos in bright_tracks.items()}
+
+    entries = []
+    vis = []
+    seen = {}
+    claimed = set()
+    coasting = {}   # tracker_id -> dead-reckoned position, while fully occluded
+    for area, cx, cy, x1, y1, x2, y2 in blobs:
+        near = [t for t, p in preds.items()
+                if t not in claimed
+                and x1 - MERGE_NEAR_MARGIN <= p[0] <= x2 + MERGE_NEAR_MARGIN
+                and y1 - MERGE_NEAR_MARGIN <= p[1] <= y2 + MERGE_NEAR_MARGIN]
+
+        if not (tune.MERGE_SPLIT and blob_merge.is_merged(area, est, tune.MERGE_AREA_RATIO, len(near))):
+            single_area.update(area)   # unambiguously one sphero: size reference
+            entries.append((area, cx, cy, x1, y1, x2, y2, None))
+            continue
+
+        # The two tracks this blob is holding: nearest predictions to its centre
+        pair = sorted(near, key=lambda t: (preds[t][0] - cx)**2 + (preds[t][1] - cy)**2)[:2]
+
+        pieces, peaks = blob_merge.split_blob(mask, (x1, y1, x2, y2), tune.MERGE_PEAK_SEP)
+        mode = "watershed"
+        if not blob_merge.pieces_plausible(pieces, est):
+            # Peaks were wrong or the halves were lopsided: fall back to where
+            # each track was heading and cut the pixels by nearest prediction.
+            pieces = blob_merge.split_by_prediction(mask, (x1, y1, x2, y2),
+                                                    [preds[t] for t in pair]) if len(pair) == 2 else None
+            mode = "predicted"
+        if pieces is None:
+            mode = "unsplit"
+            entries.append((area, cx, cy, x1, y1, x2, y2, None))
+        elif len(pair) == 2:
+            order = blob_merge.assign_pieces(pieces, [preds[t] for t in pair])
+            for tid, piece in zip(pair, (pieces[order[0]], pieces[order[1]])):
+                entries.append(piece + (tid,))
+                claimed.add(tid)
+                if mode == "predicted":
+                    # One peak for two spheros means they are on top of each
+                    # other. The half each track gets is always the side it is
+                    # already on, so feeding those centroids back in would stall
+                    # the crossing: carry the track on dead reckoning instead,
+                    # clamped to the blob, and still report the measured half.
+                    coasting[tid] = blob_merge.clamp_to_box(preds[tid], (x1, y1, x2, y2))
+            vis.append((pieces[order[0]], pieces[order[1]], (x1, y1, x2, y2), mode, tuple(pair)))
+        else:
+            # Split worked but we don't know whose halves these are (e.g. first
+            # frame) - let the normal matching hand out ids.
+            for piece in pieces:
+                entries.append(piece + (None,))
+            vis.append((pieces[0], pieces[1], (x1, y1, x2, y2), mode, tuple(pair)))
+
+        key = frozenset(pair) if pair else frozenset()
+        seen[key] = mode
+        if _merge_state.get(key) != mode or args.debug:
+            ratio = f"{area / est:.2f}x" if est else "no size estimate yet"
+            ids = ",".join(str(t) for t in pair) if pair else "unassigned"
+            print(f"[merge] blob area={int(area)} ({ratio}) peaks={peaks} -> {mode}, ids {ids}")
+    _merge_state = seen
+
+    # Forced ids first, so a neighbouring blob can't take one by proximity
+    entries.sort(key=lambda e: e[7] is None)
+    return entries, vis, claimed, coasting
+
+MERGE_COLOURS = ((255, 0, 255), (255, 255, 0))   # magenta / cyan, one per half
+MERGE_BOX_COLOUR = (0, 165, 255)                 # orange, the blob they came from
+
+def draw_merge_overlay(mask_view, merge_vis):
+    """Mark every merge being resolved on the filtered view."""
+    for piece_a, piece_b, (mx1, my1, mx2, my2), mode, pair in merge_vis:
+        cv2.rectangle(mask_view, (int(mx1), int(my1)), (int(mx2), int(my2)),
+                      MERGE_BOX_COLOUR, 1)
+        for piece, colour in zip((piece_a, piece_b), MERGE_COLOURS):
+            cv2.circle(mask_view, (int(piece[1]), int(piece[2])), 4, colour, -1)
+        label = "MERGED (" + mode + ")" + (f" {pair[0]}/{pair[1]}" if len(pair) == 2 else "")
+        cv2.putText(mask_view, label, (int(mx1), max(12, int(my1) - 5)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, MERGE_BOX_COLOUR, 1, cv2.LINE_AA)
+
+def detect_bright_blobs(frame):
+    """Return (dets, mask, merge_vis) where dets matches the YOLO tuple layout."""
+    global bright_tracks, bright_vels, next_bright_tid
+
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    k = tune.BRIGHT_BLUR
+    if k > 0:
+        k = k if k % 2 == 1 else k + 1   # GaussianBlur needs an odd kernel
+        gray = cv2.GaussianBlur(gray, (k, k), 0)
+
+    _, mask = cv2.threshold(gray, tune.BRIGHT_THRESH, 255, cv2.THRESH_BINARY)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)    # kill speckle
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)   # fill holes
+
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    blobs = []  # (area, cx, cy, x1, y1, x2, y2)
+    for c in contours:
+        area = cv2.contourArea(c)
+        if area < tune.BRIGHT_MIN_AREA:
+            continue
+        if tune.BRIGHT_MAX_AREA > 0 and area > tune.BRIGHT_MAX_AREA:
+            continue
+        x, y, w, h = cv2.boundingRect(c)
+        m = cv2.moments(c)
+        if m["m00"] > 0:
+            cx = m["m10"] / m["m00"]
+            cy = m["m01"] / m["m00"]
+        else:
+            cx, cy = x + w / 2.0, y + h / 2.0
+        blobs.append((area, cx, cy, float(x), float(y), float(x + w), float(y + h)))
+
+    # Largest first, so leftover glare loses to the actual spheros
+    blobs.sort(key=lambda b: b[0], reverse=True)
+    limit = tune.BRIGHT_MAX_BLOBS if tune.BRIGHT_MAX_BLOBS > 0 else N_SPHEROS
+    blobs = blobs[:limit]
+
+    # A merged blob is two spheros in one contour: split it and pin each half
+    # to its own track before the ordinary matching runs.
+    blobs, merge_vis, merged_tids, coasting = resolve_merged_blobs(mask, blobs)
+
+    # Greedy nearest-neighbour association with the previous frame, so the
+    # downstream ID logic sees stable tracker IDs like YOLO's tracker provides.
+    new_tracks = {}
+    new_vels = {}
+    available = dict(bright_tracks)
+    dets = []
+    for area, cx, cy, x1, y1, x2, y2, forced_tid in blobs:
+        tid = None
+        if forced_tid is not None and forced_tid in available:
+            tid = forced_tid
+            del available[tid]
+        elif available:
+            cand = min(available,
+                       key=lambda t: (cx - available[t][0])**2 + (cy - available[t][1])**2)
+            px, py = available[cand]
+            if (cx - px)**2 + (cy - py)**2 <= tune.BRIGHT_MATCH_DIST**2:
+                tid = cand
+                del available[cand]
+        if tid is None:
+            tid = next_bright_tid
+            next_bright_tid += 1
+        if tid in merged_tids:
+            # Split centroids sit outside the true ones and converge as the
+            # spheros touch, so re-estimating velocity here bleeds away the
+            # momentum that carries them past each other. Hold it instead.
+            new_vels[tid] = bright_vels.get(tid, (0.0, 0.0))
+        elif tid in bright_tracks:
+            new_vels[tid] = blob_merge.update_velocity(bright_vels.get(tid, (0.0, 0.0)),
+                                                       bright_tracks[tid], (cx, cy))
+        else:
+            new_vels[tid] = (0.0, 0.0)
+        new_tracks[tid] = coasting.get(tid, (cx, cy))
+        dets.append((cx, cy, -1, x1, y1, x2, y2, tid))
+
+    bright_tracks = new_tracks
+    bright_vels = new_vels
+    return dets, mask, merge_vis
+
 def process_frame_async():
     """Background thread for YOLO inference"""
     global frozen
@@ -322,6 +574,10 @@ def process_frame_async():
                     print(f"[sphero_spotter] Grid toggled to: {args.grid}")
                     if args.debug:
                         print(f"Grid toggled: {args.grid}")
+                elif cmd.get("action") == "set_tuning":
+                    # Live slider moves from the GUI; picked up on the next frame
+                    applied = apply_tuning(cmd.get("values"))
+                    print(f"[sphero_spotter] Tuning updated: {applied}")
             
             # Get latest frame (non-blocking, skip stale frames)
             try:
@@ -341,29 +597,50 @@ def process_frame_async():
             # Process April tags
             frame = process_apriltags(frame)
             
-            # Run YOLOv8 tracking with optimized settings
-            results = model.track(
-                frame, 
-                tracker="botsort.yaml", 
-                persist=True, 
-                verbose=False,
-                imgsz=args.imgsz,
-                conf=args.conf,
-                device=device
-            )
-            
-            # Process results
             dets = []  # (cx, cy, cls_id, x1, y1, x2, y2, tracker_id)
-            if results and results[0].boxes is not None:
-                for b in results[0].boxes:
-                    if b.id is None:
-                        continue
-                    tid = int(b.id.item())
-                    x1, y1, x2, y2 = map(float, b.xyxy[0])
-                    cx = 0.5 * (x1 + x2)
-                    cy = 0.5 * (y1 + y2)
-                    cls_id = int(b.cls[0])
-                    dets.append((cx, cy, cls_id, x1, y1, x2, y2, tid))
+
+            mask_view = None
+
+            if args.brightness:
+                # Brightness thresholding instead of YOLO
+                dets, bright_mask, merge_vis = detect_bright_blobs(frame)
+                if show_mask_view():
+                    # Colour copy of the mask with every accepted blob outlined,
+                    # so the sliders show what each setting is actually keeping.
+                    mask_view = cv2.cvtColor(bright_mask, cv2.COLOR_GRAY2BGR)
+                    for (bcx, bcy, _bc, bx1, by1, bx2, by2, _bt) in dets:
+                        cv2.rectangle(mask_view, (int(bx1), int(by1)), (int(bx2), int(by2)),
+                                      (0, 255, 0), 1)
+                        cv2.circle(mask_view, (int(bcx), int(bcy)), 3, (0, 0, 255), -1)
+                    draw_merge_overlay(mask_view, merge_vis)
+                    cv2.putText(mask_view,
+                                f"thresh={tune.BRIGHT_THRESH} min_area={int(tune.BRIGHT_MIN_AREA)}"
+                                f" blur={tune.BRIGHT_BLUR} blobs={len(dets)}",
+                                (8, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 255), 1,
+                                cv2.LINE_AA)
+            else:
+                # Run YOLOv8 tracking with optimized settings
+                results = model.track(
+                    frame, 
+                    tracker="botsort.yaml", 
+                    persist=True, 
+                    verbose=False,
+                    imgsz=args.imgsz,
+                    conf=args.conf,
+                    device=device
+                )
+
+                # Process results
+                if results and results[0].boxes is not None:
+                    for b in results[0].boxes:
+                        if b.id is None:
+                            continue
+                        tid = int(b.id.item())
+                        x1, y1, x2, y2 = map(float, b.xyxy[0])
+                        cx = 0.5 * (x1 + x2)
+                        cy = 0.5 * (y1 + y2)
+                        cls_id = int(b.cls[0])
+                        dets.append((cx, cy, cls_id, x1, y1, x2, y2, tid))
             
 
             global next_display_id, lost_spheros
@@ -401,7 +678,7 @@ def process_frame_async():
                 spheros[disp_id] = SpheroCoordinate(disp_id, int(cx), int(cy))
                 lost_spheros.pop(disp_id, None)
 
-                class_name = model.names[cls_id]
+                class_name = class_name_for(cls_id)
                 cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
                 cv2.circle(frame, (int(cx), int(cy)), 3, (0, 255, 0), -1)
                 label = f"{disp_id} {class_name} | Center: ({int(cx)}, {int(cy)})"
@@ -432,17 +709,20 @@ def process_frame_async():
                     "ts": time.time(),
                     "input_source": _input_source,
                     "device": device,
-                    "model": os.path.basename(args.model),
+                    "model": "color filter" if args.brightness else os.path.basename(args.model),
                     "id_mode": "locked" if args.locked else "dynamic",
                     "apriltag_count": last_apriltag_count,
                     "perspective_calibrated": last_warp_matrix is not None,
                     "zmq_bound": zmq_bound,
                     "spheros": status_spheros,
                     "latency": last_latency,
+                    # Lets the GUI show what the filter is actually running with
+                    "tuning": {k: getattr(tune, k) for k in PERCEPTION_DEFAULTS},
+                    "mask_streaming": mask_view is not None,
                 })
 
             # Put result in queue (replace if queue is full)
-            result_data = (frame, dets, frame_timestamp)
+            result_data = (frame, dets, frame_timestamp, mask_view)
             if result_queue.full():
                 try:
                     result_queue.get_nowait()
@@ -455,10 +735,89 @@ def process_frame_async():
             print(f"Error in processing thread: {e}")
             traceback.print_exc()
 
+# --- Display: main view, filtered (mask) view, and the tuning sliders --------
+MAIN_WINDOW = "Sphero IDs"
+MASK_WINDOW = "Sphero Filter (brightness mask)"
+last_valid_mask = None
+_mask_window_ready = False
+
+def show_mask_view():
+    """True when the filtered view should be produced and displayed.
+
+    Under --server there is no local window: the mask goes out on its own
+    stream, and it is only worth drawing while the GUI has that view open.
+    """
+    if not args.brightness or args.hide_mask:
+        return False
+    if args.server:
+        return server.mask_view_wanted()
+    return not args.nogui
+
+def _set_thresh(v):
+    tune.BRIGHT_THRESH = int(v)
+
+def _set_min_area(v):
+    tune.BRIGHT_MIN_AREA = float(v)
+
+def _set_blur(v):
+    tune.BRIGHT_BLUR = int(v)
+
+def _set_match_dist(v):
+    tune.BRIGHT_MATCH_DIST = float(max(v, 1))
+
+def _set_merge_ratio(v):
+    tune.MERGE_AREA_RATIO = max(v, 10) / 10.0   # slider is in tenths
+
+def _set_merge_peak_sep(v):
+    tune.MERGE_PEAK_SEP = int(max(v, 1))
+
+def ensure_mask_window():
+    """Create the mask window and its sliders once, on the display thread."""
+    global _mask_window_ready
+    if _mask_window_ready:
+        return
+    cv2.namedWindow(MASK_WINDOW, cv2.WINDOW_NORMAL)
+    # Sliders write straight into args, which the worker thread re-reads each frame
+    cv2.createTrackbar("Brightness cutoff", MASK_WINDOW, int(tune.BRIGHT_THRESH), 255, _set_thresh)
+    cv2.createTrackbar("Min blob area", MASK_WINDOW, int(tune.BRIGHT_MIN_AREA), 2000, _set_min_area)
+    cv2.createTrackbar("Blur kernel", MASK_WINDOW, int(tune.BRIGHT_BLUR), 31, _set_blur)
+    cv2.createTrackbar("Track match dist", MASK_WINDOW, int(tune.BRIGHT_MATCH_DIST), 300, _set_match_dist)
+    cv2.createTrackbar("Merge area ratio x10", MASK_WINDOW, int(tune.MERGE_AREA_RATIO * 10), 30, _set_merge_ratio)
+    cv2.createTrackbar("Min peak separation", MASK_WINDOW, int(tune.MERGE_PEAK_SEP), 40, _set_merge_peak_sep)
+    _mask_window_ready = True
+
+def display_frames(frame, mask_view, timestamp):
+    """Show/stream the camera view, plus the filtered view in brightness mode."""
+    if args.nogui:
+        return
+
+    if args.server:
+        # The GUI has a stream per view: camera on 6767, filter mask on 6771
+        server.feed_frames_from_calculateFrame(frame, timestamp)
+        if mask_view is not None:
+            server.feed_mask_frame(mask_view, timestamp)
+        return
+
+    cv2.imshow(MAIN_WINDOW, frame)
+    if show_mask_view() and mask_view is not None:
+        ensure_mask_window()
+        cv2.imshow(MASK_WINDOW, mask_view)
+
+    key = cv2.waitKey(1) & 0xFF
+    if key == 27:  # ESC
+        raise SystemExit("Key input clicks")
+    if cv2.getWindowProperty(MAIN_WINDOW, cv2.WND_PROP_VISIBLE) < 1:
+        raise SystemExit("Window closed")
+
 def calculateFrame(frame, frame_timestamp=None):
     """Main frame processing function - now uses async processing"""
-    global last_valid_frame
-    
+    global last_valid_frame, last_valid_mask
+
+    if not show_mask_view():
+        # Filter view was turned off (or the GUI closed it): drop the last one
+        # so a stale mask can't be re-sent while waiting on the next result.
+        last_valid_mask = None
+
     # Add frame to processing queue (drop if queue is full = we're behind)
     frame_data = (frame.copy(), frame_timestamp if frame_timestamp else time.time())
     if frame_queue.full():
@@ -470,36 +829,19 @@ def calculateFrame(frame, frame_timestamp=None):
         frame_queue.put_nowait(frame_data)
     except:
         pass  # Queue full, skip this frame
-    
+
     # Try to get latest result (non-blocking)
     try:
-        result_frame, dets, result_timestamp = result_queue.get_nowait()
+        result_frame, dets, result_timestamp, mask_view = result_queue.get_nowait()
         last_valid_frame = result_frame  # Store the last valid processed frame
-        
-        # Display frame
-        if not args.nogui:
-            if args.server:
-                server.feed_frames_from_calculateFrame(result_frame, result_timestamp)
-            else:
-                cv2.imshow("Sphero IDs", result_frame)
-                key = cv2.waitKey(1) & 0xFF
-                if key == 27:  # ESC
-                    raise SystemExit("Key input clicks")
-                if cv2.getWindowProperty("Sphero IDs", cv2.WND_PROP_VISIBLE) < 1:
-                    raise SystemExit("Window closed")
+        if mask_view is not None:
+            last_valid_mask = mask_view
+        display_frames(result_frame, mask_view, result_timestamp)
     except Empty:
         # No YOLO result yet — stream the raw frame so the GUI shows the feed immediately
-        if not args.nogui:
-            display = last_valid_frame if last_valid_frame is not None else frame
-            if args.server:
-                server.feed_frames_from_calculateFrame(display, frame_timestamp)
-            else:
-                cv2.imshow("Sphero IDs", display)
-                key = cv2.waitKey(1) & 0xFF
-                if key == 27:  # ESC
-                    raise SystemExit("Key input clicks")
-                if cv2.getWindowProperty("Sphero IDs", cv2.WND_PROP_VISIBLE) < 1:
-                    raise SystemExit("Window closed")
+        display = last_valid_frame if last_valid_frame is not None else frame
+        display_frames(display, last_valid_mask, frame_timestamp)
+
 if __name__ == '__main__':
 
     _input_source = "webcam" if args.webcam else ("video" if args.video else "oakd")

@@ -124,9 +124,11 @@
 }
 
 /* ── Main 2-col grid ─────────────────────────── */
+/* Feed gets the full page width; the status cards sit under it as a row, so
+   the camera view is as large as the window allows. */
 .mainGrid {
     display: grid;
-    grid-template-columns: 1fr 340px;
+    grid-template-columns: 1fr;
     gap: 1.5rem;
     margin-bottom: 1.5rem;
 }
@@ -160,6 +162,56 @@
     letter-spacing: 0.06em;
 }
 
+/* Camera / pixel-mask switch in the feed header */
+.viewTabs {
+    display: flex;
+    gap: 0.25rem;
+    margin-left: auto;
+    padding: 0.2rem;
+    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.viewTab {
+    all: unset;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.3rem 0.75rem;
+    border-radius: 7px;
+    font-family: inherit;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.viewTab:hover {
+    color: #e2e8f0;
+}
+
+.viewTabActive {
+    background: rgba(139, 92, 246, 0.2);
+    color: #c4b5fd;
+    box-shadow: inset 0 0 0 1px rgba(139, 92, 246, 0.35);
+}
+
+.maskHint {
+    margin: 0.7rem 0 0;
+    font-size: 0.72rem;
+    line-height: 1.45;
+    color: #64748b;
+}
+
+.fieldHint {
+    margin: 0.15rem 0 0;
+    font-size: 0.68rem;
+    line-height: 1.4;
+    color: #64748b;
+}
+
 .calibBadge {
     margin-left: auto;
     padding: 0.25rem 0.65rem;
@@ -180,21 +232,21 @@
     border: 1px solid rgba(107, 114, 128, 0.3);
 }
 
+/* Just a container: height follows the stream's aspect ratio, and the viewer
+   inside brings its own background and border, so there is no outer box left
+   showing at the sides when the feed is capped by window height. */
 .viewerWrap {
     width: 100%;
-    height: 420px;
-    background: #000;
-    border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    overflow: hidden;
+    height: auto;
     position: relative;
 }
 
-/* ── Right status column ─────────────────────── */
+/* ── Status cards, in a row below the feed ───── */
 .statusColumn {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 1rem;
+    align-items: start;
 }
 
 /* ── Cards ───────────────────────────────────── */

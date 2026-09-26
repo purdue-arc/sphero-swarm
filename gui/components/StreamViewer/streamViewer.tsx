@@ -3,18 +3,32 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCircle, faVideo, faVideoSlash } from "@fortawesome/free-solid-svg-icons";
 import styles from "./streamViewer.module.css";
 
+// Tallest the feed may get in "aspect" sizing, so it always fits the window
+const MAX_FEED_VH = 62;
+const FALLBACK_ASPECT = 16 / 9;
+
 export function StreamViewer({
     port,
     serverStatus,
     setServerStatus,
+    sizing = "fill",
 }: {
     port: number;
     serverStatus: string;
-    setServerStatus: (status: string) => void;
+    setServerStatus: (status: "stopped" | "starting" | "started") => void;
+    /**
+     * "fill"   — fill whatever box the parent gives it (fixed-height panels).
+     * "aspect" — size to the stream's own aspect ratio, as wide as the parent
+     *            allows and capped by window height, so there are no black bars.
+     */
+    sizing?: "fill" | "aspect";
 }) {
     const [imageSrc, setImageSrc] = useState<string>("");
     const [frameCount, setFrameCount] = useState<number>(0);
     const [fps, setFps] = useState<number>(0);
+    // Read off the decoded frame, so it follows whichever stream is connected
+    const [resolution, setResolution] = useState<string | null>(null);
+    const [aspect, setAspect] = useState<number | null>(null);
     
     const wsRef = useRef<WebSocket | null>(null);
     const reconnectTimeoutRef = useRef<any>(null);
@@ -60,6 +74,7 @@ export function StreamViewer({
             }
 
             setImageSrc("");
+            setResolution(null);
             return;
         }
 
@@ -120,60 +135,95 @@ export function StreamViewer({
         }
     }, [imageSrc, serverStatus, setServerStatus]);
 
-    return (
-        <div
-            className={`${styles.imageViewer} ${
-                serverStatus !== "stopped" ? styles.active : ""
-            }`}
-        >
-            {serverStatus !== "started" ? (
-                <div className={styles.imagePlaceholder}>
-                    {serverStatus === "starting" ? (
-                        <>
-                            <div className={styles.loadingSpinner}></div>
-                            <p className={styles.placeholderText}>
-                                Initializing camera feed...
-                            </p>
-                        </>
-                    ) : (
-                        <>
-                            <FontAwesomeIcon
-                                icon={faVideoSlash}
-                                className={styles.placeholderIcon}
-                            />
-                            <p className={styles.placeholderText}>
-                                Camera feed inactive
-                            </p>
-                        </>
-                    )}
-                </div>
-            ) : (
-                <>
-                    <img src={imageSrc} alt="Camera feed" />
-                    
-                    {/* Live indicator */}
-                    <div className={`${styles.statusOverlay} ${styles.active}`}>
-                        <FontAwesomeIcon icon={faCircle} className={styles.statusDot} />
-                        LIVE
-                    </div>
+    // Box matches the stream's own shape, so no part of the panel is wasted on
+    // black bars. maxWidth is what keeps the height under MAX_FEED_VH: capping
+    // the height alone would leave the box wide and bar the sides instead.
+    const feedAspect = aspect ?? FALLBACK_ASPECT;
+    const aspectStyle = {
+        flex: "0 0 auto",
+        width: "100%",
+        aspectRatio: String(feedAspect),
+        maxWidth: `calc(${MAX_FEED_VH}vh * ${feedAspect})`,
+        margin: "0 auto",
+    } as const;
+    // Keep the stat bar the same width as the feed above it
+    const barStyle = {
+        width: "100%",
+        maxWidth: aspectStyle.maxWidth,
+        margin: "0 auto",
+    } as const;
 
-                    {/* Stats overlay */}
-                    <div className={styles.statsOverlay}>
-                        <div className={styles.statCard}>
-                            <p className={styles.statLabel}>FPS</p>
-                            <p className={styles.statValue}>{fps}</p>
-                        </div>
-                        <div className={styles.statCard}>
-                            <p className={styles.statLabel}>Frames</p>
-                            <p className={styles.statValue}>{frameCount}</p>
-                        </div>
-                        <div className={styles.statCard}>
-                            <p className={styles.statLabel}>Resolution</p>
-                            <p className={styles.statValue}>1080p</p>
-                        </div>
+    return (
+        <div className={styles.streamViewer}>
+            <div
+                className={`${styles.imageViewer} ${
+                    serverStatus !== "stopped" ? styles.active : ""
+                }`}
+                style={sizing === "aspect" ? aspectStyle : undefined}
+            >
+                {serverStatus !== "started" ? (
+                    <div className={styles.imagePlaceholder}>
+                        {serverStatus === "starting" ? (
+                            <>
+                                <div className={styles.loadingSpinner}></div>
+                                <p className={styles.placeholderText}>
+                                    Initializing camera feed...
+                                </p>
+                            </>
+                        ) : (
+                            <>
+                                <FontAwesomeIcon
+                                    icon={faVideoSlash}
+                                    className={styles.placeholderIcon}
+                                />
+                                <p className={styles.placeholderText}>
+                                    Camera feed inactive
+                                </p>
+                            </>
+                        )}
                     </div>
-                </>
-            )}
+                ) : (
+                    <>
+                        <img
+                            src={imageSrc}
+                            alt="Camera feed"
+                            onLoad={e => {
+                                const img = e.currentTarget;
+                                if (!img.naturalWidth || !img.naturalHeight) return;
+                                const dims = `${img.naturalWidth}×${img.naturalHeight}`;
+                                setResolution(prev => (prev === dims ? prev : dims));
+                                const a = img.naturalWidth / img.naturalHeight;
+                                setAspect(prev => (prev !== null && Math.abs(prev - a) < 0.001 ? prev : a));
+                            }}
+                        />
+
+                        {/* Live indicator */}
+                        <div className={`${styles.statusOverlay} ${styles.active}`}>
+                            <FontAwesomeIcon icon={faCircle} className={styles.statusDot} />
+                            LIVE
+                        </div>
+                    </>
+                )}
+            </div>
+
+            {/* Stats sit under the feed, so they never cover the camera image */}
+            <div
+                className={styles.statsBar}
+                style={sizing === "aspect" ? barStyle : undefined}
+            >
+                <div className={styles.statCard}>
+                    <p className={styles.statLabel}>FPS</p>
+                    <p className={styles.statValue}>{fps}</p>
+                </div>
+                <div className={styles.statCard}>
+                    <p className={styles.statLabel}>Frames</p>
+                    <p className={styles.statValue}>{frameCount}</p>
+                </div>
+                <div className={styles.statCard}>
+                    <p className={styles.statLabel}>Resolution</p>
+                    <p className={styles.statValue}>{resolution ?? "—"}</p>
+                </div>
+            </div>
         </div>
     );
 }

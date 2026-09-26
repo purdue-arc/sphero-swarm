@@ -7,6 +7,12 @@ export interface PerceptionConfig {
   grid: boolean;
   locked: boolean;
   latency: boolean;
+  // Detect spheros with the colour filter instead of the YOLO model. When on,
+  // the filter's blobs are what gets reported to the algorithms.
+  colorFilter: boolean;
+  // Brightness cutoff 0-255 used by the colour filter: pixels at or below this
+  // are background. Adjustable live while perception is running.
+  brightThresh: number;
 }
 
 export interface SpheroConstants {

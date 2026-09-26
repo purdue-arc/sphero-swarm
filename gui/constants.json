@@ -50,6 +50,17 @@
     ]
   },
   "N_SPHEROS": 3,
+  "PERCEPTION": {
+    "BRIGHT_THRESH": 147,
+    "BRIGHT_MIN_AREA": 50,
+    "BRIGHT_MAX_AREA": 0,
+    "BRIGHT_BLUR": 5,
+    "BRIGHT_MATCH_DIST": 80,
+    "BRIGHT_MAX_BLOBS": 0,
+    "MERGE_SPLIT": true,
+    "MERGE_AREA_RATIO": 1.5,
+    "MERGE_PEAK_SEP": 6
+  },
   "GRID_WIDTH": 4,
   "GRID_HEIGHT": 4,
   "EPSILON": 0.01,
