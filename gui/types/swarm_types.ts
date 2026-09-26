@@ -5,6 +5,7 @@ export interface PerceptionConfig {
   conf: number;
   imgsz: number;
   grid: boolean;
+  correctionVectors: boolean;
   locked: boolean;
   latency: boolean;
 }
@@ -64,6 +65,17 @@ export interface SimulationSpheroSnapshot {
   y: number;
   color: string | [number, number, number];
   direction: number;
+  correction_debug?: {
+    previous_vector: {
+      start: [number, number];
+      end: [number, number];
+    };
+    projected_vector: {
+      start: [number, number];
+      end: [number, number];
+    };
+    angle_change: number;
+  } | null;
 }
 
 export interface SimulationSnapshot {

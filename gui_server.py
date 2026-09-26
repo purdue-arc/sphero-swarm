@@ -179,6 +179,7 @@ def build_state_payload(algorithm) -> dict:
             "y": sphero.y,
             "color": sphero.color,
             "direction": sphero.direction,
+            "correction_debug": getattr(sphero, "correction_debug", None),
         }
         for sphero in spheros_list
     ]

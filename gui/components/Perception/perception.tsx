@@ -13,7 +13,7 @@ import {
     faNetworkWired,
 } from "@fortawesome/free-solid-svg-icons";
 import { StreamViewer } from "../StreamViewer/streamViewer";
-import type { PerceptionConfig } from "../../types/swarm_types";
+import type { PerceptionConfig, SimulationSnapshot } from "../../types/swarm_types";
 import s from "./perception.module.css";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -65,11 +65,13 @@ export function Perception({
     setSpotterStatus,
     config,
     setConfig,
+    latestSimulationSnapshot,
 }: {
     spotterStatus: "stopped" | "starting" | "started";
-    setSpotterStatus: (status: "stopped" | "starting" | "started") => void;
+    setSpotterStatus: Dispatch<SetStateAction<"stopped" | "starting" | "started">>;
     config: PerceptionConfig;
     setConfig: Dispatch<SetStateAction<PerceptionConfig>>;
+    latestSimulationSnapshot: SimulationSnapshot | null;
 }) {
     const [telemetry, setTelemetry] = useState<Telemetry | null>(null);
 
@@ -228,6 +230,8 @@ export function Perception({
                             port={6767}
                             serverStatus={spotterStatus}
                             setServerStatus={setSpotterStatus}
+                            latestSimulationSnapshot={latestSimulationSnapshot}
+                            showCorrectionVectors={config.correctionVectors}
                         />
                     </div>
                 </div>
@@ -450,6 +454,15 @@ export function Perception({
                                         disabled={false}
                                     />
                                     <span>Grid overlay</span>
+                                </label>
+                                <label className={s.toggleItem}>
+                                    <input
+                                        type="checkbox"
+                                        checked={config.correctionVectors}
+                                        onChange={e => updateConfig("correctionVectors", e.target.checked)}
+                                        disabled={false}
+                                    />
+                                    <span>Correction vectors</span>
                                 </label>
                                 <label className={`${s.toggleItem} ${isRunning ? s.disabled : ""}`}>
                                     <input

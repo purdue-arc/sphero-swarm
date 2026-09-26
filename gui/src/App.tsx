@@ -40,6 +40,7 @@ function App() {
     conf: 0.25,
     imgsz: 640,
     grid: false,
+    correctionVectors: true,
     locked: false,
     latency: false,
   });
@@ -191,6 +192,7 @@ function App() {
             setSpotterStatus={setPerceptionStatus}
             config={perceptionConfig}
             setConfig={setPerceptionConfig}
+            latestSimulationSnapshot={latestSimulationSnapshot}
           />
         )}
 

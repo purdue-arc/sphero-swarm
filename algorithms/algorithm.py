@@ -47,25 +47,54 @@ class Algorithm:
         Passing indent argument applies \t times its value to each line 
         '''
 
-        self.log_lines.append(f'\n{'\t'*indent + line}')
-        print(f'[ {line.replace('\n', '\n(')}')
+        self.log_lines.append('\n' + '\t' * indent + line)
+        log_line = line.replace('\n', '\n(')
+        print(f"[ {log_line}")
               
         # Returns necessary change in angle to point in new direction
     def calculate_angle_change(self, sphero):
+        previous_vector_start = [sphero.prev_true_x, sphero.prev_true_y]
+        previous_vector_end = [sphero.true_x, sphero.true_y]
+        projected_vector_start = [sphero.true_x, sphero.true_y]
+        projected_vector_end = [sphero.target_x, sphero.target_y]
+
         if (sphero.target_x == sphero.x and sphero.target_y == sphero.y) == 0:
+            sphero.correction_debug = {
+                "previous_vector": {
+                    "start": previous_vector_start,
+                    "end": previous_vector_end,
+                },
+                "projected_vector": {
+                    "start": projected_vector_start,
+                    "end": projected_vector_end,
+                },
+                "angle_change": 0,
+            }
             return 0  # no movement → no turn
 
         prev_angle = np.arctan2(sphero.true_y - sphero.prev_true_y, sphero.true_x - sphero.prev_true_x) # Current position
         target_angle = np.arctan2(sphero.target_y - sphero.true_y, sphero.target_x - sphero.true_x) # Next position
-        
-        sphero.prev_true_x = sphero.true_x
-        sphero.prev_true_y = sphero.true_y
 
         # Compute smallest angle difference
         theta = target_angle - prev_angle
 
         # Normalize to [-180, 180]
         theta = (theta + 180) % 360 - 180
+
+        sphero.correction_debug = {
+            "previous_vector": {
+                "start": previous_vector_start,
+                "end": previous_vector_end,
+            },
+            "projected_vector": {
+                "start": projected_vector_start,
+                "end": projected_vector_end,
+            },
+            "angle_change": int(round(theta)),
+        }
+
+        sphero.prev_true_x = sphero.true_x
+        sphero.prev_true_y = sphero.true_y
 
         return int(round(theta))
         
