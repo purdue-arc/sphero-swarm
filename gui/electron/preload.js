@@ -9,6 +9,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke('get-constants'),
   saveConstants: (constants) =>
     ipcRenderer.invoke('save-constants', constants),
+  getPerceptionTuning: () =>
+    ipcRenderer.invoke('get-perception-tuning'),
+  savePerceptionTuning: (values) =>
+    ipcRenderer.invoke('save-perception-tuning', values),
   quitApp: () => 
     ipcRenderer.invoke('quit-app'),
   onSplashProgress: (callback) => {

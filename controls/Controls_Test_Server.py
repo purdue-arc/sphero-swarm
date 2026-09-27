@@ -99,12 +99,31 @@ def address_sort(addresses, map_to_location):
     print("Sorted Addresses: {}".format(addresses))
 
 
+CONNECT_TIMEOUT_SECONDS = 20
+
+
 def connect_ball(toy_address, ret_list, location, max_attempts, ws=None, loop=None):
+    """Try to connect for up to CONNECT_TIMEOUT_SECONDS, then give up.
+
+    Blocking — connect_multi_ball() calls this one ball at a time and does
+    not start the next ball until this one has either connected or timed
+    out. max_attempts is kept for call-site compatibility but no longer
+    bounds anything; the wall-clock timeout is the only limit now (a fixed
+    attempt count combined with a time cap previously caused the loop to
+    give up early on slow-but-eventually-successful connections).
+    """
+    start = time.time()
     attempts = 0
-    while attempts < max_attempts:
+    while (time.time() - start) < CONNECT_TIMEOUT_SECONDS:
+        attempts += 1
+        elapsed = time.time() - start
+        print("[{}] attempt {} (elapsed {:.1f}s/{}s) - connecting...".format(
+            toy_address, attempts, elapsed, CONNECT_TIMEOUT_SECONDS))
         try:
             sb = SpheroEduAPI(toy_address).__enter__()
             ret_list[location] = sb
+            print("[{}] connected after {:.1f}s (attempt {})".format(
+                toy_address, time.time() - start, attempts))
 
             if ws:
                 ws_send(loop, ws, {
@@ -114,39 +133,35 @@ def connect_ball(toy_address, ret_list, location, max_attempts, ws=None, loop=No
                 })
 
             return
-        except Exception:
-            attempts += 1
-            print("Trying to connect with: {}, attempt {}".format(toy_address, attempts))
+        except Exception as e:
+            print("[{}] attempt {} failed: {}".format(toy_address, attempts, e))
+            time.sleep(1)
             continue
+
+    print("[{}] giving up - no connection after {}s ({} attempts)".format(
+        toy_address, CONNECT_TIMEOUT_SECONDS, attempts))
 
     if ws:
         ws_send(loop, ws, {
             "type": "ball_failed",
             "ball": str(toy_address),
-            "reason": "Connection attempts exceeded"
+            "reason": "Timed out after {} seconds".format(CONNECT_TIMEOUT_SECONDS)
         })
 
 
 def connect_multi_ball(toy_addresses, ret_list, max_attempts, ws=None, loop=None):
-    print("Connecting to Spheros...")
+    """Connect to each ball one at a time, in order — not concurrently.
 
-    threads = []
-    for index in range(len(toy_addresses)):
-        thread = threading.Thread(
-            target=connect_ball,
-            args=[toy_addresses[index], ret_list, index, max_attempts, ws, loop],
-        )
-        threads.append(thread)
-        thread.start()
+    Each ball gets up to CONNECT_TIMEOUT_SECONDS before we skip it and move
+    on to the next one; a ball that times out is simply left as None in
+    ret_list rather than blocking the rest of the roster.
+    """
+    total = len(toy_addresses)
+    print("Connecting to {} Sphero(s) one at a time...".format(total))
 
-    while True:
-        try:
-            for thread in threads:
-                thread.join(timeout=None)
-            break
-        except KeyboardInterrupt:
-            print("Connection ongoing... please don't interrupt.")
-            continue
+    for index, toy_address in enumerate(toy_addresses):
+        print("--- [{}/{}] {} ---".format(index + 1, total, toy_address))
+        connect_ball(toy_address, ret_list, index, max_attempts, ws, loop)
 
     print("Balls Connected: {}".format(ret_list))
 
