@@ -58,7 +58,8 @@ class Algorithm:
         projected_vector_start = [sphero.true_x, sphero.true_y]
         projected_vector_end = [sphero.target_x, sphero.target_y]
 
-        if (sphero.target_x == sphero.x and sphero.target_y == sphero.y) == 0:
+        # if this sphero doesn't move on this cycle, then return early.
+        if (sphero.target_x == sphero.x and sphero.target_y == sphero.y):
             sphero.correction_debug = {
                 "previous_vector": {
                     "start": previous_vector_start,
@@ -93,6 +94,7 @@ class Algorithm:
             "angle_change": int(round(theta)),
         }
 
+        # Update prev true position only if we know the sphero moved
         sphero.prev_true_x = sphero.true_x
         sphero.prev_true_y = sphero.true_y
 
