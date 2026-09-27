@@ -9,23 +9,32 @@ from queue import Queue, Empty
 import websockets
 
 frame_queue = Queue(maxsize=1)
+mask_queue = Queue(maxsize=1)
 status_queue = Queue(maxsize=1)
 command_queue = Queue(maxsize=10)  # Commands from GUI (e.g., grid toggle)
 
 connected_clients = set()
+mask_clients = set()
 telemetry_clients = set()
 
 FRAME_HOST = "localhost"
 FRAME_PORT = 6767
+MASK_HOST = "localhost"
+MASK_PORT = 6771
 TELEMETRY_HOST = "localhost"
 TELEMETRY_PORT = 6770
 
+# Commands the GUI may send over the telemetry socket. Anything else is ignored
+# so a stray message can't reach the processing thread.
+COMMAND_ACTIONS = ("toggle_grid", "set_tuning")
+
 key = "perception"
 
-async def broadcast_frames():
+async def broadcast_queue(queue, clients):
+    """Encode whatever lands in `queue` and push it to every client in `clients`."""
     while True:
         try:
-            frame, _ = frame_queue.get_nowait()
+            frame, _ = queue.get_nowait()
         except Empty:
             await asyncio.sleep(0.01)
             continue
@@ -34,9 +43,9 @@ async def broadcast_frames():
         jpg_bytes = buffer.tobytes()
         b64_str = base64.b64encode(jpg_bytes).decode('utf-8')
 
-        if connected_clients:
+        if clients:
             await asyncio.gather(
-                *(client.send(b64_str) for client in connected_clients),
+                *(client.send(b64_str) for client in clients),
                 return_exceptions=True
             )
 
@@ -71,6 +80,23 @@ async def handler(websocket):
         connected_clients.discard(websocket)
         print(f"Frame client disconnected: {websocket.remote_address}")
 
+async def mask_handler(websocket):
+    """Register filter-mask stream clients.
+
+    Nobody connected here means the GUI isn't showing the mask, and
+    sphero_spotter skips drawing it (see mask_view_wanted).
+    """
+    mask_clients.add(websocket)
+    print(f"Mask client connected: {websocket.remote_address}")
+    try:
+        async for _ in websocket:
+            pass
+    except websockets.exceptions.ConnectionClosed:
+        pass
+    finally:
+        mask_clients.discard(websocket)
+        print(f"Mask client disconnected: {websocket.remote_address}")
+
 async def telemetry_handler(websocket):
     """Register telemetry clients and receive commands from GUI."""
     telemetry_clients.add(websocket)
@@ -80,9 +106,9 @@ async def telemetry_handler(websocket):
             try:
                 cmd = json.loads(msg)
                 print(f"[Telemetry] Received message from GUI: {cmd}")
-                if cmd.get("action") == "toggle_grid":
-                    command_queue.put_nowait({"action": "toggle_grid"})
-                    print(f"[Telemetry] Grid toggle command queued for sphero_spotter")
+                if cmd.get("action") in COMMAND_ACTIONS:
+                    command_queue.put_nowait(cmd)
+                    print(f"[Telemetry] Queued {cmd.get('action')} for sphero_spotter")
             except json.JSONDecodeError as e:
                 print(f"[Telemetry] JSON decode error: {e}")
     except websockets.exceptions.ConnectionClosed:
@@ -93,8 +119,13 @@ async def telemetry_handler(websocket):
 
 async def run_server():
     async with websockets.serve(handler, FRAME_HOST, FRAME_PORT):
-        async with websockets.serve(telemetry_handler, TELEMETRY_HOST, TELEMETRY_PORT):
-            await asyncio.gather(broadcast_frames(), broadcast_telemetry())
+        async with websockets.serve(mask_handler, MASK_HOST, MASK_PORT):
+            async with websockets.serve(telemetry_handler, TELEMETRY_HOST, TELEMETRY_PORT):
+                await asyncio.gather(
+                    broadcast_queue(frame_queue, connected_clients),
+                    broadcast_queue(mask_queue, mask_clients),
+                    broadcast_telemetry(),
+                )
 
 def start_server():
     loop = asyncio.new_event_loop()
@@ -106,7 +137,8 @@ def start_server():
         if exc.errno == errno.EADDRINUSE:
             print(
                 f"Perception WebSocket server not started: one of the ports is already in use "
-                f"(frames: ws://{FRAME_HOST}:{FRAME_PORT}, telemetry: ws://{TELEMETRY_HOST}:{TELEMETRY_PORT})."
+                f"(frames: ws://{FRAME_HOST}:{FRAME_PORT}, mask: ws://{MASK_HOST}:{MASK_PORT}, "
+                f"telemetry: ws://{TELEMETRY_HOST}:{TELEMETRY_PORT})."
             )
         else:
             raise
@@ -119,20 +151,32 @@ server_thread = threading.Thread(target=start_server, daemon=True)
 server_thread.start()
 print(
     f"WebSocket server started — frames: ws://{FRAME_HOST}:{FRAME_PORT} "
+    f"mask: ws://{MASK_HOST}:{MASK_PORT} "
     f"telemetry: ws://{TELEMETRY_HOST}:{TELEMETRY_PORT}"
 )
 
-def feed_frames_from_calculateFrame(frame, timestamp=None):
-    """Call this from calculateFrame after processing a frame."""
+def _feed(queue, frame, timestamp):
     try:
-        if frame_queue.full():
+        if queue.full():
             try:
-                frame_queue.get_nowait()
+                queue.get_nowait()
             except Empty:
                 pass
-        frame_queue.put_nowait((frame.copy(), timestamp if timestamp else time.time()))
+        queue.put_nowait((frame.copy(), timestamp if timestamp else time.time()))
     except Exception:
         pass
+
+def feed_frames_from_calculateFrame(frame, timestamp=None):
+    """Call this from calculateFrame after processing a frame."""
+    _feed(frame_queue, frame, timestamp)
+
+def feed_mask_frame(frame, timestamp=None):
+    """Call this with the filtered (mask) view, for the GUI's filter stream."""
+    _feed(mask_queue, frame, timestamp)
+
+def mask_view_wanted():
+    """True while the GUI has the filter view open, so it's worth rendering."""
+    return bool(mask_clients)
 
 def feed_status(data: dict):
     """Call this from sphero_spotter after each processed frame to push telemetry to the GUI."""

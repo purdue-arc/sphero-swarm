@@ -1,6 +1,17 @@
-.imageViewer {
+/* Column: the feed itself, with the stat bar below it rather than on top. */
+.streamViewer {
     width: 100%;
     height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    box-sizing: border-box;
+}
+
+.imageViewer {
+    width: 100%;
+    flex: 1;
+    min-height: 0;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -121,23 +132,24 @@
     font-size: 0.5rem;
 }
 
-.statsOverlay {
-    position: absolute;
-    bottom: 1rem;
-    left: 1rem;
-    right: 1rem;
+/* Stat bar, below the feed so nothing is hidden behind it */
+.statsBar {
+    flex: 0 0 auto;
     display: flex;
-    gap: 1rem;
-    z-index: 10;
+    gap: 0.5rem;
+    padding: 0 0.5rem 0.5rem;
 }
 
 .statCard {
     flex: 1;
-    padding: 0.75rem 1rem;
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(10px);
-    border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.45rem;
+    padding: 0.4rem 0.75rem;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .statLabel {
@@ -146,12 +158,12 @@
     font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    margin: 0 0 0.25rem 0;
+    margin: 0;
 }
 
 .statValue {
     color: #ffffff;
-    font-size: 1rem;
+    font-size: 0.9rem;
     font-weight: 700;
     margin: 0;
     font-variant-numeric: tabular-nums;
