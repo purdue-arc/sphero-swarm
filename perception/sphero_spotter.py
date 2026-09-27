@@ -209,8 +209,14 @@ def draw_grid(frame, top_left, bottom_right):
     return frame
 
 def process_apriltags(frame, force_process=False):
+    """Return (display_frame, field_frame).
+
+    field_frame is the AprilTag-framed field with no overlays drawn on it, or
+    None until all 4 tags have been seen once. The colour filter only runs on
+    it, so nothing outside the field can be picked up as a sphero.
+    """
     global april_tag_frame_counter, last_warped_frame, last_warp_matrix, last_apriltag_count
-    
+
     # Only process April tags periodically to reduce latency
     if not force_process:
         april_tag_frame_counter += 1
@@ -218,18 +224,20 @@ def process_apriltags(frame, force_process=False):
             # Reuse last warped frame if available
             if last_warped_frame is not None and last_warp_matrix is not None:
                 warped = cv2.warpPerspective(frame, last_warp_matrix, (500, 500))
+                field = warped.copy()
                 top_left = (0, 0)
                 bottom_right = (warped.shape[1] - 1, warped.shape[0] - 1)
                 grid = draw_grid(warped, top_left, bottom_right)
-                return grid
+                return grid, field
             # No warped frame available, draw grid on full frame if enabled
             if args.grid:
                 top_left = (0, 0)
                 bottom_right = (frame.shape[1] - 1, frame.shape[0] - 1)
-                return draw_grid(frame, top_left, bottom_right)
-            return frame
-    
+                return draw_grid(frame, top_left, bottom_right), None
+            return frame, None
+
     # Process April tags (full detection)
+    clean = frame.copy()  # tag outlines get drawn on frame below
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     results = detector.detect(gray)
     last_apriltag_count = len(results) # type: ignore
@@ -249,7 +257,6 @@ def process_apriltags(frame, force_process=False):
         tag_points[tag_id] = corners
 
     # Optional perspective correction if 4 tags detected
-    warped = None
     if len(tag_points) == 4:
         ids = sorted(tag_points.keys())
         custom_points = []
@@ -265,21 +272,27 @@ def process_apriltags(frame, force_process=False):
         dst_pts = np.array([[0,0],[size,0],[0,size],[size,size]], dtype=np.float32)
         M = cv2.getPerspectiveTransform(custom_points, dst_pts)
         last_warp_matrix = M  # Cache the transformation matrix
-        warped = cv2.warpPerspective(frame, M, (size, size))
+
+    if last_warp_matrix is not None:
+        # Fresh matrix, or the cached one if a tag was missed this time, so a
+        # single missed tag doesn't drop the view back to the raw camera.
+        size = 500
+        warped = cv2.warpPerspective(frame, last_warp_matrix, (size, size))
+        field = cv2.warpPerspective(clean, last_warp_matrix, (size, size))
         last_warped_frame = warped.copy()  # Cache the warped frame
         top_left = (0, 0)
         bottom_right = (warped.shape[1] - 1, warped.shape[0] - 1)
 
         grid = draw_grid(warped, top_left, bottom_right)
-        return grid
-    
+        return grid, field
+
     # No perspective correction available, draw grid on full frame if enabled
     if args.grid:
         top_left = (0, 0)
         bottom_right = (frame.shape[1] - 1, frame.shape[0] - 1)
-        return draw_grid(frame, top_left, bottom_right)
-    
-    return warped if warped is not None else frame
+        return draw_grid(frame, top_left, bottom_right), None
+
+    return frame, None
 
 def initialize_spheros():
     return N_SPHEROS
@@ -595,15 +608,24 @@ def process_frame_async():
                     break
             
             # Process April tags
-            frame = process_apriltags(frame)
-            
+            frame, field = process_apriltags(frame)
+
             dets = []  # (cx, cy, cls_id, x1, y1, x2, y2, tracker_id)
 
             mask_view = None
 
-            if args.brightness:
-                # Brightness thresholding instead of YOLO
-                dets, bright_mask, merge_vis = detect_bright_blobs(frame)
+            if args.brightness and field is None:
+                # Not framed by the AprilTags yet: the raw camera view has
+                # lights, walls and the floor outside the field in it, so
+                # detect nothing until the field can be cut out.
+                if show_mask_view():
+                    mask_view = np.zeros((500, 500, 3), dtype=np.uint8)
+                    cv2.putText(mask_view, f"Waiting for AprilTags ({last_apriltag_count}/4)",
+                                (8, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 255), 1,
+                                cv2.LINE_AA)
+            elif args.brightness:
+                # Brightness thresholding instead of YOLO, on the framed field
+                dets, bright_mask, merge_vis = detect_bright_blobs(field)
                 if show_mask_view():
                     # Colour copy of the mask with every accepted blob outlined,
                     # so the sliders show what each setting is actually keeping.
