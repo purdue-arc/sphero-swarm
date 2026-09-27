@@ -115,9 +115,15 @@ def connect_ball(toy_address, ret_list, location, max_attempts, ws=None, loop=No
     start = time.time()
     attempts = 0
     while (time.time() - start) < CONNECT_TIMEOUT_SECONDS:
+        attempts += 1
+        elapsed = time.time() - start
+        print("[{}] attempt {} (elapsed {:.1f}s/{}s) - connecting...".format(
+            toy_address, attempts, elapsed, CONNECT_TIMEOUT_SECONDS))
         try:
             sb = SpheroEduAPI(toy_address).__enter__()
             ret_list[location] = sb
+            print("[{}] connected after {:.1f}s (attempt {})".format(
+                toy_address, time.time() - start, attempts))
 
             if ws:
                 ws_send(loop, ws, {
@@ -127,13 +133,13 @@ def connect_ball(toy_address, ret_list, location, max_attempts, ws=None, loop=No
                 })
 
             return
-        except Exception:
-            attempts += 1
-            print("Trying to connect with: {}, attempt {}".format(toy_address, attempts))
+        except Exception as e:
+            print("[{}] attempt {} failed: {}".format(toy_address, attempts, e))
             time.sleep(1)
             continue
 
-    print("Giving up on {}: timed out after {} seconds".format(toy_address, CONNECT_TIMEOUT_SECONDS))
+    print("[{}] giving up - no connection after {}s ({} attempts)".format(
+        toy_address, CONNECT_TIMEOUT_SECONDS, attempts))
 
     if ws:
         ws_send(loop, ws, {
@@ -150,9 +156,11 @@ def connect_multi_ball(toy_addresses, ret_list, max_attempts, ws=None, loop=None
     on to the next one; a ball that times out is simply left as None in
     ret_list rather than blocking the rest of the roster.
     """
-    print("Connecting to Spheros one at a time...")
+    total = len(toy_addresses)
+    print("Connecting to {} Sphero(s) one at a time...".format(total))
 
     for index, toy_address in enumerate(toy_addresses):
+        print("--- [{}/{}] {} ---".format(index + 1, total, toy_address))
         connect_ball(toy_address, ret_list, index, max_attempts, ws, loop)
 
     print("Balls Connected: {}".format(ret_list))
