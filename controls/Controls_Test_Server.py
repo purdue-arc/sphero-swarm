@@ -99,9 +99,13 @@ def address_sort(addresses, map_to_location):
     print("Sorted Addresses: {}".format(addresses))
 
 
+CONNECT_TIMEOUT_SECONDS = 20
+
+
 def connect_ball(toy_address, ret_list, location, max_attempts, ws=None, loop=None):
     attempts = 0
-    while attempts < max_attempts:
+    start = time.time()
+    while attempts < max_attempts and (time.time() - start) < CONNECT_TIMEOUT_SECONDS:
         try:
             sb = SpheroEduAPI(toy_address).__enter__()
             ret_list[location] = sb
@@ -117,13 +121,21 @@ def connect_ball(toy_address, ret_list, location, max_attempts, ws=None, loop=No
         except Exception:
             attempts += 1
             print("Trying to connect with: {}, attempt {}".format(toy_address, attempts))
+            time.sleep(1)
             continue
+
+    reason = (
+        "Connection attempts exceeded"
+        if attempts >= max_attempts
+        else "Timed out after {} seconds".format(CONNECT_TIMEOUT_SECONDS)
+    )
+    print("Giving up on {}: {}".format(toy_address, reason))
 
     if ws:
         ws_send(loop, ws, {
             "type": "ball_failed",
             "ball": str(toy_address),
-            "reason": "Connection attempts exceeded"
+            "reason": reason
         })
 
 
