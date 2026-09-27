@@ -460,7 +460,7 @@ def test_controls():
     global KILL_FLAG
     KILL_FLAG = 0
 
-    ball_names = [ "SB-B5A9", "SB-0439", "SB-7672", "SB-BD0A", "SB-3881", "SB-8262", "SB-D950", "SB-C596", "SB-1A8C", "SB-387B", "SB-4D8E", "SB-1730"]
+    ball_names = [ "SB-B5A9", "SB-0439", "SB-7672", "SB-BD0A", "SB-3881", "SB-8262", "SB-D950", "SB-C596", "SB-1A8C", "SB-387B", "SB-4D8E", "SB-1730", "SB-1840"]
     
     name_to_location_dict = generate_dict_map(ball_names)
 
@@ -556,4 +556,4 @@ if __name__ == "__main__":
         asyncio.run(start_web_server())
     else:
         #test_controls()
-        run_server(['SB-3881'])
+        run_server(['SB-1884'])
