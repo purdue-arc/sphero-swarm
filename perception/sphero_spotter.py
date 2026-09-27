@@ -214,6 +214,9 @@ def process_apriltags(frame, force_process=False):
     field_frame is the AprilTag-framed field with no overlays drawn on it, or
     None until all 4 tags have been seen once. The colour filter only runs on
     it, so nothing outside the field can be picked up as a sphero.
+
+    The grid is not drawn here: detection has to see the frame without it, so
+    process_frame_async draws it on display_frame once detection has run.
     """
     global april_tag_frame_counter, last_warped_frame, last_warp_matrix, last_apriltag_count
 
@@ -224,16 +227,7 @@ def process_apriltags(frame, force_process=False):
             # Reuse last warped frame if available
             if last_warped_frame is not None and last_warp_matrix is not None:
                 warped = cv2.warpPerspective(frame, last_warp_matrix, (500, 500))
-                field = warped.copy()
-                top_left = (0, 0)
-                bottom_right = (warped.shape[1] - 1, warped.shape[0] - 1)
-                grid = draw_grid(warped, top_left, bottom_right)
-                return grid, field
-            # No warped frame available, draw grid on full frame if enabled
-            if args.grid:
-                top_left = (0, 0)
-                bottom_right = (frame.shape[1] - 1, frame.shape[0] - 1)
-                return draw_grid(frame, top_left, bottom_right), None
+                return warped, warped.copy()
             return frame, None
 
     # Process April tags (full detection)
@@ -280,17 +274,7 @@ def process_apriltags(frame, force_process=False):
         warped = cv2.warpPerspective(frame, last_warp_matrix, (size, size))
         field = cv2.warpPerspective(clean, last_warp_matrix, (size, size))
         last_warped_frame = warped.copy()  # Cache the warped frame
-        top_left = (0, 0)
-        bottom_right = (warped.shape[1] - 1, warped.shape[0] - 1)
-
-        grid = draw_grid(warped, top_left, bottom_right)
-        return grid, field
-
-    # No perspective correction available, draw grid on full frame if enabled
-    if args.grid:
-        top_left = (0, 0)
-        bottom_right = (frame.shape[1] - 1, frame.shape[0] - 1)
-        return draw_grid(frame, top_left, bottom_right), None
+        return warped, field
 
     return frame, None
 
@@ -608,6 +592,7 @@ def process_frame_async():
                     break
             
             # Process April tags
+            raw = frame.copy()  # tag outlines get drawn on frame
             frame, field = process_apriltags(frame)
 
             dets = []  # (cx, cy, cls_id, x1, y1, x2, y2, tracker_id)
@@ -642,8 +627,10 @@ def process_frame_async():
                                 cv2.LINE_AA)
             else:
                 # Run YOLOv8 tracking with optimized settings
+                # Run on the clean image (no tag outlines or grid) so the
+                # overlays can't be mistaken for, or hide, a sphero.
                 results = model.track(
-                    frame, 
+                    field if field is not None else raw,
                     tracker="botsort.yaml", 
                     persist=True, 
                     verbose=False,
@@ -708,6 +695,9 @@ def process_frame_async():
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2, cv2.LINE_AA)
                 if args.debug:
                     print(f"ID {disp_id} | {class_name} | Center: ({int(cx)}, {int(cy)})")
+
+            # Grid goes on last, over the detections, so detection never sees it
+            frame = draw_grid(frame, (0, 0), (frame.shape[1] - 1, frame.shape[0] - 1))
 
             # Record last known position of any sphero not seen this frame
             for disp_id, coord in spheros.items():
