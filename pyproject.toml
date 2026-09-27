@@ -15,4 +15,5 @@ dependencies = [
     "ultralytics>=8.4.37",
     "websockets>=16.0",
     "zmq>=0.0.0",
+    "pandas>=3.0.6",
 ]
