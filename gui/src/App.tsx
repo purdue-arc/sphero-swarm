@@ -1,230 +1,130 @@
+import { useCallback, useEffect, useState } from 'react'
 import styles from './App.module.css'
-import { Sidebar } from "../components/Sidebar/sidebar"
-import { Runner } from "../components/Runner/runner"
-import { Controls } from "../components/Controls/Controls"
-import { Config } from "../components/Config/config"
-import { Simulation } from "../components/Simulation/simulation"
-import { Perception } from "../components/Perception/perception"
-
-import { useState, useEffect } from 'react'
+import { Sidebar } from '../components/Sidebar/sidebar'
+import { Runner } from '../components/Runner/runner'
+import { Controls } from '../components/Controls/Controls'
+import { Config } from '../components/Config/config'
+import { Simulation } from '../components/Simulation/simulation'
+import { Perception } from '../components/Perception/perception'
+import { MainSimulation } from '../components/MainSimulation/MainSimulation'
 import type { SpheroConstants, SpheroStatus, PerceptionConfig, SimulationSnapshot } from '../types/swarm_types'
 
+type Reply = { status: string }
 declare global {
   interface Window {
     electronAPI: {
-      appRenderComplete: () => Promise<any>;
-      signalAppReady(): unknown
-      getConstants: any;
-      startSpheroSpotter: (config?: PerceptionConfig) => Promise<any>;
-      stopSpheroSpotter: () => Promise<any>;
-      startControls: () => Promise<any>;
-      stopControls: () => Promise<any>;
-      refreshControls: () => Promise<any>;
-      quitApp: () => Promise<any>;
-      saveConstants: (form: any) => Promise<any>;
+      appRenderComplete: () => Promise<unknown>;
+      signalAppReady: () => Promise<unknown>;
+      getConstants: () => Promise<SpheroConstants>;
+      startSpheroSpotter: (config?: PerceptionConfig) => Promise<Reply>;
+      stopSpheroSpotter: () => Promise<Reply>;
+      restartPerception: (config: PerceptionConfig) => Promise<Reply>;
+      startControls: () => Promise<Reply>;
+      stopControls: () => Promise<Reply>;
+      refreshControls: () => Promise<Reply>;
+      getServiceStatus: () => Promise<{ controls: boolean; perception: boolean; algorithm: boolean }>;
+      startAlgorithm: () => Promise<Reply>;
+      stopAlgorithm: () => Promise<Reply>;
+      restartAlgorithm: () => Promise<Reply>;
+      quitApp: () => Promise<unknown>;
+      saveConstants: (form: SpheroConstants) => Promise<Reply>;
       getPerceptionTuning: () => Promise<Record<string, number | boolean>>;
-      savePerceptionTuning: (values: Record<string, number | boolean>) => Promise<any>;
+      savePerceptionTuning: (values: Record<string, number | boolean>) => Promise<unknown>;
     };
   }
 }
 
+const DEFAULT_PERCEPTION: PerceptionConfig = {
+  inputSource: 'oakd', videoPath: '', model: './models/bestv3.pt', conf: 0.25,
+  imgsz: 640, grid: false, locked: false, latency: false, colorFilter: true, brightThresh: 200,
+}
+
 function App() {
-  const [currentView, setCurrentView] = useState<string>("dashboard")
-  const [constants, setConstants] = useState<SpheroConstants | null>(null);
+  const [currentView, setCurrentView] = useState('main')
+  const [constants, setConstants] = useState<SpheroConstants | null>(null)
+  const [loadError, setLoadError] = useState('')
   const [spheros, setSpheros] = useState<SpheroStatus[]>([])
-  const [authReady, setAppReady] = useState(false);
-  const [algorithmRunning, setAlgorithmRunning] = useState(false);
-  const [perceptionStatus, setPerceptionStatus] = useState<"stopped" | "starting" | "started">("stopped");
-  const [perceptionConfig, setPerceptionConfig] = useState<PerceptionConfig>({
-    inputSource: "oakd",
-    videoPath: "",
-    model: "./models/bestv3.pt",
-    conf: 0.25,
-    imgsz: 640,
-    grid: false,
-    locked: false,
-    latency: false,
-    colorFilter: true,
-    brightThresh: 200,
-  });
-  const [latestSimulationSnapshot, setLatestSimulationSnapshot] = useState<SimulationSnapshot | null>(null);
-  const [simulationSpeed, setSimulationSpeed] = useState(6);
-  const [useControls, setUseControls] = useState(false);
-  const [useAlgorithmColors, setUseAlgorithmColors] = useState(true);
+  const [algorithmRunning, setAlgorithmRunning] = useState(false)
+  const [perceptionStatus, setPerceptionStatus] = useState<'stopped' | 'starting' | 'started'>('stopped')
+  const [perceptionConfig, setPerceptionConfig] = useState<PerceptionConfig>(DEFAULT_PERCEPTION)
+  const [latestSimulationSnapshot, setLatestSimulationSnapshot] = useState<SimulationSnapshot | null>(null)
+  const [stepSeconds, setStepSeconds] = useState(4)
+  const [useControls, setUseControls] = useState(false)
+  const [useAlgorithmColors, setUseAlgorithmColors] = useState(true)
 
-  useEffect(() => {
-    async function loadConstants() {
-      try {
-        const data = await window.electronAPI.getConstants();
-        setConstants(data);
-
-        // Perception's tuning lives in gui/constants.json rather than the
-        // constants above, so the slider comes back where it was left.
-        try {
-          const tuning = await window.electronAPI.getPerceptionTuning();
-          if (typeof tuning?.BRIGHT_THRESH === "number") {
-            setPerceptionConfig(prev => ({ ...prev, brightThresh: tuning.BRIGHT_THRESH as number }));
-          }
-        } catch (err) {
-          console.error("Failed to load perception tuning:", err);
-        }
-        setAppReady(true);
-        // Signal to splash that render is complete, showing the button
-        window.electronAPI.appRenderComplete();
-        window.electronAPI.startControls()
-      } catch (err) {
-        console.error("Failed to load constants:", err);
-        setAppReady(true);
-        window.electronAPI.appRenderComplete();
+  const updateConstants = useCallback((value: SpheroConstants) => {
+    setConstants(value)
+    setSpheros(previous => value.SPHERO_TAGS.map((tag, index) => {
+      const existing = previous.find(ball => ball.id === tag)
+      return {
+        id: tag, connection: existing?.connection ?? 'not-attempted',
+        actualPosition: existing?.actualPosition ?? [0, 0],
+        foundAt: existing?.foundAt,
+        batteryPercent: existing?.batteryPercent,
+        expectedPosition: value.INITIAL_POSITIONS[index] ?? [0, 0],
       }
-    }
-
-    loadConstants();
-  }, []);
+    }))
+  }, [])
 
   useEffect(() => {
-    if (!constants)
-      return;
-
-    setSpheros(
-      constants.SPHERO_TAGS.map((tag, i) => ({
-        id: tag,
-        connection: "not-attempted",
-        actualPosition: [0, 0],
-        expectedPosition: constants.INITIAL_POSITIONS[i],
-      }))
-    );
-  }, [constants])
+    window.electronAPI.getConstants().then(value => {
+      updateConstants(value)
+      window.electronAPI.signalAppReady()
+    }).catch(error => { setLoadError(String(error)); window.electronAPI.signalAppReady() })
+  }, [updateConstants])
 
   useEffect(() => {
-    let ws: WebSocket | null = null;
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    let dead = false;
-
+    let ws: WebSocket | null = null
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let disposed = false
     const connect = () => {
-      if (dead) return;
-      ws = new WebSocket("ws://localhost:6769");
+      if (disposed) return
+      ws = new WebSocket('ws://localhost:6769')
+      ws.onmessage = event => {
+        try { setLatestSimulationSnapshot(JSON.parse(event.data)) } catch { /* malformed frame */ }
+      }
+      ws.onclose = () => { if (!disposed) timer = setTimeout(connect, 1000) }
+      ws.onerror = () => ws?.close()
+    }
+    connect()
+    return () => { disposed = true; clearTimeout(timer); ws?.close() }
+  }, [])
 
-      ws.onmessage = (event) => {
-        try {
-          const payload: SimulationSnapshot = JSON.parse(event.data);
-          setLatestSimulationSnapshot(payload);
-        } catch {
-          // ignore malformed payloads
-        }
-      };
-
-      ws.onclose = () => {
-        if (!dead) {
-          reconnectTimer = setTimeout(connect, 1000);
-        }
-      };
-
-      ws.onerror = () => ws?.close();
-    };
-
-    connect();
-
-    return () => {
-      dead = true;
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      ws?.close();
-    };
-  }, []);
-
-  if (constants == null || !authReady) {
-    return (
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100vh',
-        background: 'linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%)',
-        color: '#ffffff',
-        fontSize: '1.5rem',
-        fontWeight: 600
-      }}>
-        Loading system...
-      </div>
-    )
+  if (!constants) return <div className={styles.loading}>{loadError || 'Loading system...'}</div>
+  const simulationProps = {
+    constants, latestSnapshot: latestSimulationSnapshot, onSnapshot: setLatestSimulationSnapshot,
+    speed: stepSeconds, onSpeedChange: setStepSeconds, useControls,
+    hasConnectedSphero: spheros.some(ball => ball.connection === 'connected'),
+    onUseControlsChange: setUseControls, useAlgorithmColors, onUseAlgorithmColorsChange: setUseAlgorithmColors,
   }
 
-  const connectedRobots = spheros.filter(s => s.connection === "connected").length;
-
-  return (
-    <div className={styles.mainBody}>
-      <Sidebar
-        currentView={currentView}
-        setCurrentView={setCurrentView}
-        connectedRobots={connectedRobots}
-      />
-      <div className={styles.viewer}>
-        {currentView === "dashboard" && (
-          <Runner
-            constants={constants}
-            spheros={spheros}
-            perceptionStatus={perceptionStatus}
-            setPerceptionStatus={setPerceptionStatus}
-            latestSimulationSnapshot={latestSimulationSnapshot}
-            onSimulationSnapshot={setLatestSimulationSnapshot}
-            speed={simulationSpeed}
-            onSpeedChange={setSimulationSpeed}
-            useControls={useControls}
-            onUseControlsChange={setUseControls}
-            useAlgorithmColors={useAlgorithmColors}
-            onUseAlgorithmColorsChange={setUseAlgorithmColors}
-          />
-        )}
-
-        {currentView === "configuration" && (
-          <Config constants={constants} onUpdate={setConstants} algorithmRunning={algorithmRunning} />
-        )}
-
-        {currentView === "controls" && (
-          <Controls constants={constants} spheros={spheros} setSpheros={setSpheros} algorithmRunning={algorithmRunning} />
-        )}
-
-        {currentView === "simulation" && (
-          <Simulation
-            constants={constants}
-            onRunningChange={setAlgorithmRunning}
-            latestSnapshot={latestSimulationSnapshot}
-            onSnapshot={setLatestSimulationSnapshot}
-            speed={simulationSpeed}
-            onSpeedChange={setSimulationSpeed}
-            useControls={useControls}
-            onUseControlsChange={setUseControls}
-            useAlgorithmColors={useAlgorithmColors}
-            onUseAlgorithmColorsChange={setUseAlgorithmColors}
-          />
-        )}
-
-        {/* Placeholder views for other sections */}
-        {currentView === "perception" && (
-          <Perception
-            spotterStatus={perceptionStatus}
-            setSpotterStatus={setPerceptionStatus}
-            config={perceptionConfig}
-            setConfig={setPerceptionConfig}
-          />
-        )}
-
-        {currentView === "algorithms" && (
-          <div style={{ padding: '2rem', color: '#ffffff' }}>
-            <h1>Algorithms Module</h1>
-            <p>Algorithm configuration and testing coming soon...</p>
-          </div>
-        )}
-
-        {currentView === "about" && (
-          <div style={{ padding: '2rem', color: '#ffffff' }}>
-            <h1>About Us</h1>
-            <p>Team information and project details coming soon...</p>
-          </div>
-        )}
-      </div>
-    </div>
-  )
+  return <div className={styles.mainBody}>
+    <Sidebar currentView={currentView} setCurrentView={setCurrentView}
+      connectedRobots={spheros.filter(s => s.connection === 'connected').length} />
+    <main className={styles.viewer}>
+      {currentView === 'main' && <MainSimulation constants={constants} setConstants={updateConstants}
+        spheros={spheros} setSpheros={setSpheros} algorithmRunning={algorithmRunning} setAlgorithmRunning={setAlgorithmRunning}
+        perceptionStatus={perceptionStatus} setPerceptionStatus={setPerceptionStatus}
+        perceptionConfig={perceptionConfig} setPerceptionConfig={setPerceptionConfig}
+        latestSimulationSnapshot={latestSimulationSnapshot} setLatestSimulationSnapshot={setLatestSimulationSnapshot}
+        simulationSpeed={stepSeconds} setSimulationSpeed={setStepSeconds}
+        useControls={useControls} setUseControls={setUseControls}
+        useAlgorithmColors={useAlgorithmColors} setUseAlgorithmColors={setUseAlgorithmColors} />}
+      {currentView === 'dashboard' && <Runner constants={constants} spheros={spheros}
+        perceptionStatus={perceptionStatus} setPerceptionStatus={setPerceptionStatus}
+        latestSimulationSnapshot={latestSimulationSnapshot} onSimulationSnapshot={setLatestSimulationSnapshot}
+        speed={stepSeconds} onSpeedChange={setStepSeconds} useControls={useControls}
+        onUseControlsChange={setUseControls} useAlgorithmColors={useAlgorithmColors}
+        onUseAlgorithmColorsChange={setUseAlgorithmColors} />}
+      {currentView === 'configuration' && <Config constants={constants} onUpdate={updateConstants} algorithmRunning={algorithmRunning} />}
+      {currentView === 'controls' && <Controls constants={constants} spheros={spheros} setSpheros={setSpheros} algorithmRunning={algorithmRunning} onAlgorithmStopped={() => setAlgorithmRunning(false)} />}
+      {currentView === 'perception' && <Perception spotterStatus={perceptionStatus} setSpotterStatus={setPerceptionStatus}
+        config={perceptionConfig} setConfig={setPerceptionConfig} spheroTags={constants.SPHERO_TAGS} />}
+      {currentView === 'simulation' && <Simulation {...simulationProps} initialRunning={algorithmRunning} onRunningChange={setAlgorithmRunning} />}
+      {currentView === 'algorithms' && <Simulation {...simulationProps} initialRunning={algorithmRunning} onRunningChange={setAlgorithmRunning} />}
+      {currentView === 'about' && <div className={styles.legacyPanel}><h1>About Sphero Swarm</h1><p>Swarm control and simulation workspace.</p></div>}
+    </main>
+  </div>
 }
 
 export default App

@@ -6,6 +6,17 @@
     box-sizing: border-box;
 }
 
+.table select {
+    max-width: 190px;
+    padding: 8px 10px;
+    border: 1px solid rgba(125, 207, 209, 0.45);
+    border-radius: 8px;
+    background: #14283c;
+    color: #e8f5f5;
+    font: inherit;
+    cursor: pointer;
+}
+
 /* ── Header ──────────────────────────────────── */
 .header {
     display: flex;

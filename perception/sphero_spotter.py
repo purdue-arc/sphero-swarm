@@ -559,7 +559,7 @@ def detect_bright_blobs(frame):
 
 def process_frame_async():
     """Background thread for YOLO inference"""
-    global frozen
+    global frozen, next_display_id, lost_spheros
     while not stop_processing.is_set():
         try:
             # Check for commands from GUI (e.g., grid toggle)
@@ -575,6 +575,25 @@ def process_frame_async():
                     # Live slider moves from the GUI; picked up on the next frame
                     applied = apply_tuning(cmd.get("values"))
                     print(f"[sphero_spotter] Tuning updated: {applied}")
+                elif cmd.get("action") == "assign_id":
+                    try:
+                        current_id = int(cmd["current_id"])
+                        target_id = int(cmd["target_id"])
+                    except (KeyError, TypeError, ValueError):
+                        continue
+                    if not (0 <= current_id < N_SPHEROS and 0 <= target_id < N_SPHEROS):
+                        continue
+                    if current_id != target_id and current_id in id_map.values():
+                        for tracker_id, display_id in list(id_map.items()):
+                            if display_id == current_id:
+                                id_map[tracker_id] = target_id
+                            elif display_id == target_id:
+                                id_map[tracker_id] = current_id
+                        spheros.pop(current_id, None)
+                        spheros.pop(target_id, None)
+                        lost_spheros.pop(current_id, None)
+                        lost_spheros.pop(target_id, None)
+                        print(f"[sphero_spotter] Reassigned IDs {current_id} and {target_id}")
             
             # Get latest frame (non-blocking, skip stale frames)
             try:
@@ -652,7 +671,6 @@ def process_frame_async():
                         dets.append((cx, cy, cls_id, x1, y1, x2, y2, tid))
             
 
-            global next_display_id, lost_spheros
 
             if not frozen and dets:
                 # First frame: assign IDs sorted by position for deterministic ordering
