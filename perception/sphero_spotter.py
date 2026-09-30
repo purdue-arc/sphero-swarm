@@ -22,13 +22,14 @@ detector = Detector()
 from SpheroCoordinate import SpheroCoordinate
 from input_streams import WebcamStream, VideoFileStream
 import blob_merge
+import color_id
 
 # Brightness-mode tuning. Lives in constants.json under "PERCEPTION" so it can
 # be changed without editing code or passing a wall of flags; the values below
 # are the fallbacks when the file or a key is missing. The mask-window sliders
 # write straight into this at runtime.
 PERCEPTION_DEFAULTS = {
-    "BRIGHT_THRESH": 200,        # brightness cutoff 0-255, at or below = background
+    "BRIGHT_THRESH": 130,        # brightness cutoff 0-255, at or below = background
     "BRIGHT_MIN_AREA": 50.0,     # smallest blob accepted as a sphero, in pixels
     "BRIGHT_MAX_AREA": 0.0,      # largest blob accepted, 0 = no upper limit
     "BRIGHT_BLUR": 5,            # gaussian blur kernel before thresholding, 0 = off
@@ -37,6 +38,8 @@ PERCEPTION_DEFAULTS = {
     "MERGE_SPLIT": True,         # split blobs holding two touching spheros
     "MERGE_AREA_RATIO": 1.5,     # blob this many x one sphero = a merge
     "MERGE_PEAK_SEP": 6,         # min px between the two peaks used to split
+    "COLOR_ID": True,            # give lost IDs back by LED colour, not just position
+    "COLOR_MATCH_DIST": 0.35,    # max chroma distance still counted as the same sphero
 }
 
 # Load N_SPHEROS and the perception tuning from the shared constants file
@@ -62,6 +65,7 @@ parser.add_argument('--nogui', '-n', action='store_true', help="Run the Sphero S
 parser.add_argument('--locked', '-l', action='store_true', help="Freeze the initial Sphero ID assignments. No new IDs will be assigned after the first frame.")
 parser.add_argument('--model', '-m', type=str, default="./models/bestv3.pt", help="Path to the YOLO model file to use for object detection (default: %(default)s).")
 parser.add_argument('--debug', '-d', action='store_true', help="Activates debug mode (aka prints out all the spheres)")
+parser.add_argument('--wait-for-start', action='store_true', help="Stream the camera but detect nothing until told to start: a start_detection command from the GUI, or 's' in the local window. For cameras that open on a blank white frame.")
 parser.add_argument('--latency', '-t', action='store_true', help="Prints the latency in the camera as well as processing time")
 parser.add_argument('--imgsz', type=int, default=640, help="YOLO inference image size (smaller = faster, default: 640)")
 parser.add_argument('--conf', type=float, default=0.25, help="YOLO confidence threshold (default: 0.25)")
@@ -332,6 +336,9 @@ def listener():
 
 ASSIGN_NEW_IDS_AFTER_FIRST_FRAME = not args.locked
 frozen = False
+# Off until the user says the picture is usable (see --wait-for-start). Nothing
+# is detected before then, so a blank start-up frame can't set the first IDs.
+detecting = not args.wait_for_start
 id_map = {}
 model = YOLO(args.model) if not args.brightness else None
 
@@ -494,7 +501,7 @@ def detect_bright_blobs(frame):
 
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    blobs = []  # (area, cx, cy, x1, y1, x2, y2)
+    blobs = []  # ((area, cx, cy, x1, y1, x2, y2), contour)
     for c in contours:
         area = cv2.contourArea(c)
         if area < tune.BRIGHT_MIN_AREA:
@@ -508,12 +515,19 @@ def detect_bright_blobs(frame):
             cy = m["m01"] / m["m00"]
         else:
             cx, cy = x + w / 2.0, y + h / 2.0
-        blobs.append((area, cx, cy, float(x), float(y), float(x + w), float(y + h)))
+        blobs.append(((area, cx, cy, float(x), float(y), float(x + w), float(y + h)), c))
 
     # Largest first, so leftover glare loses to the actual spheros
-    blobs.sort(key=lambda b: b[0], reverse=True)
+    blobs.sort(key=lambda b: b[0][0], reverse=True)
     limit = tune.BRIGHT_MAX_BLOBS if tune.BRIGHT_MAX_BLOBS > 0 else N_SPHEROS
     blobs = blobs[:limit]
+
+    # LED colour of each whole blob, for handing lost IDs back. Split halves of
+    # a merged blob aren't in here: their pixels are two spheros' glow mixed.
+    blob_sigs = {}
+    if tune.COLOR_ID:
+        blob_sigs = {b: color_id.colour_signature(frame, c) for b, c in blobs}
+    blobs = [b for b, _c in blobs]
 
     # A merged blob is two spheros in one contour: split it and pin each half
     # to its own track before the ordinary matching runs.
@@ -525,6 +539,7 @@ def detect_bright_blobs(frame):
     new_vels = {}
     available = dict(bright_tracks)
     dets = []
+    colours = {}   # tracker_id -> colour signature this frame (None = unknown)
     for area, cx, cy, x1, y1, x2, y2, forced_tid in blobs:
         tid = None
         if forced_tid is not None and forced_tid in available:
@@ -552,10 +567,44 @@ def detect_bright_blobs(frame):
             new_vels[tid] = (0.0, 0.0)
         new_tracks[tid] = coasting.get(tid, (cx, cy))
         dets.append((cx, cy, -1, x1, y1, x2, y2, tid))
+        colours[tid] = None if tid in merged_tids else blob_sigs.get((area, cx, cy, x1, y1, x2, y2))
 
     bright_tracks = new_tracks
     bright_vels = new_vels
-    return dets, mask, merge_vis
+    return dets, mask, merge_vis, colours
+
+# --- Colour identity (brightness mode) ----------------------------------------
+# Each display ID learns its sphero's LED colour while it is tracked. When a
+# sphero drops out and a new track appears, the lost ID goes to the blob that
+# shows its colour, instead of just the nearest one.
+colour_profiles = {}   # disp_id -> color_id.ColourProfile
+
+def learn_colours(dets, det_colours):
+    for (cx, cy, cls_id, x1, y1, x2, y2, tid) in dets:
+        if tid not in id_map:
+            continue
+        prof = colour_profiles.setdefault(id_map[tid], color_id.ColourProfile())
+        prof.update(det_colours.get(tid), tune.COLOR_MATCH_DIST)
+
+def recover_lost_by_colour(dets, det_colours):
+    """Give lost display IDs back to new tracks by colour, position as tiebreak."""
+    if not lost_spheros:
+        return
+    candidates = [(tid, (cx, cy), det_colours.get(tid))
+                  for (cx, cy, cls_id, x1, y1, x2, y2, tid) in dets if tid not in id_map]
+    lost = {did: (pos, colour_profiles[did].estimate if did in colour_profiles else None)
+            for did, pos in lost_spheros.items()}
+    for tid, (did, dist) in color_id.match_lost(candidates, lost, tune.COLOR_MATCH_DIST).items():
+        id_map[tid] = did
+        del lost_spheros[did]
+        how = f"colour dist {dist:.2f}" if dist is not None else "no colour learnt, by position"
+        print(f"[color-id] track {tid} -> ID {did} ({how})")
+
+def start_detection():
+    global detecting
+    if not detecting:
+        detecting = True
+        print("[sphero_spotter] Detection started")
 
 def process_frame_async():
     """Background thread for YOLO inference"""
@@ -575,6 +624,8 @@ def process_frame_async():
                     # Live slider moves from the GUI; picked up on the next frame
                     applied = apply_tuning(cmd.get("values"))
                     print(f"[sphero_spotter] Tuning updated: {applied}")
+                elif cmd.get("action") == "start_detection":
+                    start_detection()
                 elif cmd.get("action") == "assign_id":
                     try:
                         current_id = int(cmd["current_id"])
@@ -593,6 +644,13 @@ def process_frame_async():
                         spheros.pop(target_id, None)
                         lost_spheros.pop(current_id, None)
                         lost_spheros.pop(target_id, None)
+                        # Learnt LED colours belong to the sphero, so they follow it
+                        cur_prof = colour_profiles.pop(current_id, None)
+                        tgt_prof = colour_profiles.pop(target_id, None)
+                        if cur_prof is not None:
+                            colour_profiles[target_id] = cur_prof
+                        if tgt_prof is not None:
+                            colour_profiles[current_id] = tgt_prof
                         print(f"[sphero_spotter] Reassigned IDs {current_id} and {target_id}")
             
             # Get latest frame (non-blocking, skip stale frames)
@@ -615,10 +673,19 @@ def process_frame_async():
             frame, field = process_apriltags(frame)
 
             dets = []  # (cx, cy, cls_id, x1, y1, x2, y2, tracker_id)
+            det_colours = {}  # brightness mode only: tracker_id -> colour signature
 
             mask_view = None
 
-            if args.brightness and field is None:
+            if not detecting:
+                # Camera is still settling: show the feed, find nothing
+                cv2.putText(frame, "Detection paused - press Start detecting",
+                            (8, 18), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 1, cv2.LINE_AA)
+                if show_mask_view():
+                    mask_view = np.zeros((500, 500, 3), dtype=np.uint8)
+                    cv2.putText(mask_view, "Detection paused", (8, 18),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.45, (0, 255, 255), 1, cv2.LINE_AA)
+            elif args.brightness and field is None:
                 # Not framed by the AprilTags yet: the raw camera view has
                 # lights, walls and the floor outside the field in it, so
                 # detect nothing until the field can be cut out.
@@ -629,7 +696,7 @@ def process_frame_async():
                                 cv2.LINE_AA)
             elif args.brightness:
                 # Brightness thresholding instead of YOLO, on the framed field
-                dets, bright_mask, merge_vis = detect_bright_blobs(field)
+                dets, bright_mask, merge_vis, det_colours = detect_bright_blobs(field)
                 if show_mask_view():
                     # Colour copy of the mask with every accepted blob outlined,
                     # so the sliders show what each setting is actually keeping.
@@ -680,9 +747,21 @@ def process_frame_async():
                         next_display_id += 1
                 frozen = True
 
+            if args.brightness and tune.COLOR_ID:
+                recover_lost_by_colour(dets, det_colours)
+
             # Assign IDs to new tracker IDs: prefer recovering a lost sphero by
             # nearest distance, then create a fresh ID if under cap and not locked.
             for (cx, cy, cls_id, x1, y1, x2, y2, tid) in dets:
+                if args.brightness and tune.COLOR_ID:
+                    # Colour matching above already handed out lost IDs; a blob
+                    # it couldn't place waits for a better look next frame
+                    # rather than taking whichever lost ID is nearest.
+                    if tid not in id_map and not lost_spheros and \
+                            ASSIGN_NEW_IDS_AFTER_FIRST_FRAME and next_display_id < N_SPHEROS:
+                        id_map[tid] = next_display_id
+                        next_display_id += 1
+                    continue
                 if tid not in id_map:
                     if lost_spheros:
                         nearest = min(
@@ -713,6 +792,9 @@ def process_frame_async():
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2, cv2.LINE_AA)
                 if args.debug:
                     print(f"ID {disp_id} | {class_name} | Center: ({int(cx)}, {int(cy)})")
+
+            if args.brightness and tune.COLOR_ID:
+                learn_colours(dets, det_colours)
 
             # Grid goes on last, over the detections, so detection never sees it
             frame = draw_grid(frame, (0, 0), (frame.shape[1] - 1, frame.shape[0] - 1))
@@ -749,6 +831,7 @@ def process_frame_async():
                     # Lets the GUI show what the filter is actually running with
                     "tuning": {k: getattr(tune, k) for k in PERCEPTION_DEFAULTS},
                     "mask_streaming": mask_view is not None,
+                    "detecting": detecting,
                 })
 
             # Put result in queue (replace if queue is full)
@@ -801,6 +884,9 @@ def _set_merge_ratio(v):
 def _set_merge_peak_sep(v):
     tune.MERGE_PEAK_SEP = int(max(v, 1))
 
+def _set_colour_match(v):
+    tune.COLOR_MATCH_DIST = max(v, 1) / 100.0   # slider is in hundredths
+
 def ensure_mask_window():
     """Create the mask window and its sliders once, on the display thread."""
     global _mask_window_ready
@@ -814,6 +900,7 @@ def ensure_mask_window():
     cv2.createTrackbar("Track match dist", MASK_WINDOW, int(tune.BRIGHT_MATCH_DIST), 300, _set_match_dist)
     cv2.createTrackbar("Merge area ratio x10", MASK_WINDOW, int(tune.MERGE_AREA_RATIO * 10), 30, _set_merge_ratio)
     cv2.createTrackbar("Min peak separation", MASK_WINDOW, int(tune.MERGE_PEAK_SEP), 40, _set_merge_peak_sep)
+    cv2.createTrackbar("Color match x100", MASK_WINDOW, int(tune.COLOR_MATCH_DIST * 100), 150, _set_colour_match)
     _mask_window_ready = True
 
 def display_frames(frame, mask_view, timestamp):
@@ -834,6 +921,8 @@ def display_frames(frame, mask_view, timestamp):
         cv2.imshow(MASK_WINDOW, mask_view)
 
     key = cv2.waitKey(1) & 0xFF
+    if key == ord('s'):
+        start_detection()
     if key == 27:  # ESC
         raise SystemExit("Key input clicks")
     if cv2.getWindowProperty(MAIN_WINDOW, cv2.WND_PROP_VISIBLE) < 1:

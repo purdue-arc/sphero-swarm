@@ -12,6 +12,7 @@ import {
     faSliders,
     faNetworkWired,
     faLayerGroup,
+    faCrosshairs,
 } from "@fortawesome/free-solid-svg-icons";
 import { StreamViewer } from "../StreamViewer/streamViewer";
 import type { PerceptionConfig } from "../../types/swarm_types";
@@ -48,6 +49,8 @@ interface Telemetry {
     // Present while colour filtering: what the filter is actually running with
     tuning?: { BRIGHT_THRESH: number; BRIGHT_MIN_AREA: number; BRIGHT_BLUR: number };
     mask_streaming?: boolean;
+    // False until "Start detecting" is pressed; the camera opens on a white frame
+    detecting?: boolean;
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -247,6 +250,15 @@ export function Perception({
                         {spotterStatus === "started"  ? "Running"  :
                          spotterStatus === "starting" ? "Starting" : "Stopped"}
                     </span>
+                    {telemetry?.detecting === false && (
+                        <button
+                            className={`${s.btn} ${s.btnPrimary}`}
+                            onClick={() => sendCommand({ action: "start_detection" })}
+                            title="Start finding Spheros once the camera picture has settled"
+                        >
+                            <FontAwesomeIcon icon={faCrosshairs} /> Start detecting
+                        </button>
+                    )}
                     {!isRunning ? (
                         <button className={`${s.btn} ${s.btnPrimary}`} onClick={handleStart}>
                             <FontAwesomeIcon icon={faPlay} /> Start
@@ -451,7 +463,9 @@ export function Perception({
                         </table>
                     ) : (
                         <p className={s.emptyMsg}>
-                            {spotterStatus === "started"
+                            {telemetry?.detecting === false
+                                ? "Detection paused — press Start detecting once the camera picture is clear"
+                                : spotterStatus === "started"
                                 ? "No Spheros detected in current frame"
                                 : "Start perception to see live detections"}
                         </p>
