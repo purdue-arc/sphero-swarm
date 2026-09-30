@@ -51,7 +51,7 @@
   },
   "N_SPHEROS": 3,
   "PERCEPTION": {
-    "BRIGHT_THRESH": 147,
+    "BRIGHT_THRESH": 115,
     "BRIGHT_MIN_AREA": 50,
     "BRIGHT_MAX_AREA": 0,
     "BRIGHT_BLUR": 5,

@@ -578,6 +578,16 @@ function createMainWindow() {
     },
   });
 
+  const contents = mainWindow.webContents;
+  contents.on("before-input-event", (event, input) => {
+    const zoomModifier = process.platform === "darwin" ? input.meta : input.control;
+    const zoomInKey = input.key === "+" || input.key === "=" || input.code === "NumpadAdd";
+    if (input.type !== "keyDown" || !zoomModifier || input.alt || !zoomInKey) return;
+
+    event.preventDefault();
+    contents.setZoomFactor(Math.min(3, Math.round((contents.getZoomFactor() + 0.1) * 100) / 100));
+  });
+
   mainWindow.loadURL("http://localhost:5173");
   mainWindow.on("closed", () => { mainWindow = null; });
 
