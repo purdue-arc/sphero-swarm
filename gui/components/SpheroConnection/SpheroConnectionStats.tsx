@@ -12,7 +12,6 @@ type ConnectState = "idle" | "connecting" | "connected" | "failed";
 export function SpheroConnectionStats({
     connectState,
     startConnection,
-    startConnectionDemo,
     connectedCount,
     pendingCount,
     failedCount,
@@ -46,9 +45,9 @@ export function SpheroConnectionStats({
                 };
             case "failed":
                 return {
-                    label: "Retry Connection",
+                    label: "Retry Balls Below",
                     icon: faRotateRight,
-                    disabled: false,
+                    disabled: true,
                 };
         }
     };
@@ -78,7 +77,7 @@ export function SpheroConnectionStats({
                 <button
                     className={`${styles.connectButton} ${styles[connectState]}`}
                     disabled={buttonConfig.disabled}
-                    onClick={startConnectionDemo}
+                    onClick={startConnection}
                 >
                     <FontAwesomeIcon
                         icon={buttonConfig.icon}

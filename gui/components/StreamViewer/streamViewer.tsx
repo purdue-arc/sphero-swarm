@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCircle, faVideo, faVideoSlash } from "@fortawesome/free-solid-svg-icons";
+import { faCircle, faVideoSlash } from "@fortawesome/free-solid-svg-icons";
 import styles from "./streamViewer.module.css";
 
 // Tallest the feed may get in "aspect" sizing, so it always fits the window
@@ -12,6 +12,7 @@ export function StreamViewer({
     serverStatus,
     setServerStatus,
     sizing = "fill",
+    showStats = true,
 }: {
     port: number;
     serverStatus: string;
@@ -22,6 +23,7 @@ export function StreamViewer({
      *            allows and capped by window height, so there are no black bars.
      */
     sizing?: "fill" | "aspect";
+    showStats?: boolean;
 }) {
     const [imageSrc, setImageSrc] = useState<string>("");
     const [frameCount, setFrameCount] = useState<number>(0);
@@ -31,9 +33,9 @@ export function StreamViewer({
     const [aspect, setAspect] = useState<number | null>(null);
     
     const wsRef = useRef<WebSocket | null>(null);
-    const reconnectTimeoutRef = useRef<any>(null);
+    const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const shouldConnectRef = useRef<boolean>(false);
-    const fpsIntervalRef = useRef<any>(null);
+    const fpsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const frameCountRef = useRef<number>(0);
 
     // FPS calculation
@@ -48,7 +50,6 @@ export function StreamViewer({
                 clearInterval(fpsIntervalRef.current);
                 fpsIntervalRef.current = null;
             }
-            setFps(0);
             frameCountRef.current = 0;
         }
 
@@ -59,10 +60,11 @@ export function StreamViewer({
         };
     }, [serverStatus]);
 
+    const active = serverStatus !== "stopped";
     useEffect(() => {
-        shouldConnectRef.current = serverStatus !== "stopped";
+        shouldConnectRef.current = active;
 
-        if (serverStatus === "stopped") {
+        if (!active) {
             if (reconnectTimeoutRef.current) {
                 clearTimeout(reconnectTimeoutRef.current);
                 reconnectTimeoutRef.current = null;
@@ -73,8 +75,6 @@ export function StreamViewer({
                 wsRef.current = null;
             }
 
-            setImageSrc("");
-            setResolution(null);
             return;
         }
 
@@ -93,6 +93,7 @@ export function StreamViewer({
                 setImageSrc(`data:image/jpeg;base64,${event.data}`);
                 frameCountRef.current++;
                 setFrameCount(prev => prev + 1);
+                setServerStatus("started");
             };
 
             wsRef.current.onerror = (error: Event) => {
@@ -126,14 +127,7 @@ export function StreamViewer({
                 wsRef.current = null;
             }
         };
-    }, [serverStatus, port]);
-
-    useEffect(() => {
-        // Avoid reviving the stream state from late frames after a stop request.
-        if (imageSrc !== "" && shouldConnectRef.current && serverStatus !== "stopped") {
-            setServerStatus("started");
-        }
-    }, [imageSrc, serverStatus, setServerStatus]);
+    }, [active, port, setServerStatus]);
 
     // Box matches the stream's own shape, so no part of the panel is wasted on
     // black bars. maxWidth is what keeps the height under MAX_FEED_VH: capping
@@ -207,13 +201,13 @@ export function StreamViewer({
             </div>
 
             {/* Stats sit under the feed, so they never cover the camera image */}
-            <div
+            {showStats && <div
                 className={styles.statsBar}
                 style={sizing === "aspect" ? barStyle : undefined}
             >
                 <div className={styles.statCard}>
                     <p className={styles.statLabel}>FPS</p>
-                    <p className={styles.statValue}>{fps}</p>
+                    <p className={styles.statValue}>{serverStatus === "started" ? fps : 0}</p>
                 </div>
                 <div className={styles.statCard}>
                     <p className={styles.statLabel}>Frames</p>
@@ -223,7 +217,7 @@ export function StreamViewer({
                     <p className={styles.statLabel}>Resolution</p>
                     <p className={styles.statValue}>{resolution ?? "—"}</p>
                 </div>
-            </div>
+            </div>}
         </div>
     );
 }

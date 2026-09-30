@@ -5,6 +5,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("start-sphero-spotter", config),
   stopSpheroSpotter: () =>
     ipcRenderer.invoke("stop-sphero-spotter"),
+  restartPerception: (config) => ipcRenderer.invoke("restart-perception", config),
+  getServiceStatus: () => ipcRenderer.invoke("get-service-status"),
+  startAlgorithm: () => ipcRenderer.invoke("start-algorithm"),
+  stopAlgorithm: () => ipcRenderer.invoke("stop-algorithm"),
+  restartAlgorithm: () => ipcRenderer.invoke("restart-algorithm"),
   getConstants: () =>
     ipcRenderer.invoke('get-constants'),
   saveConstants: (constants) =>

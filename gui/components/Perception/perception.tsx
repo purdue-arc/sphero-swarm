@@ -75,14 +75,17 @@ export function Perception({
     setSpotterStatus,
     config,
     setConfig,
+    spheroTags = [],
 }: {
     spotterStatus: "stopped" | "starting" | "started";
-    setSpotterStatus: (status: "stopped" | "starting" | "started") => void;
+    setSpotterStatus: Dispatch<SetStateAction<"stopped" | "starting" | "started">>;
     config: PerceptionConfig;
     setConfig: Dispatch<SetStateAction<PerceptionConfig>>;
+    spheroTags?: string[];
 }) {
     const [telemetry, setTelemetry] = useState<Telemetry | null>(null);
     const [feedView, setFeedView] = useState<"camera" | "mask">("camera");
+    const [serviceError, setServiceError] = useState("");
 
     const telemetryWsRef    = useRef<WebSocket | null>(null);
     const shouldConnectRef  = useRef(false);
@@ -140,14 +143,26 @@ export function Perception({
 
     // ── Handlers ─────────────────────────────────────────────────────────────
     const handleStart = async () => {
+        setServiceError("");
         setSpotterStatus("starting");
-        await window.electronAPI.startSpheroSpotter(config);
+        try { await window.electronAPI.startSpheroSpotter(config); }
+        catch (error) { setSpotterStatus("stopped"); setServiceError(String(error)); }
     };
 
     const handleStop = async () => {
+        setServiceError("");
         setSpotterStatus("stopped");
         setTelemetry(null);
-        await window.electronAPI.stopSpheroSpotter();
+        try { await window.electronAPI.stopSpheroSpotter(); }
+        catch (error) { setServiceError(String(error)); }
+    };
+
+    const handleRestart = async () => {
+        setServiceError("");
+        setSpotterStatus("starting");
+        setTelemetry(null);
+        try { await window.electronAPI.restartPerception(config); }
+        catch (error) { setSpotterStatus("stopped"); setServiceError(String(error)); }
     };
 
     const isRunning = spotterStatus !== "stopped";
@@ -244,8 +259,10 @@ export function Perception({
                             <FontAwesomeIcon icon={faStop} /> Stop
                         </button>
                     )}
+                    <button className={s.btn} onClick={handleRestart} disabled={spotterStatus === "starting"}>Restart Service</button>
                 </div>
             </div>
+            {serviceError && <p role="alert" className={s.emptyMsg}>{serviceError}</p>}
 
             {/* ── Main grid ───────────────────────────────────────────────── */}
             <div className={s.mainGrid}>
@@ -404,22 +421,29 @@ export function Perception({
                         <table className={s.table}>
                             <thead>
                                 <tr>
-                                    <th className={s.th}>ID</th>
+                                    <th className={s.th}>ID / Sphero tag</th>
                                     <th className={s.th}>Pixel (px, py)</th>
                                     <th className={s.th}>Grid (x, y)</th>
+                                    <th className={s.th}>Correct identity</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {telemetry.spheros.map(sp => (
                                     <tr key={sp.id}>
                                         <td className={s.td}>
-                                            <span className={s.idBadge}>{sp.id}</span>
+                                            <span className={s.idBadge}>{sp.id}</span> {spheroTags[sp.id] ?? "Unassigned"}
                                         </td>
                                         <td className={s.td}>
                                             <span className={s.mono}>({sp.px}, {sp.py})</span>
                                         </td>
                                         <td className={s.td}>
                                             <span className={s.mono}>({sp.gx.toFixed(2)}, {sp.gy.toFixed(2)})</span>
+                                        </td>
+                                        <td className={s.td}>
+                                            <select aria-label={`Assign Sphero tag for detection ${sp.id}`} value={sp.id}
+                                                onChange={e => sendCommand({ action: "assign_id", current_id: sp.id, target_id: Number(e.target.value) })}>
+                                                {spheroTags.map((tag, index) => <option key={`${tag}-${index}`} value={index}>{tag}</option>)}
+                                            </select>
                                         </td>
                                     </tr>
                                 ))}

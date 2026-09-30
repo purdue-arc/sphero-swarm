@@ -51,14 +51,14 @@
       1
     ]
   },
-  "N_SPHEROS": 1,
-  "GRID_WIDTH": 10,
-  "GRID_HEIGHT": 10,
+  "N_SPHEROS": 3,
+  "GRID_WIDTH": 4,
+  "GRID_HEIGHT": 4,
   "SIM_DIST": 50,
   "FRAMES": 60,
   "SPHERO_SIM_RADIUS": 15,
-  "SIM_WIDTH": 450,
-  "SIM_HEIGHT": 450,
+  "SIM_WIDTH": 150,
+  "SIM_HEIGHT": 200,
   "EPSILON": 0.01,
   "SPHERO_SPEED": 66,
   "SPHERO_DIAGONAL_SPEED": 76,
@@ -147,15 +147,27 @@
     ]
   ],
   "SPHERO_TAGS": [
-    "SB-1840"
+    "SB-1730",
+    "SB-5AB9",
+    "SB-D950"
   ],
   "INITIAL_POSITIONS": [
     [
-      0,
+      2,
+      2
+    ],
+    [
+      2,
+      1
+    ],
+    [
+      2,
       0
     ]
   ],
   "INITIAL_TRAITS": [
-    "head"
+    "head",
+    "tail",
+    "tail"
   ]
 }

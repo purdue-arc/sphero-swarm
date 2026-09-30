@@ -55,13 +55,16 @@ export interface SpheroConstants {
   INITIAL_TRAITS: ("head" | "tail")[];
 }
 
-type SpheroConnectionState = "pending" | "connected" | "failed" | "not-attempted";
+type SpheroConnectionState = "pending" | "found" | "connected" | "failed" | "not-attempted";
 
 export interface SpheroStatus {
     id: string;
     connection: SpheroConnectionState;
     expectedPosition: [number, number];
     actualPosition: [number, number];
+    foundAt?: number;
+    batteryPercent?: number;
+    batteryVoltage?: number;
 }
 
 export interface SimulationSpheroSnapshot {
