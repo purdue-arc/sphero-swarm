@@ -13,6 +13,9 @@
   overflow-x: hidden;
 }
 
+.loading { display: grid; place-items: center; min-height: 100vh; background: #09101b; color: #f5f7fb; }
+.legacyPanel { padding: 3rem; }
+
 /* Custom scrollbar for the viewer */
 .viewer::-webkit-scrollbar {
   width: 10px;

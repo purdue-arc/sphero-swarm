@@ -8,6 +8,8 @@ from spherov2 import scanner
 from spherov2.sphero_edu import SpheroEduAPI
 from spherov2.types import Color
 from spherov2.commands.power import Power
+import spherov2.adapter.bleak_adapter as _bleak_adapter_module
+import bleak
 import threading
 import argparse
 import time
@@ -17,6 +19,47 @@ import json
 import logging
 
 from queue import Queue, Empty
+
+# Holding many simultaneous BLE connections causes spherov2's background
+# notification threads to occasionally hit corrupted/out-of-sync packets
+# (PacketDecodingException, BleakError) deep inside bleak's asyncio
+# callbacks. asyncio's default handler logs these at ERROR level with a
+# full traceback per occurrence - raising the threshold here silences the
+# noise without touching bleak/spherov2 itself. This does not fix the
+# underlying radio congestion; it only stops it from flooding the terminal.
+logging.getLogger("asyncio").setLevel(logging.CRITICAL)
+
+BLE_CONNECT_TIMEOUT_SECONDS = 30.0
+
+
+def _patched_bleak_adapter_init(self, address):
+    """Replaces BleakAdapter.__init__ (spherov2/adapter/bleak_adapter.py).
+
+    The installed library hardcodes a 5-second BLE GATT connect timeout
+    (bleak.BleakClient(address, timeout=5.0)) - that fires and fails a
+    connection attempt well before our own outer retry budget ever gets a
+    say, no matter how that outer budget is configured. This patches just
+    the timeout value; everything else is identical to the original.
+
+    This isn't textually inside the real BleakAdapter class body, so the
+    name-mangled private attributes (self.__x inside that class becomes
+    self._BleakAdapter__x) must be referenced explicitly by their mangled
+    names here - same pattern as sb._SpheroEduAPI__toy used elsewhere in
+    this codebase.
+    """
+    self._BleakAdapter__event_loop = asyncio.new_event_loop()
+    self._BleakAdapter__device = bleak.BleakClient(address, timeout=BLE_CONNECT_TIMEOUT_SECONDS)
+    self._BleakAdapter__lock = threading.Lock()
+    self._BleakAdapter__thread = threading.Thread(target=self._BleakAdapter__event_loop.run_forever)
+    self._BleakAdapter__thread.start()
+    try:
+        self._BleakAdapter__execute(self._BleakAdapter__device.connect())
+    except Exception:
+        self.close(False)
+        raise
+
+
+_bleak_adapter_module.BleakAdapter.__init__ = _patched_bleak_adapter_init
 
 control_cmd_queue: Queue[dict] = Queue()
 
@@ -62,27 +105,26 @@ def find_balls(names, max_attempts, ws=None, loop=None):
             "balls": names
         })
 
-    best = []
+    found_by_name = {}
     for attempts in range(max_attempts):
         print("Attempts to find Spheros: " + str(attempts + 1))
         toys = scanner.find_toys(toy_names=names)
-        print("Balls found: {}".format(toys))
-        if len(toys) == len(names):
+        print("Balls found this scan: {}".format(toys))
+        for toy in toys:
+            found_by_name[_toy_list_prefix(toy)] = toy
+        print("Accumulated so far: {} / {}".format(len(found_by_name), len(names)))
+        if len(found_by_name) == len(names):
             print("Found all Sphero balls")
-            return toys
-        if len(toys) > len(best):
-            best = list(toys)
-        print("Partial scan ({} / {}), retrying...".format(len(toys), len(names)))
+            return list(found_by_name.values())
 
-    if best:
-        found_names = {_toy_list_prefix(t) for t in best}
-        missing = [n for n in names if n not in found_names]
+    if found_by_name:
+        missing = [n for n in names if n not in found_by_name]
         print(
             "Connecting to {} ball(s) from the list; not in range / not found (skipped): {}".format(
-                len(best), missing
+                len(found_by_name), missing
             )
         )
-        return best
+        return list(found_by_name.values())
 
     if ws:
         ws_send(loop, ws, {
@@ -99,12 +141,31 @@ def address_sort(addresses, map_to_location):
     print("Sorted Addresses: {}".format(addresses))
 
 
+CONNECT_TIMEOUT_SECONDS = 30
+
+
 def connect_ball(toy_address, ret_list, location, max_attempts, ws=None, loop=None):
+    """Try to connect for up to CONNECT_TIMEOUT_SECONDS, then give up.
+
+    Blocking — connect_multi_ball() calls this one ball at a time and does
+    not start the next ball until this one has either connected or timed
+    out. max_attempts is kept for call-site compatibility but no longer
+    bounds anything; the wall-clock timeout is the only limit now (a fixed
+    attempt count combined with a time cap previously caused the loop to
+    give up early on slow-but-eventually-successful connections).
+    """
+    start = time.time()
     attempts = 0
-    while attempts < max_attempts:
+    while (time.time() - start) < CONNECT_TIMEOUT_SECONDS:
+        attempts += 1
+        elapsed = time.time() - start
+        print("[{}] attempt {} (elapsed {:.1f}s/{}s) - connecting...".format(
+            toy_address, attempts, elapsed, CONNECT_TIMEOUT_SECONDS))
         try:
             sb = SpheroEduAPI(toy_address).__enter__()
             ret_list[location] = sb
+            print("[{}] connected after {:.1f}s (attempt {})".format(
+                toy_address, time.time() - start, attempts))
 
             if ws:
                 ws_send(loop, ws, {
@@ -114,39 +175,37 @@ def connect_ball(toy_address, ret_list, location, max_attempts, ws=None, loop=No
                 })
 
             return
-        except Exception:
-            attempts += 1
-            print("Trying to connect with: {}, attempt {}".format(toy_address, attempts))
+        except Exception as e:
+            # str(e) is empty for some exceptions (e.g. bare timeouts) -
+            # include the exception type so failures are never silent.
+            print("[{}] attempt {} failed: {}: {}".format(
+                toy_address, attempts, type(e).__name__, e))
             continue
+
+    print("[{}] giving up - no connection after {}s ({} attempts)".format(
+        toy_address, CONNECT_TIMEOUT_SECONDS, attempts))
 
     if ws:
         ws_send(loop, ws, {
             "type": "ball_failed",
             "ball": str(toy_address),
-            "reason": "Connection attempts exceeded"
+            "reason": "Timed out after {} seconds".format(CONNECT_TIMEOUT_SECONDS)
         })
 
 
 def connect_multi_ball(toy_addresses, ret_list, max_attempts, ws=None, loop=None):
-    print("Connecting to Spheros...")
+    """Connect to each ball one at a time, in order — not concurrently.
 
-    threads = []
-    for index in range(len(toy_addresses)):
-        thread = threading.Thread(
-            target=connect_ball,
-            args=[toy_addresses[index], ret_list, index, max_attempts, ws, loop],
-        )
-        threads.append(thread)
-        thread.start()
+    Each ball gets up to CONNECT_TIMEOUT_SECONDS before we skip it and move
+    on to the next one; a ball that times out is simply left as None in
+    ret_list rather than blocking the rest of the roster.
+    """
+    total = len(toy_addresses)
+    print("Connecting to {} Sphero(s) one at a time...".format(total))
 
-    while True:
-        try:
-            for thread in threads:
-                thread.join(timeout=None)
-            break
-        except KeyboardInterrupt:
-            print("Connection ongoing... please don't interrupt.")
-            continue
+    for index, toy_address in enumerate(toy_addresses):
+        print("--- [{}/{}] {} ---".format(index + 1, total, toy_address))
+        connect_ball(toy_address, ret_list, index, max_attempts, ws, loop)
 
     print("Balls Connected: {}".format(ret_list))
 
@@ -156,8 +215,20 @@ def check_voltage(sb):
 
 
 def terminate_ball(sb):
-    if sb is not None:
+    if sb is None:
+        return
+    try:
         sb.__exit__(None, None, None)
+    except Exception as e:
+        # A ball whose BLE link got corrupted earlier (bad checksums, lost
+        # service discovery) can fail to disconnect cleanly. Without this,
+        # the exception would silently kill this thread (Python threads
+        # don't propagate exceptions to the caller) and thread.join() below
+        # would still return as if nothing happened - this ball's radio
+        # link may be left dangling on the Sphero side. Catch it, say so
+        # clearly, and move on rather than hang or fail silently.
+        print("[{}] disconnect raised {}: {} - may still be connected on the Sphero side".format(
+            getattr(sb, "_SpheroEduAPI__toy", sb), type(e).__name__, e))
 
 
 def terminate_multi_ball(sb_list):

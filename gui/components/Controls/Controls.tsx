@@ -6,23 +6,36 @@ import { SpheroConnectionStats } from "../SpheroConnection/SpheroConnectionStats
 import { SpheroConnectionList } from "../SpheroConnection/SpheroConnectionList";
 import { useSpheroConnection } from "../SpheroConnection/useSpheroConnection";
 import type { SpheroConstants, SpheroStatus } from "../../types/swarm_types";
-import { useState } from "react";
+import { useState, type Dispatch, type SetStateAction } from "react";
 
 import styles from "./controls.module.css"
 
 export function Controls({
-    constants,
     spheros,
     setSpheros,
     algorithmRunning = false,
+    onAlgorithmStopped,
 }: {
     constants: SpheroConstants;
     spheros: SpheroStatus[];
-    setSpheros: any;
+    setSpheros: Dispatch<SetStateAction<SpheroStatus[]>>;
     algorithmRunning?: boolean;
+    onAlgorithmStopped?: () => void;
 }) {
-    const { connectState, startConnection, startConnectionDemo, connectedCount, pendingCount, failedCount } = useSpheroConnection(spheros, setSpheros);
+    const { connectState, startConnection, retryConnection, resetConnection, connectedCount, pendingCount, failedCount } = useSpheroConnection(spheros, setSpheros);
     const [refreshState, setRefreshState] = useState<"idle" | "refreshing" | "started" | "failed">("idle");
+
+    const handleConnect = async () => {
+        setRefreshState("refreshing");
+        try {
+            const response = await window.electronAPI.startControls();
+            if (response.status === "failed") throw new Error("Controls service failed to start");
+            setRefreshState("started");
+            startConnection();
+        } catch {
+            setRefreshState("failed");
+        }
+    };
 
     // helper that opens a short-lived socket to the control server and sends a JSON
     const sendControlCommand = (cmd: object) => {
@@ -58,14 +71,35 @@ export function Controls({
             sendAlgorithmReset();
         }
         sendControlCommand({ type: "disconnect", ball: id });
-        setSpheros(prev => prev.map(s => s.id === id ? { ...s, connection: "not-attempted" } : s));
+        setSpheros(prev => prev.map(s => s.id === id ? { ...s, connection: "not-attempted", foundAt: undefined, batteryPercent: undefined } : s));
+    };
+
+    const handleDisconnectAll = async () => {
+        setRefreshState("refreshing");
+        try {
+            if (algorithmRunning) {
+                await window.electronAPI.restartAlgorithm();
+                onAlgorithmStopped?.();
+            }
+            const response = await window.electronAPI.refreshControls();
+            if (response.status !== "started") throw new Error("Controls restart failed");
+            resetConnection();
+            setRefreshState("started");
+        } catch {
+            setRefreshState("failed");
+        }
     };
 
     const handleRefreshControls = async () => {
         setRefreshState("refreshing");
         try {
+            if (algorithmRunning) {
+                await window.electronAPI.restartAlgorithm();
+                onAlgorithmStopped?.();
+            }
             const response = await window.electronAPI.refreshControls();
             if (response?.status === "started") {
+                resetConnection();
                 setRefreshState("started");
                 return;
             }
@@ -86,8 +120,8 @@ export function Controls({
                 </div>
                 <SpheroConnectionStats
                     connectState={connectState}
-                    startConnection={startConnection}
-                    startConnectionDemo={startConnection}
+                    startConnection={handleConnect}
+                    startConnectionDemo={handleConnect}
                     connectedCount={connectedCount}
                     pendingCount={pendingCount}
                     failedCount={failedCount}
@@ -99,13 +133,16 @@ export function Controls({
                 >
                     Re‑home All
                 </button>
+                <button className={styles.rehomeButton} onClick={handleDisconnectAll} disabled={connectedCount === 0 || refreshState === "refreshing"}>
+                    Disconnect All
+                </button>
                 <div className={styles.controlsServerRow}>
                     <button
                         className={styles.refreshButton}
                         onClick={handleRefreshControls}
                         disabled={refreshState === "refreshing"}
                     >
-                        {refreshState === "refreshing" ? "Refreshing..." : "Refresh Controls Script"}
+                        {refreshState === "refreshing" ? "Restarting..." : "Restart Controls Service"}
                     </button>
                     <span
                         className={`${styles.serverLight} ${refreshState === "started" ? styles.serverLightGreen : ""}`}
@@ -115,7 +152,7 @@ export function Controls({
                 </div>
             </div>
             <div className={styles.spheroSection}>
-                <SpheroConnectionList spheros={spheros} onDisconnect={handleDisconnect} />
+                <SpheroConnectionList spheros={spheros} onDisconnect={handleDisconnect} onRetry={retryConnection} />
             </div>
         </>
     )

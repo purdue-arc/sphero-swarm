@@ -1,8 +1,8 @@
-# GUI Usage Guide
+# Sphero Swarm GUI
 
-## First-Time Setup
+## Setup
 
-From the project root:
+From the repository root:
 
 ```bash
 uv sync
@@ -10,7 +10,7 @@ cd gui
 npm install
 ```
 
-## Running the GUI
+## Run
 
 From `gui/`:
 
@@ -18,61 +18,17 @@ From `gui/`:
 npm run start
 ```
 
-## Configure Before Any Run
+This launches the desktop app. Electron manages the algorithm process, controls server, and perception process; a separate `gui_driver` terminal is no longer needed. The algorithm starts with the app. Controls and perception start from Runner.
 
-In the Config tab, verify and save:
+## Runner
 
-- Grid size
-- Sphero IDs and mapped locations
-- Any other run-specific constants
+The main workspace keeps four panels on screen:
 
-Always save config changes before starting a test.
+- **Settings (top left):** Edit the grid, Sphero tags, starting coordinates, and head/tail roles. Changes update the stopped algorithm preview immediately and save to `constants.json` automatically. Select a ball and click a grid node in the preview to place it.
+- **Controls (top right):** Connect the fleet, see when each Sphero was found, retry a ball, disconnect it, disconnect all, or restart the controls service. Disconnect All and Restart wait for the controls session to release Sphero connections before starting a fresh server.
+- **Algorithms (bottom left):** See starting positions and ball IDs while stopped, then live algorithm positions while running. Start and Stop control the test. Use controls enables hardware movement when Spheros are connected; Step seconds sets the time between algorithm steps. The service restart button relaunches `gui_driver` as a child process.
+- **Perception (bottom right):** Choose OAK-D or a webcam, display grid lines, and start, stop, or restart the camera service.
 
-## Running a Full Hardware Test
+The full Perception page still provides detection telemetry and live Sphero tag reassignment.
 
-1. Place all Spheros on the grid in the correct orientation.
-2. If AprilTags are set up:
-	- Start the perception server.
-	- Toggle/show the grid and verify all balls are in correct positions.
-	- Stop the perception server after positioning
-3. In the Controls tab, attempt to connect all robots.
-4. If not all connect:
-	- Disconnect the ones that did connect.
-	- Click Refresh Controls Script.
-	- Retry connection.
-5. Once all are connected, open Perception, choose OAK-D, and click Start.
-6. In a separate terminal (from project root), start the algorithm/driver process:
-
-```bash
-uv run python -m gui_driver
-```
-
-If needed for your environment:
-
-```bash
-uv run python3 -m gui_driver
-```
-
-7. In the GUI, enable controls.
-8. Click Start.
-
-## Resetting After a Test
-
-1. Disconnect all Spheros.
-2. Stop the algorithm server (`Ctrl+C` in its terminal).
-3. Click Reset Controls Script.
-4. Update config values if needed.
-5. Reconnect from the Controls tab (Connect All).
-6. Restart the perception server.
-7. Restart the algorithm server and verify Enable Controls is on.
-
-## Running Simulation Only
-
-1. Configure values in the Config tab.
-2. Between algorithm tests, click Reset.
-
-## Important Notes
-
-- Keep GUI and Python backend logs visible in separate terminals while testing.
-- If controls become unresponsive, disconnect all robots, refresh/reset controls script, and reconnect.
-- If tracking looks wrong, re-check grid config and robot starting positions before rerunning.
+The Dashboard, Configuration, Controls, Perception, Algorithms, and Simulation views remain in the sidebar. Algorithms and Simulation share the same run settings.

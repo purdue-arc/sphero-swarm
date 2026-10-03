@@ -5,10 +5,8 @@ import zmq
 
 from algorithms.algorithm import Algorithm
 from algorithms.constants import Constants
-from algorithms.form_instruction import nextVectorDirection
 from algorithms.sphero import Sphero
 from controls.Instruction import Instruction
-import math
 from gui_server import get_next_command, send_algorithm_state
 
 def _to_int(value, default=None):
@@ -143,7 +141,7 @@ def _send_controls_update(
         color_instructions.append(
             Instruction(sphero.id, 0, r, g, b)
         )
-            
+
         rotate_instructions.append(
             Instruction(sphero.id, 2, sphero.delta_angle, constants.TURN_DURATION)
         )
@@ -165,18 +163,22 @@ def _send_controls_update(
 def _connect_controls(port: int) -> socket.socket:
     sock = socket.socket()
     sock.connect(("localhost", port))
+    sock.recv(1024)  # Controls sends the configured Sphero IDs before instruction acknowledgements.
     return sock
+
+
+def _connect_perception(context: zmq.Context):
+    perception_sock = context.socket(zmq.REQ)
+    perception_sock.setsockopt(zmq.LINGER, 0)
+    perception_sock.connect("tcp://127.0.0.1:5555")
+    return perception_sock
 
 
 def main_server():
     constants = Constants()
     algorithm = _build_algorithm(constants)
-    
-    context = zmq.Context()
-    socket = context.socket(zmq.REQ)
-    socket.connect("tcp://127.0.0.1:5555")
-
-    print("Connected to ZeroMQ server")
+    perception_context = zmq.Context()
+    perception_sock = _connect_perception(perception_context)
 
     running = False
     paused = False
@@ -184,7 +186,8 @@ def main_server():
     use_algorithm_colors = True
     controls_sock = None
 
-    step_delay = 6.0
+    step_seconds = 4.0
+    next_step_at = 4.0
     edit_ball_queue: list[tuple[int, tuple[int, int]]] = []
     port = 1235
 
@@ -214,12 +217,13 @@ def main_server():
                     running = True
                     paused = False
                     edit_ball_queue.clear()
+                    next_step_at = step_seconds
 
-                    start_speed = cmd.get("speed", cmd.get("value"))
-                    if start_speed is not None:
+                    requested_step_seconds = cmd.get("step_seconds")
+                    if requested_step_seconds is not None:
                         try:
-                            step_delay = max(0, float(start_speed))
-                            print(f"[gui_driver] speed set to {step_delay} (from start)")
+                            step_seconds = max(0.1, float(requested_step_seconds))
+                            print(f"[gui_driver] step seconds set to {step_seconds} (from start)")
                         except Exception:
                             pass
 
@@ -230,9 +234,13 @@ def main_server():
                 elif typ == "reset":
                     running = False
                     paused = False
+                    if controls_sock is not None:
+                        controls_sock.close()
+                        controls_sock = None
                     constants = Constants()
                     algorithm = _build_algorithm(constants)
                     edit_ball_queue.clear()
+                    next_step_at = step_seconds
                     print("[gui_driver] reset")
 
                 elif typ == "pause" and running:
@@ -243,10 +251,10 @@ def main_server():
                     paused = False
                     print("[gui_driver] resumed")
 
-                elif typ == "speed":
+                elif typ == "step_seconds":
                     try:
-                        step_delay = max(0, float(cmd.get("value", step_delay)))
-                        print(f"[gui_driver] speed set to {step_delay}")
+                        step_seconds = max(0.1, float(cmd.get("value", step_seconds)))
+                        print(f"[gui_driver] step seconds set to {step_seconds}")
                     except Exception:
                         pass
 
@@ -287,11 +295,19 @@ def main_server():
                     processed_edit_move_this_tick = True
                     print("NEW EDIT BALL MOVE")
 
-            elif running and not paused:
-                socket.send_string("coords")
-                response = socket.recv()
-                algorithm.set_true_positions(response)
-                
+            elif running and not paused and time.monotonic() >= next_step_at:
+                try:
+                    perception_sock.send_string("coords")
+                    if perception_sock.poll(500):
+                        algorithm.set_true_positions(perception_sock.recv_json())
+                    else:
+                        perception_sock.close()
+                        perception_sock = _connect_perception(perception_context)
+                except zmq.ZMQError as error:
+                    print(f"[gui_driver] perception unavailable: {error}")
+                    perception_sock.close()
+                    perception_sock = _connect_perception(perception_context)
+
                 for sphero in algorithm.find_all_spheros():
                     sphero.x = sphero.target_x
                     sphero.y = sphero.target_y
@@ -315,15 +331,18 @@ def main_server():
                     sphero.y = sphero.target_y
 
                 print("NEW_MOVE")
+                next_step_at = time.monotonic() + step_seconds
 
             send_algorithm_state(algorithm)
-            time.sleep(10-step_delay)
+            time.sleep(0.1)
 
     except Exception as error:
         print(f"[gui_driver] exception: {error}")
     finally:
         if controls_sock is not None:
             controls_sock.close()
+        perception_sock.close()
+        perception_context.term()
 
 if __name__ == "__main__":
     main_server()

@@ -28,8 +28,8 @@ def get_next_command(timeout: float | None = None) -> dict | None:
     block briefly while waiting for input.  The algorithm driver uses a
     non-blocking poll (timeout=0) in its main loop.
 
-    To keep the simulation responsive we collapse successive ``speed``
-    commands: if multiple speed adjustments arrive before the driver
+    To keep the simulation responsive we collapse successive ``step_seconds``
+    commands: if multiple timing adjustments arrive before the driver
     processes them, only the last one is returned and earlier ones are
     discarded.  Other commands remain in the queue in their original
     order.
@@ -39,9 +39,9 @@ def get_next_command(timeout: float | None = None) -> dict | None:
     except Empty:
         return None
 
-    # special-case speed: drop any later speed commands, preserving the
+    # Drop any later timing commands, preserving the
     # most recent value while leaving other pending commands untouched.
-    if isinstance(cmd, dict) and cmd.get("type") == "speed":
+    if isinstance(cmd, dict) and cmd.get("type") == "step_seconds":
         latest = cmd
         to_requeue: list[dict] = []
         # drain the queue
@@ -50,11 +50,11 @@ def get_next_command(timeout: float | None = None) -> dict | None:
                 nxt = command_queue.get_nowait()
             except Empty:
                 break
-            if isinstance(nxt, dict) and nxt.get("type") == "speed":
+            if isinstance(nxt, dict) and nxt.get("type") == "step_seconds":
                 latest = nxt
             else:
                 to_requeue.append(nxt)
-        # put back any non-speed commands we removed
+        # Put back commands other than timing adjustments.
         for item in to_requeue:
             try:
                 command_queue.put_nowait(item)
@@ -70,6 +70,15 @@ def get_next_command(timeout: float | None = None) -> dict | None:
 state_queue = Queue(maxsize=1)
 connected_clients = set()
 
+
+async def send_state(client, message):
+    """Ignore a client that closes while a broadcast is in flight."""
+    try:
+        await client.send(message)
+    except websockets.exceptions.ConnectionClosed:
+        connected_clients.discard(client)
+
+
 async def broadcast_state():
     while True:
         try:
@@ -81,7 +90,7 @@ async def broadcast_state():
         message = json.dumps(state)
 
         if connected_clients:
-            await asyncio.gather(*(client.send(message) for client in connected_clients))
+            await asyncio.gather(*(send_state(client, message) for client in tuple(connected_clients)))
 
         await asyncio.sleep(0.03)
 
@@ -115,7 +124,7 @@ async def handler(websocket):
     except websockets.exceptions.ConnectionClosed:
         pass
     finally:
-        connected_clients.remove(websocket)
+        connected_clients.discard(websocket)
         print(f"Client disconnected: {websocket.remote_address}")
 
 
