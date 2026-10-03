@@ -8,6 +8,8 @@ from spherov2 import scanner
 from spherov2.sphero_edu import SpheroEduAPI
 from spherov2.types import Color
 from spherov2.commands.power import Power
+import spherov2.adapter.bleak_adapter as _bleak_adapter_module
+import bleak
 import threading
 import argparse
 import time
@@ -26,6 +28,38 @@ from queue import Queue, Empty
 # noise without touching bleak/spherov2 itself. This does not fix the
 # underlying radio congestion; it only stops it from flooding the terminal.
 logging.getLogger("asyncio").setLevel(logging.CRITICAL)
+
+BLE_CONNECT_TIMEOUT_SECONDS = 30.0
+
+
+def _patched_bleak_adapter_init(self, address):
+    """Replaces BleakAdapter.__init__ (spherov2/adapter/bleak_adapter.py).
+
+    The installed library hardcodes a 5-second BLE GATT connect timeout
+    (bleak.BleakClient(address, timeout=5.0)) - that fires and fails a
+    connection attempt well before our own outer retry budget ever gets a
+    say, no matter how that outer budget is configured. This patches just
+    the timeout value; everything else is identical to the original.
+
+    This isn't textually inside the real BleakAdapter class body, so the
+    name-mangled private attributes (self.__x inside that class becomes
+    self._BleakAdapter__x) must be referenced explicitly by their mangled
+    names here - same pattern as sb._SpheroEduAPI__toy used elsewhere in
+    this codebase.
+    """
+    self._BleakAdapter__event_loop = asyncio.new_event_loop()
+    self._BleakAdapter__device = bleak.BleakClient(address, timeout=BLE_CONNECT_TIMEOUT_SECONDS)
+    self._BleakAdapter__lock = threading.Lock()
+    self._BleakAdapter__thread = threading.Thread(target=self._BleakAdapter__event_loop.run_forever)
+    self._BleakAdapter__thread.start()
+    try:
+        self._BleakAdapter__execute(self._BleakAdapter__device.connect())
+    except Exception:
+        self.close(False)
+        raise
+
+
+_bleak_adapter_module.BleakAdapter.__init__ = _patched_bleak_adapter_init
 
 control_cmd_queue: Queue[dict] = Queue()
 
@@ -107,7 +141,7 @@ def address_sort(addresses, map_to_location):
     print("Sorted Addresses: {}".format(addresses))
 
 
-CONNECT_TIMEOUT_SECONDS = 20
+CONNECT_TIMEOUT_SECONDS = 30
 
 
 def connect_ball(toy_address, ret_list, location, max_attempts, ws=None, loop=None):
@@ -146,7 +180,6 @@ def connect_ball(toy_address, ret_list, location, max_attempts, ws=None, loop=No
             # include the exception type so failures are never silent.
             print("[{}] attempt {} failed: {}: {}".format(
                 toy_address, attempts, type(e).__name__, e))
-            time.sleep(1)
             continue
 
     print("[{}] giving up - no connection after {}s ({} attempts)".format(
