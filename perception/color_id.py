@@ -103,12 +103,15 @@ class ColourProfile:
         return (float(np.median(arr[:, 0])), float(np.median(arr[:, 1])))
 
 
-def match_lost(candidates, lost, gate):
+def match_lost(candidates, lost, gate, relaxed=False):
     """Hand lost display IDs to unassigned blobs.
 
     candidates: [(key, (x, y), sig or None)] - blobs with no display ID
     lost:       {disp_id: ((x, y), profile_estimate or None)}
     gate:       largest colour distance still accepted as the same sphero
+    relaxed:    for blobs that have already waited too long - any colour
+                distance is accepted (closest still wins) and an uncoloured
+                blob falls back to position
 
     Returns {key: (disp_id, colour_dist or None)}. Solved as one assignment
     over every pairing, not greedily, so the first blob can't take the ID a
@@ -127,11 +130,11 @@ def match_lost(candidates, lost, gate):
         for j, did in enumerate(ids):
             (lx, ly), prof = lost[did]
             pos = POS_WEIGHT * (((cx - lx) ** 2 + (cy - ly) ** 2) ** 0.5) / 100.0
-            if prof is None:
+            if prof is None or (relaxed and sig is None):
                 cost[i, j] = NO_PROFILE_COST + pos
             elif sig is not None:
                 d = colour_distance(sig, prof)
-                if d <= gate:
+                if d <= gate or relaxed:
                     cost[i, j] = d + pos
                     cdist[(i, j)] = d
 

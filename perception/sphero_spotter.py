@@ -40,6 +40,7 @@ PERCEPTION_DEFAULTS = {
     "MERGE_PEAK_SEP": 6,         # min px between the two peaks used to split
     "COLOR_ID": True,            # give lost IDs back by LED colour, not just position
     "COLOR_MATCH_DIST": 0.35,    # max chroma distance still counted as the same sphero
+    "COLOR_WAIT_FRAMES": 5,      # frames a blob waits for a colour match before closest-colour/position wins
 }
 
 # Load N_SPHEROS and the perception tuning from the shared constants file
@@ -586,19 +587,53 @@ def learn_colours(dets, det_colours):
         prof = colour_profiles.setdefault(id_map[tid], color_id.ColourProfile())
         prof.update(det_colours.get(tid), tune.COLOR_MATCH_DIST)
 
+colour_wait = {}   # tracker_id -> frames it has gone unplaced while an ID was lost
+
 def recover_lost_by_colour(dets, det_colours):
-    """Give lost display IDs back to new tracks by colour, position as tiebreak."""
-    if not lost_spheros:
-        return
+    """Give lost display IDs back to new tracks by colour, position as tiebreak.
+
+    A blob that hasn't matched within COLOR_WAIT_FRAMES takes the closest
+    colour (or nearest position, if it shows none) instead of waiting forever.
+    """
+    global colour_wait
     candidates = [(tid, (cx, cy), det_colours.get(tid))
                   for (cx, cy, cls_id, x1, y1, x2, y2, tid) in dets if tid not in id_map]
-    lost = {did: (pos, colour_profiles[did].estimate if did in colour_profiles else None)
-            for did, pos in lost_spheros.items()}
-    for tid, (did, dist) in color_id.match_lost(candidates, lost, tune.COLOR_MATCH_DIST).items():
-        id_map[tid] = did
-        del lost_spheros[did]
-        how = f"colour dist {dist:.2f}" if dist is not None else "no colour learnt, by position"
-        print(f"[color-id] track {tid} -> ID {did} ({how})")
+    if not lost_spheros or not candidates:
+        colour_wait = {}
+        return
+    colour_wait = {c[0]: colour_wait.get(c[0], 0) for c in candidates}
+
+    def lost_now():
+        return {did: (pos, colour_profiles[did].estimate if did in colour_profiles else None)
+                for did, pos in lost_spheros.items()}
+
+    def assign(matches, relaxed):
+        for tid, (did, dist) in matches.items():
+            id_map[tid] = did
+            del lost_spheros[did]
+            how = f"colour dist {dist:.2f}" if dist is not None else "by position"
+            if relaxed:
+                how += f", after waiting {colour_wait[tid]} frames"
+            print(f"[color-id] track {tid} -> ID {did} ({how})")
+
+    assign(color_id.match_lost(candidates, lost_now(), tune.COLOR_MATCH_DIST), False)
+
+    waiting = [c for c in candidates if c[0] not in id_map]
+    for tid, _pos, sig in waiting:
+        colour_wait[tid] += 1
+        if colour_wait[tid] == 1:
+            # Says why it didn't match: no colour seen, or too far from every lost ID
+            if sig is None:
+                why = "no colour in blob"
+            else:
+                dists = {did: round(color_id.colour_distance(sig, prof), 2)
+                         for did, (_p, prof) in lost_now().items() if prof is not None}
+                why = f"colour dists {dists} > gate {tune.COLOR_MATCH_DIST}"
+            print(f"[color-id] track {tid} waiting: {why}")
+
+    overdue = [c for c in waiting if colour_wait[c[0]] >= tune.COLOR_WAIT_FRAMES]
+    if overdue and lost_spheros:
+        assign(color_id.match_lost(overdue, lost_now(), tune.COLOR_MATCH_DIST, relaxed=True), True)
 
 def start_detection():
     global detecting

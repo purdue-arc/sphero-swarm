@@ -106,6 +106,18 @@ def test_uncoloured_blob_waits_when_colour_known():
     assert color_id.match_lost([("glare", (52, 50), None)], lost, GATE) == {}
 
 
+def test_relaxed_takes_closest_colour_or_position():
+    # After waiting too long: an off-colour blob takes the closest lost colour,
+    # and an uncoloured one falls back to position.
+    lost = {0: ((50, 50), learnt(sig_of(RED))), 1: ((250, 250), learnt(sig_of(BLUE)))}
+    assert color_id.match_lost([("y", (50, 50), sig_of(YELLOW))], lost, GATE) == {}
+    # Yellow sits nearer red than blue on the hue wheel, even placed on blue's spot
+    out = color_id.match_lost([("y", (250, 250), sig_of(YELLOW))], lost, GATE, relaxed=True)
+    assert out["y"][0] == 0, out
+    out = color_id.match_lost([("n", (245, 250), None)], lost, GATE, relaxed=True)
+    assert out["n"] == (1, None), out
+
+
 def test_falls_back_to_position_without_profile():
     lost = {0: ((50, 50), None), 1: ((250, 250), None)}
     cands = [("x", (240, 245), None), ("y", (60, 55), sig_of(GREEN))]
