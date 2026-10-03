@@ -533,7 +533,7 @@ def run_server(ball_names, ws=None, loop=None):
                                 pass
                 # other command types can be added here
 
-            print(len(commands_array))
+            # print(len(commands_array))
             if (len(commands_array) != 0):
                 print(commands_array)
                 print("Running command {}".format(num_commands_run))
@@ -659,4 +659,4 @@ if __name__ == "__main__":
         asyncio.run(start_web_server())
     else:
         #test_controls()
-        run_server(['SB-1884'])
+        run_server(['SB-7672'])
