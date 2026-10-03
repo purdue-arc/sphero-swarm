@@ -62,27 +62,26 @@ def find_balls(names, max_attempts, ws=None, loop=None):
             "balls": names
         })
 
-    best = []
+    found_by_name = {}
     for attempts in range(max_attempts):
         print("Attempts to find Spheros: " + str(attempts + 1))
         toys = scanner.find_toys(toy_names=names)
-        print("Balls found: {}".format(toys))
-        if len(toys) == len(names):
+        print("Balls found this scan: {}".format(toys))
+        for toy in toys:
+            found_by_name[_toy_list_prefix(toy)] = toy
+        print("Accumulated so far: {} / {}".format(len(found_by_name), len(names)))
+        if len(found_by_name) == len(names):
             print("Found all Sphero balls")
-            return toys
-        if len(toys) > len(best):
-            best = list(toys)
-        print("Partial scan ({} / {}), retrying...".format(len(toys), len(names)))
+            return list(found_by_name.values())
 
-    if best:
-        found_names = {_toy_list_prefix(t) for t in best}
-        missing = [n for n in names if n not in found_names]
+    if found_by_name:
+        missing = [n for n in names if n not in found_by_name]
         print(
             "Connecting to {} ball(s) from the list; not in range / not found (skipped): {}".format(
-                len(best), missing
+                len(found_by_name), missing
             )
         )
-        return best
+        return list(found_by_name.values())
 
     if ws:
         ws_send(loop, ws, {
