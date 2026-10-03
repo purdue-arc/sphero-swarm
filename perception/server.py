@@ -26,7 +26,7 @@ TELEMETRY_PORT = 6770
 
 # Commands the GUI may send over the telemetry socket. Anything else is ignored
 # so a stray message can't reach the processing thread.
-COMMAND_ACTIONS = ("toggle_grid", "set_tuning", "assign_id")
+COMMAND_ACTIONS = ("toggle_grid", "set_tuning", "assign_id", "start_detection")
 
 key = "perception"
 

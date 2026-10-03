@@ -208,7 +208,7 @@ const DEFAULT_PERCEPTION_CONFIG = {
   locked: false,
   latency: false,
   colorFilter: true,
-  brightThresh: 200,
+  brightThresh: 130,
 };
 
 function normalizeConstantsForSave(raw: any) {
@@ -251,7 +251,9 @@ function startSpheroSpotter(config: any = {}) {
   // Prevent stale perception instances from keeping camera/ports active.
   cleanupOrphanedPerceptionServers();
 
-  const pyArgs = ["run", "--project", repoRoot, "python", "sphero_spotter.py", "-s"]; // -s = WebSocket server mode
+  // -s = WebSocket server mode. --wait-for-start: the camera opens on a blank
+  // white frame, so nothing is detected until "Start detecting" is pressed.
+  const pyArgs = ["run", "--project", repoRoot, "python", "sphero_spotter.py", "-s", "--wait-for-start"];
 
   if (cfg.inputSource === "webcam") {
     pyArgs.push("-w");

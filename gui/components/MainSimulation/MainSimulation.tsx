@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faArrowRotateRight, faBrain, faCamera, faGear, faPlay, faPlus, faRobot, faStop, faTrash } from '@fortawesome/free-solid-svg-icons'
+import { faArrowRotateRight, faBrain, faCamera, faCrosshairs, faGear, faPlay, faPlus, faRobot, faStop, faTrash } from '@fortawesome/free-solid-svg-icons'
 import { StreamViewer } from '../StreamViewer/streamViewer'
 import { useSpheroConnection } from '../SpheroConnection/useSpheroConnection'
 import type { PerceptionConfig, SimulationSnapshot, SpheroConstants, SpheroStatus } from '../../types/swarm_types'
@@ -128,6 +128,9 @@ export function MainSimulation(p: Props) {
   const [saveState, setSaveState] = useState<'saved' | 'saving' | 'error'>('saved')
   const [services, setServices] = useState({ controls: false, perception: false, algorithm: false })
   const [busy, setBusy] = useState(false)
+  // Perception starts paused (the camera opens on a white frame) and only
+  // detects once told to; every start or restart pauses it again.
+  const [detecting, setDetecting] = useState(false)
   const [message, setMessage] = useState('')
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pendingSave = useRef<SpheroConstants | null>(null)
@@ -338,6 +341,11 @@ export function MainSimulation(p: Props) {
     try { await window.electronAPI.startSpheroSpotter(config) }
     catch (error) { p.setPerceptionStatus('stopped'); throw error }
   })
+  useEffect(() => { if (perceptionStatus !== 'started') setDetecting(false) }, [perceptionStatus])
+  const startDetection = () => act(async () => {
+    await sendSocket(6770, { action: 'start_detection' })
+    setDetecting(true)
+  })
   const stopPerception = () => act(async () => {
     p.setPerceptionStatus('stopped')
     await window.electronAPI.stopSpheroSpotter()
@@ -460,7 +468,8 @@ export function MainSimulation(p: Props) {
           <div className={s.cameraFrame}><StreamViewer port={6767} serverStatus={p.perceptionStatus} setServerStatus={p.setPerceptionStatus} showStats={false} /></div>
           <div className={s.cameraFooter}><span><i className={p.perceptionStatus === 'started' ? s.dotOn : s.dot} />{p.perceptionStatus === 'started' ? 'CAMERA LIVE' : p.perceptionStatus === 'starting' ? 'STARTING CAMERA' : 'CAMERA OFFLINE'}</span>
             <div className={s.buttonRow}>{p.perceptionStatus === 'stopped' ? <button className={s.primary} disabled={busy} onClick={() => void startPerception()}><FontAwesomeIcon icon={faPlay} /> Start</button>
-              : <button className={s.subtle} disabled={busy} onClick={() => void stopPerception()}><FontAwesomeIcon icon={faStop} /> Stop</button>}
+              : <>{!detecting && <button className={s.primary} disabled={busy || p.perceptionStatus !== 'started'} onClick={() => void startDetection()} title="Start finding Spheros once the camera picture has settled"><FontAwesomeIcon icon={faCrosshairs} /> Start detecting</button>}
+                <button className={s.subtle} disabled={busy} onClick={() => void stopPerception()}><FontAwesomeIcon icon={faStop} /> Stop</button></>}
               <button className={s.iconButton} disabled={busy} onClick={() => void restartPerception()} title="Restart perception service" aria-label="Restart perception service"><FontAwesomeIcon icon={faArrowRotateRight} /></button></div></div>
         </div>
       </section>

@@ -36,7 +36,7 @@ declare global {
 
 const DEFAULT_PERCEPTION: PerceptionConfig = {
   inputSource: 'oakd', videoPath: '', model: './models/bestv3.pt', conf: 0.25,
-  imgsz: 640, grid: false, locked: false, latency: false, colorFilter: true, brightThresh: 200,
+  imgsz: 640, grid: false, locked: false, latency: false, colorFilter: true, brightThresh: 130,
 }
 
 function App() {

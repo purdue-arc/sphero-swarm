@@ -252,6 +252,28 @@
     position: relative;
 }
 
+/* Camera and pixel mask next to each other; stacks again on narrow windows */
+.viewerSplit {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1rem;
+    align-items: start;
+}
+
+.viewerSplit > * {
+    min-width: 0;
+}
+
+/* Sits before the view tabs, so it takes over their push to the right */
+.splitToggle {
+    margin-left: auto;
+    font-size: 0.75rem;
+}
+
+.splitToggle + .viewTabs {
+    margin-left: 0;
+}
+
 /* ── Status cards, in a row below the feed ───── */
 .statusColumn {
     display: grid;
