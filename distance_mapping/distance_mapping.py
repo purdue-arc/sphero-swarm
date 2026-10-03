@@ -11,6 +11,7 @@ sock = None
 durations = [round(number/12, 2) for number in range(1, 21)] # Type the durations you want to test here
 speed = 66
 distances = []
+test_num = 1
 
 sphero = Sphero(1, 0, 0, direction=1, trait="head")
 
@@ -36,7 +37,7 @@ df = pd.DataFrame()
 df["durations"] = durations
 df["distances"] = distances
 df["speeds"] = [speed for _ in distances]
-df.to_csv("distance_mapping.csv")
+df.to_csv("distance_mapping.csv", mode='a')
 
 plt.plot(durations, distances)
 plt.xlabel("duration")
