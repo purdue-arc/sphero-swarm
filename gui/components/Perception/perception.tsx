@@ -88,6 +88,8 @@ export function Perception({
 }) {
     const [telemetry, setTelemetry] = useState<Telemetry | null>(null);
     const [feedView, setFeedView] = useState<"camera" | "mask">("camera");
+    // Camera and pixel mask next to each other, instead of one at a time
+    const [sideBySide, setSideBySide] = useState(false);
     const [serviceError, setServiceError] = useState("");
 
     const telemetryWsRef    = useRef<WebSocket | null>(null);
@@ -173,7 +175,8 @@ export function Perception({
     // settings are greyed out rather than silently ignored.
     const yoloDisabled = isRunning || config.colorFilter;
     // There is no mask to show unless the colour filter is the detector
-    const showMask = config.colorFilter && feedView === "mask";
+    const showSplit = config.colorFilter && sideBySide;
+    const showMask = config.colorFilter && (sideBySide || feedView === "mask");
 
     // Commands go out on the telemetry socket. It may still be connecting right
     // after a start, so a send that finds it closed is retried a few times.
@@ -284,6 +287,16 @@ export function Perception({
                         <FontAwesomeIcon icon={faVideo} className={s.panelIcon} />
                         <span className={s.panelTitle}>Live Feed</span>
                         {config.colorFilter && (
+                            <label className={`${s.toggleItem} ${s.splitToggle}`}>
+                                <input
+                                    type="checkbox"
+                                    checked={sideBySide}
+                                    onChange={e => setSideBySide(e.target.checked)}
+                                />
+                                <span>Side by side</span>
+                            </label>
+                        )}
+                        {config.colorFilter && !sideBySide && (
                             <div className={s.viewTabs}>
                                 <button
                                     className={`${s.viewTab} ${feedView === "camera" ? s.viewTabActive : ""}`}
@@ -305,10 +318,27 @@ export function Perception({
                             </span>
                         )}
                     </div>
-                    <div className={s.viewerWrap}>
-                        {/* One viewer at a time: perception only renders the mask
-                            while the mask stream has a client. */}
-                        {showMask ? (
+                    <div className={`${s.viewerWrap} ${showSplit ? s.viewerSplit : ""}`}>
+                        {/* Perception only renders the mask while the mask
+                            stream has a client, so it is mounted only when shown. */}
+                        {showSplit ? (
+                            <>
+                                <StreamViewer
+                                    key="camera"
+                                    port={PERCEPTION_FRAME_PORT}
+                                    serverStatus={spotterStatus}
+                                    setServerStatus={setSpotterStatus}
+                                    sizing="aspect"
+                                />
+                                <StreamViewer
+                                    key="mask"
+                                    port={PERCEPTION_MASK_PORT}
+                                    serverStatus={spotterStatus}
+                                    setServerStatus={setSpotterStatus}
+                                    sizing="aspect"
+                                />
+                            </>
+                        ) : showMask ? (
                             <StreamViewer
                                 key="mask"
                                 port={PERCEPTION_MASK_PORT}
