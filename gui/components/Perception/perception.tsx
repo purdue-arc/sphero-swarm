@@ -11,6 +11,7 @@ import {
     faBolt,
     faSliders,
     faNetworkWired,
+    faLayerGroup,
 } from "@fortawesome/free-solid-svg-icons";
 import { StreamViewer } from "../StreamViewer/streamViewer";
 import type { PerceptionConfig } from "../../types/swarm_types";
@@ -44,6 +45,9 @@ interface Telemetry {
     zmq_bound: boolean;
     spheros: SpheroDetection[];
     latency: LatencyInfo | null;
+    // Present while colour filtering: what the filter is actually running with
+    tuning?: { BRIGHT_THRESH: number; BRIGHT_MIN_AREA: number; BRIGHT_BLUR: number };
+    mask_streaming?: boolean;
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -57,6 +61,12 @@ const MODELS = [
 
 const IMGSZ_OPTIONS = [320, 416, 640, 1280];
 const PERCEPTION_TELEMETRY_PORT = 6770;
+const PERCEPTION_FRAME_PORT = 6767;
+// Perception only renders the filter mask while something is connected here,
+// so mounting/unmounting this viewer is what turns the mask view on and off.
+const PERCEPTION_MASK_PORT = 6771;
+// How long the slider must sit still before its value is written to disk
+const PERSIST_DEBOUNCE_MS = 400;
 
 // ── Component ────────────────────────────────────────────────────────────────
 
@@ -65,13 +75,17 @@ export function Perception({
     setSpotterStatus,
     config,
     setConfig,
+    spheroTags = [],
 }: {
     spotterStatus: "stopped" | "starting" | "started";
-    setSpotterStatus: (status: "stopped" | "starting" | "started") => void;
+    setSpotterStatus: Dispatch<SetStateAction<"stopped" | "starting" | "started">>;
     config: PerceptionConfig;
     setConfig: Dispatch<SetStateAction<PerceptionConfig>>;
+    spheroTags?: string[];
 }) {
     const [telemetry, setTelemetry] = useState<Telemetry | null>(null);
+    const [feedView, setFeedView] = useState<"camera" | "mask">("camera");
+    const [serviceError, setServiceError] = useState("");
 
     const telemetryWsRef    = useRef<WebSocket | null>(null);
     const shouldConnectRef  = useRef(false);
@@ -129,48 +143,86 @@ export function Perception({
 
     // ── Handlers ─────────────────────────────────────────────────────────────
     const handleStart = async () => {
+        setServiceError("");
         setSpotterStatus("starting");
-        await window.electronAPI.startSpheroSpotter(config);
+        try { await window.electronAPI.startSpheroSpotter(config); }
+        catch (error) { setSpotterStatus("stopped"); setServiceError(String(error)); }
     };
 
     const handleStop = async () => {
+        setServiceError("");
         setSpotterStatus("stopped");
         setTelemetry(null);
-        await window.electronAPI.stopSpheroSpotter();
+        try { await window.electronAPI.stopSpheroSpotter(); }
+        catch (error) { setServiceError(String(error)); }
+    };
+
+    const handleRestart = async () => {
+        setServiceError("");
+        setSpotterStatus("starting");
+        setTelemetry(null);
+        try { await window.electronAPI.restartPerception(config); }
+        catch (error) { setSpotterStatus("stopped"); setServiceError(String(error)); }
     };
 
     const isRunning = spotterStatus !== "stopped";
+    // The model is bypassed entirely while colour filtering is on, so its
+    // settings are greyed out rather than silently ignored.
+    const yoloDisabled = isRunning || config.colorFilter;
+    // There is no mask to show unless the colour filter is the detector
+    const showMask = config.colorFilter && feedView === "mask";
+
+    // Commands go out on the telemetry socket. It may still be connecting right
+    // after a start, so a send that finds it closed is retried a few times.
+    const sendCommand = (msg: object, attempt = 0) => {
+        const ws = telemetryWsRef.current;
+        if (ws?.readyState === WebSocket.OPEN) {
+            try {
+                ws.send(JSON.stringify(msg));
+            } catch (e) {
+                console.error("[Perception] Failed to send command:", msg, e);
+            }
+            return;
+        }
+        if (attempt < 3) {
+            setTimeout(() => sendCommand(msg, attempt + 1), 100);
+        } else {
+            console.warn("[Perception] Telemetry socket not open, dropped command:", msg);
+        }
+    };
+
+    // Dragging the slider fires a change per pixel, so the write to
+    // constants.json waits for the user to settle on a value.
+    const persistTimerRef = useRef<any>(null);
+    const persistTuning = (values: Record<string, number | boolean>) => {
+        if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+        persistTimerRef.current = setTimeout(() => {
+            window.electronAPI
+                .savePerceptionTuning(values)
+                .catch(e => console.error("[Perception] Failed to save tuning:", e));
+        }, PERSIST_DEBOUNCE_MS);
+    };
+
+    useEffect(() => () => {
+        if (persistTimerRef.current) clearTimeout(persistTimerRef.current);
+    }, []);
 
     const updateConfig = <K extends keyof PerceptionConfig>(key: K, val: PerceptionConfig[K]) => {
         setConfig(prev => ({ ...prev, [key]: val }));
-        
-        // Send grid toggle command to perception server if grid setting changed while running
-        if (key === "grid" && isRunning) {
-            console.log(`[Grid Toggle] Grid value changed to: ${val}`);
-            console.log(`[Grid Toggle] isRunning: ${isRunning}, WS state: ${telemetryWsRef.current?.readyState}, readyState.OPEN = ${WebSocket.OPEN}`);
-            if (telemetryWsRef.current?.readyState === WebSocket.OPEN) {
-                try {
-                    const msg = JSON.stringify({ action: "toggle_grid" });
-                    console.log("[Grid Toggle] Sending:", msg);
-                    telemetryWsRef.current.send(msg);
-                    console.log("[Grid Toggle] Message sent successfully");
-                } catch (e) {
-                    console.error("[Grid Toggle] Error sending message:", e);
-                }
-            } else {
-                console.warn("[Grid Toggle] WebSocket not open - retrying in 100ms");
-                // Retry after a short delay in case connection is just being established
-                setTimeout(() => {
-                    if (telemetryWsRef.current?.readyState === WebSocket.OPEN) {
-                        try {
-                            console.log("[Grid Toggle] Retry: Sending grid toggle command");
-                            telemetryWsRef.current.send(JSON.stringify({ action: "toggle_grid" }));
-                        } catch (e) {
-                            console.error("[Grid Toggle] Retry failed:", e);
-                        }
-                    }
-                }, 100);
-            }
+
+        if (key === "brightThresh") {
+            // Saved to gui/constants.json, which is where perception reads its
+            // tuning from — so a plain `python sphero_spotter.py -b` picks it up too
+            persistTuning({ BRIGHT_THRESH: val as number });
+        }
+
+        if (!isRunning) return;
+
+        // Settings that perception can pick up live, without a restart
+        if (key === "grid") {
+            sendCommand({ action: "toggle_grid" });
+        } else if (key === "brightThresh") {
+            sendCommand({ action: "set_tuning", values: { BRIGHT_THRESH: val } });
         }
     };
 
@@ -207,8 +259,10 @@ export function Perception({
                             <FontAwesomeIcon icon={faStop} /> Stop
                         </button>
                     )}
+                    <button className={s.btn} onClick={handleRestart} disabled={spotterStatus === "starting"}>Restart Service</button>
                 </div>
             </div>
+            {serviceError && <p role="alert" className={s.emptyMsg}>{serviceError}</p>}
 
             {/* ── Main grid ───────────────────────────────────────────────── */}
             <div className={s.mainGrid}>
@@ -217,6 +271,22 @@ export function Perception({
                     <div className={s.panelHeader}>
                         <FontAwesomeIcon icon={faVideo} className={s.panelIcon} />
                         <span className={s.panelTitle}>Live Feed</span>
+                        {config.colorFilter && (
+                            <div className={s.viewTabs}>
+                                <button
+                                    className={`${s.viewTab} ${feedView === "camera" ? s.viewTabActive : ""}`}
+                                    onClick={() => setFeedView("camera")}
+                                >
+                                    <FontAwesomeIcon icon={faVideo} /> Camera
+                                </button>
+                                <button
+                                    className={`${s.viewTab} ${feedView === "mask" ? s.viewTabActive : ""}`}
+                                    onClick={() => setFeedView("mask")}
+                                >
+                                    <FontAwesomeIcon icon={faLayerGroup} /> Pixel mask
+                                </button>
+                            </div>
+                        )}
                         {telemetry && (
                             <span className={`${s.calibBadge} ${telemetry.perspective_calibrated ? s.calibrated : s.uncalibrated}`}>
                                 {telemetry.perspective_calibrated ? "Calibrated" : "Uncalibrated"}
@@ -224,12 +294,32 @@ export function Perception({
                         )}
                     </div>
                     <div className={s.viewerWrap}>
-                        <StreamViewer
-                            port={6767}
-                            serverStatus={spotterStatus}
-                            setServerStatus={setSpotterStatus}
-                        />
+                        {/* One viewer at a time: perception only renders the mask
+                            while the mask stream has a client. */}
+                        {showMask ? (
+                            <StreamViewer
+                                key="mask"
+                                port={PERCEPTION_MASK_PORT}
+                                serverStatus={spotterStatus}
+                                setServerStatus={setSpotterStatus}
+                                sizing="aspect"
+                            />
+                        ) : (
+                            <StreamViewer
+                                key="camera"
+                                port={PERCEPTION_FRAME_PORT}
+                                serverStatus={spotterStatus}
+                                setServerStatus={setSpotterStatus}
+                                sizing="aspect"
+                            />
+                        )}
                     </div>
+                    {showMask && (
+                        <p className={s.maskHint}>
+                            White pixels are above the brightness cutoff. Green boxes are
+                            the blobs accepted as spheros; red dots are their centres.
+                        </p>
+                    )}
                 </div>
 
                 {/* Right: Status cards */}
@@ -331,22 +421,29 @@ export function Perception({
                         <table className={s.table}>
                             <thead>
                                 <tr>
-                                    <th className={s.th}>ID</th>
+                                    <th className={s.th}>ID / Sphero tag</th>
                                     <th className={s.th}>Pixel (px, py)</th>
                                     <th className={s.th}>Grid (x, y)</th>
+                                    <th className={s.th}>Correct identity</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {telemetry.spheros.map(sp => (
                                     <tr key={sp.id}>
                                         <td className={s.td}>
-                                            <span className={s.idBadge}>{sp.id}</span>
+                                            <span className={s.idBadge}>{sp.id}</span> {spheroTags[sp.id] ?? "Unassigned"}
                                         </td>
                                         <td className={s.td}>
                                             <span className={s.mono}>({sp.px}, {sp.py})</span>
                                         </td>
                                         <td className={s.td}>
                                             <span className={s.mono}>({sp.gx.toFixed(2)}, {sp.gy.toFixed(2)})</span>
+                                        </td>
+                                        <td className={s.td}>
+                                            <select aria-label={`Assign Sphero tag for detection ${sp.id}`} value={sp.id}
+                                                onChange={e => sendCommand({ action: "assign_id", current_id: sp.id, target_id: Number(e.target.value) })}>
+                                                {spheroTags.map((tag, index) => <option key={`${tag}-${index}`} value={index}>{tag}</option>)}
+                                            </select>
                                         </td>
                                     </tr>
                                 ))}
@@ -396,13 +493,37 @@ export function Perception({
                             </div>
                         )}
 
+                        {config.colorFilter && (
+                            <div className={s.formGroup}>
+                                <label className={s.label}>
+                                    Brightness cutoff{isRunning ? " — live" : ""}
+                                </label>
+                                <div className={s.sliderRow}>
+                                    <input
+                                        type="range"
+                                        className={s.slider}
+                                        min={0} max={255} step={1}
+                                        value={config.brightThresh}
+                                        onChange={e => updateConfig("brightThresh", parseInt(e.target.value))}
+                                    />
+                                    <span className={s.sliderVal}>{config.brightThresh}</span>
+                                </div>
+                                <p className={s.fieldHint}>
+                                    Pixels at or below this stay black in the mask. Lower it if
+                                    spheros are missing, raise it to drop glare. Saved automatically.
+                                </p>
+                            </div>
+                        )}
+
                         <div className={s.formGroup}>
-                            <label className={s.label}>YOLO Model</label>
+                            <label className={s.label}>
+                                YOLO Model{config.colorFilter ? " — unused (colour filtering on)" : ""}
+                            </label>
                             <select
                                 className={s.select}
                                 value={config.model}
                                 onChange={e => updateConfig("model", e.target.value)}
-                                disabled={isRunning}
+                                disabled={yoloDisabled}
                             >
                                 {MODELS.map(m => (
                                     <option key={m.value} value={m.value}>{m.label}</option>
@@ -419,7 +540,7 @@ export function Perception({
                                     min={0.05} max={0.95} step={0.05}
                                     value={config.conf}
                                     onChange={e => updateConfig("conf", parseFloat(e.target.value))}
-                                    disabled={isRunning}
+                                    disabled={yoloDisabled}
                                 />
                                 <span className={s.sliderVal}>{config.conf.toFixed(2)}</span>
                             </div>
@@ -431,7 +552,7 @@ export function Perception({
                                 className={s.select}
                                 value={config.imgsz}
                                 onChange={e => updateConfig("imgsz", parseInt(e.target.value))}
-                                disabled={isRunning}
+                                disabled={yoloDisabled}
                             >
                                 {IMGSZ_OPTIONS.map(sz => (
                                     <option key={sz} value={sz}>{sz}px</option>
@@ -442,6 +563,15 @@ export function Perception({
                         <div className={s.formGroup}>
                             <label className={s.label}>Options</label>
                             <div className={s.toggleGroup}>
+                                <label className={`${s.toggleItem} ${isRunning ? s.disabled : ""}`}>
+                                    <input
+                                        type="checkbox"
+                                        checked={config.colorFilter}
+                                        onChange={e => updateConfig("colorFilter", e.target.checked)}
+                                        disabled={isRunning}
+                                    />
+                                    <span>Colour filtering (instead of YOLO model)</span>
+                                </label>
                                 <label className={`${s.toggleItem} ${isRunning ? s.disabled : ""}`}>
                                     <input
                                         type="checkbox"

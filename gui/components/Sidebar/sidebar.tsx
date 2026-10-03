@@ -12,6 +12,7 @@ import {
     faRobot,
     faCircle,
     faPowerOff,
+    faPlay,
 } from "@fortawesome/free-solid-svg-icons";
 
 interface SidebarLink {
@@ -29,7 +30,6 @@ interface SidebarSection {
 export function Sidebar({
     currentView,
     setCurrentView,
-    systemStatus = "operational",
     connectedRobots = 0,
 }: {
     currentView: string;
@@ -41,6 +41,7 @@ export function Sidebar({
         {
             label: "Overview",
             links: [
+                { code: "main", display: "Runner", icon: faPlay },
                 {
                     code: "dashboard",
                     display: "Dashboard",

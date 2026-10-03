@@ -53,6 +53,7 @@ function getConfig() {
 
 let spheroProcess: any = null;
 let controlsProcess: any = null;
+let algorithmProcess: any = null;
 const expectedControlsExitPids = new Set<number>();
 
 function getListeningPidsForPort(port: number): number[] {
@@ -112,7 +113,7 @@ function cleanupOrphanedControlsServer(port = 6768) {
 function cleanupOrphanedPerceptionServers() {
   if (process.platform !== "win32") return;
 
-  const perceptionPorts = [6767, 6770];
+  const perceptionPorts = [6767, 6770, 6771];
   const pids = new Set<number>();
 
   for (const port of perceptionPorts) {
@@ -127,6 +128,59 @@ function cleanupOrphanedPerceptionServers() {
     // Best-effort cleanup for stale perception servers that survive interrupts.
     killWindowsPidTree(pid, true);
   }
+}
+
+function cleanupOrphanedAlgorithmServer() {
+  if (process.platform !== "win32") return;
+  for (const pid of getListeningPidsForPort(6769)) killWindowsPidTree(pid, true);
+}
+
+function startAlgorithm() {
+  if (algorithmProcess) return false;
+  cleanupOrphanedAlgorithmServer();
+  const repoRoot = path.resolve(__dirname, "../../");
+  const child = spawn(getUvCommand().executable,
+    ["run", "--project", repoRoot, "python", "-u", "-m", "gui_driver"],
+    { cwd: repoRoot, stdio: "pipe", env: { ...process.env, PYTHONUNBUFFERED: "1" } });
+  algorithmProcess = child;
+  child.stdout.on("data", (data: Buffer) => process.stdout.write(data));
+  child.stderr.on("data", (data: Buffer) => process.stderr.write(data));
+  child.on("error", (error: Error) => console.error("Algorithm failed:", error));
+  child.on("close", () => { if (algorithmProcess === child) algorithmProcess = null; });
+  return true;
+}
+
+function stopAlgorithm() {
+  if (algorithmProcess) terminateProcessTree(algorithmProcess, true);
+  algorithmProcess = null;
+  cleanupOrphanedAlgorithmServer();
+}
+
+function sendControlCommand(command: object): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket("ws://localhost:6768");
+    const timer = setTimeout(() => { ws.close(); reject(new Error("Controls server timed out")); }, 1500);
+    ws.addEventListener("open", () => {
+      ws.send(JSON.stringify(command));
+      clearTimeout(timer);
+      setTimeout(() => ws.close(), 75);
+      resolve();
+    }, { once: true });
+    ws.addEventListener("error", () => { clearTimeout(timer); reject(new Error("Controls server unavailable")); }, { once: true });
+  });
+}
+
+async function stopControlsGracefully() {
+  if (!controlsProcess) return;
+  const child = controlsProcess;
+  try { await sendControlCommand({ type: "shutdown" }); } catch { /* process may already be gone */ }
+  if (child.exitCode === null) {
+    await Promise.race([
+      new Promise<void>(resolve => child.once("close", () => resolve())),
+      new Promise<void>(resolve => setTimeout(resolve, 20000)),
+    ]);
+  }
+  if (controlsProcess === child) stopControls(true);
 }
 
 function terminateProcessTree(child: any, force = false) {
@@ -153,6 +207,8 @@ const DEFAULT_PERCEPTION_CONFIG = {
   grid: false,
   locked: false,
   latency: false,
+  colorFilter: true,
+  brightThresh: 200,
 };
 
 function normalizeConstantsForSave(raw: any) {
@@ -204,18 +260,29 @@ function startSpheroSpotter(config: any = {}) {
   }
   // // oakd = no flag needed
 
-  pyArgs.push("-m", cfg.model);
-  pyArgs.push("--conf", String(cfg.conf));
-  pyArgs.push("--imgsz", String(cfg.imgsz));
-  if (cfg.grid)    pyArgs.push("-g");
-  if (cfg.locked)  pyArgs.push("-l");
+  if (cfg.colorFilter) {
+    // Colour filtering replaces the model: the filter's blobs are the
+    // detections handed to the algorithms. The mask goes out on its own
+    // stream, which perception only renders while the GUI is showing it.
+    pyArgs.push("-b");
+    if (Number.isFinite(cfg.brightThresh)) {
+      pyArgs.push("--bright-thresh", String(Math.round(cfg.brightThresh)));
+    }
+  } else {
+    pyArgs.push("-m", cfg.model);
+    pyArgs.push("--conf", String(cfg.conf));
+    pyArgs.push("--imgsz", String(cfg.imgsz));
+  }
+  if (cfg.grid) pyArgs.push("-g");
+  if (cfg.locked) pyArgs.push("-l");
   if (cfg.latency) pyArgs.push("-t");
 
-  spheroProcess = spawn(uvCmd.executable, pyArgs, { cwd: moduleFolder, stdio: "pipe" });
-  spheroProcess.stderr.on("data", (data: any) => { console.error(`Python error: ${data.toString()}`); });
-  spheroProcess.on("close", (code: any, signal: any) => {
+  const child = spawn(uvCmd.executable, pyArgs, { cwd: moduleFolder, stdio: "pipe" });
+  spheroProcess = child;
+  child.stderr.on("data", (data: any) => { console.error(`Python error: ${data.toString()}`); });
+  child.on("close", (code: any, signal: any) => {
     console.log(`Sphero Spotter exited (code=${code}, signal=${signal})`);
-    spheroProcess = null;
+    if (spheroProcess === child) spheroProcess = null;
   });
   return true;
 }
@@ -270,6 +337,7 @@ function startControls(config: any = {}) {
       },
     }
   );
+  const child = controlsProcess;
 
   controlsProcess.stdout.on("data", (data: any) => {
     process.stdout.write(data.toString());
@@ -288,12 +356,12 @@ function startControls(config: any = {}) {
     } else {
       console.log(`Controls server exited (code=${code}, signal=${signal})`);
     }
-    controlsProcess = null;
+    if (controlsProcess === child) controlsProcess = null;
   });
   return true;
 }
 
-function waitForControlsStartup(windowMs = 1200, pollMs = 100): Promise<boolean> {
+function waitForControlsStartup(windowMs = 15000, pollMs = 200): Promise<boolean> {
   const startedAt = Date.now();
 
   return new Promise((resolve) => {
@@ -302,13 +370,15 @@ function waitForControlsStartup(windowMs = 1200, pollMs = 100): Promise<boolean>
         resolve(false);
         return;
       }
+      if (Date.now() - startedAt >= windowMs) { resolve(false); return; }
 
-      if (Date.now() - startedAt >= windowMs) {
-        resolve(true);
-        return;
-      }
-
-      setTimeout(poll, pollMs);
+      const ws = new WebSocket("ws://localhost:6768");
+      ws.addEventListener("open", () => { ws.close(); resolve(true); }, { once: true });
+      ws.addEventListener("error", () => {
+        ws.close();
+        if (Date.now() - startedAt >= windowMs) resolve(false);
+        else setTimeout(poll, pollMs);
+      }, { once: true });
     };
 
     poll();
@@ -322,23 +392,41 @@ ipcMain.handle("get-constants", async () => {
   catch (error) { console.error("Error getting Python constants:", error); throw error; }
 });
 ipcMain.handle("quit-app", () => { app.quit(); });
-ipcMain.handle("start-controls", () => {
+ipcMain.handle("start-controls", async () => {
   const started = startControls();
-  return { status: started ? "started" : "already-running" };
+  const ready = await waitForControlsStartup();
+  return { status: ready ? (started ? "started" : "already-running") : "failed" };
 });
-ipcMain.handle("stop-controls", () => {
-  const stopped = stopControls();
-  return { status: stopped ? "stopped" : "not-running" };
+ipcMain.handle("stop-controls", async () => {
+  await stopControlsGracefully();
+  return { status: "stopped" };
 });
 ipcMain.handle("refresh-controls", async () => {
-  stopControls(true);
+  await stopControlsGracefully();
   const started = startControls();
   if (!started) {
     return { status: "failed" };
   }
 
-  const ready = await waitForControlsStartup(1200, 100);
+  const ready = await waitForControlsStartup();
   return { status: ready ? "started" : "failed" };
+});
+ipcMain.handle("get-service-status", () => ({
+  controls: Boolean(controlsProcess), perception: Boolean(spheroProcess), algorithm: Boolean(algorithmProcess),
+}));
+ipcMain.handle("restart-perception", async (_event, config) => {
+  stopSpheroSpotter(true);
+  await new Promise(resolve => setTimeout(resolve, 350));
+  startSpheroSpotter(config);
+  return { status: "started" };
+});
+ipcMain.handle("start-algorithm", () => ({ status: startAlgorithm() ? "started" : "already-running" }));
+ipcMain.handle("stop-algorithm", () => { stopAlgorithm(); return { status: "stopped" }; });
+ipcMain.handle("restart-algorithm", async () => {
+  stopAlgorithm();
+  await new Promise(resolve => setTimeout(resolve, 350));
+  startAlgorithm();
+  return { status: "started" };
 });
 ipcMain.handle("splash-button-clicked", () => {
   showMainAndCloseSplash();
@@ -353,6 +441,76 @@ ipcMain.handle("save-constants", async (_event, constants) => {
     return { status: "saved" };
   } catch (error) { console.error("Error saving constants:", error); throw error; }
 });
+// Perception reads its tuning from gui/constants.json (not the root
+// constants.json that save-constants writes), so the sliders persist there.
+const PERCEPTION_TUNING_KEYS = [
+  "BRIGHT_THRESH",
+  "BRIGHT_MIN_AREA",
+  "BRIGHT_MAX_AREA",
+  "BRIGHT_BLUR",
+  "BRIGHT_MATCH_DIST",
+  "BRIGHT_MAX_BLOBS",
+  "MERGE_SPLIT",
+  "MERGE_AREA_RATIO",
+  "MERGE_PEAK_SEP",
+];
+
+function perceptionConstantsPath() {
+  return path.join(__dirname, "../constants.json");
+}
+
+ipcMain.handle("get-perception-tuning", async () => {
+  try {
+    const fs = await import("fs/promises");
+    const raw = JSON.parse(await fs.readFile(perceptionConstantsPath(), "utf8"));
+    return raw?.PERCEPTION ?? {};
+  } catch (error) {
+    console.error("Error reading perception tuning:", error);
+    return {};
+  }
+});
+
+// Slider writes land here. Serialised so a fast drag can't interleave a
+// read-modify-write and lose a value.
+let perceptionTuningWrite: Promise<any> = Promise.resolve();
+
+ipcMain.handle("save-perception-tuning", async (_event, values) => {
+  const clean: Record<string, number | boolean> = {};
+  for (const key of PERCEPTION_TUNING_KEYS) {
+    const v = values?.[key];
+    if (typeof v === "number" && Number.isFinite(v)) clean[key] = v;
+    else if (typeof v === "boolean") clean[key] = v;
+  }
+  if (Object.keys(clean).length === 0) return { status: "nothing-to-save" };
+
+  const write = async () => {
+    const fs = await import("fs/promises");
+    const constantsPath = perceptionConstantsPath();
+    // Merge, so the rest of the file (and untouched tuning keys) survive
+    let existing: any = {};
+    try {
+      existing = JSON.parse(await fs.readFile(constantsPath, "utf8"));
+    } catch (error) {
+      console.error("Could not read constants for tuning merge, rewriting:", error);
+    }
+    existing.PERCEPTION = { ...(existing.PERCEPTION ?? {}), ...clean };
+    await fs.writeFile(constantsPath, JSON.stringify(existing, null, 2));
+    return { status: "saved", saved: clean };
+  };
+
+  // Queue behind the previous write whether it succeeded or not, so one
+  // failure doesn't poison every later save.
+  const queued = perceptionTuningWrite.then(write, write);
+  perceptionTuningWrite = queued.catch(() => undefined);
+
+  try {
+    return await queued;
+  } catch (error) {
+    console.error("Error saving perception tuning:", error);
+    throw error;
+  }
+});
+
 ipcMain.handle("app-render-complete", () => {
   sendSplashProgress(100);
   return { status: "progress-complete" };
@@ -420,6 +578,16 @@ function createMainWindow() {
     },
   });
 
+  const contents = mainWindow.webContents;
+  contents.on("before-input-event", (event, input) => {
+    const zoomModifier = process.platform === "darwin" ? input.meta : input.control;
+    const zoomInKey = input.key === "+" || input.key === "=" || input.code === "NumpadAdd";
+    if (input.type !== "keyDown" || !zoomModifier || input.alt || !zoomInKey) return;
+
+    event.preventDefault();
+    contents.setZoomFactor(Math.min(3, Math.round((contents.getZoomFactor() + 0.1) * 100) / 100));
+  });
+
   mainWindow.loadURL("http://localhost:5173");
   mainWindow.on("closed", () => { mainWindow = null; });
 
@@ -435,23 +603,29 @@ function createMainWindow() {
 app.whenReady().then(() => {
   createSplashWindow();
   createMainWindow();
+  try { startAlgorithm(); } catch (error) { console.error("Algorithm startup failed:", error); }
 });
 
-app.on("before-quit", () => {
-  // Ensure child processes release their sockets before Electron exits.
-  stopControls(true);
-  stopSpheroSpotter(true);
+let quitting = false;
+app.on("before-quit", (event) => {
+  if (quitting) return;
+  event.preventDefault();
+  quitting = true;
+  void stopControlsGracefully().finally(() => {
+    stopSpheroSpotter(true);
+    stopAlgorithm();
+    app.quit();
+  });
 });
 
 app.on("will-quit", () => {
   stopControls(true);
   stopSpheroSpotter(true);
+  stopAlgorithm();
 });
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
-    stopControls(true);
-    stopSpheroSpotter(true);
     app.quit();
   }
 });
@@ -459,16 +633,19 @@ app.on("window-all-closed", () => {
 process.on("SIGINT", () => {
   stopControls(true);
   stopSpheroSpotter(true);
+  stopAlgorithm();
   app.quit();
 });
 
 process.on("SIGTERM", () => {
   stopControls(true);
   stopSpheroSpotter(true);
+  stopAlgorithm();
   app.quit();
 });
 
 process.on("exit", () => {
   stopControls(true);
   stopSpheroSpotter(true);
+  stopAlgorithm();
 });

@@ -300,6 +300,8 @@
 
 .select {
     background: linear-gradient(rgba(30, 15, 50, 0.8), rgba(30, 15, 50, 0.8)), rgba(255, 255, 255, 0.04);
+    background-color: #1e1930;
+    color-scheme: dark;
     border: 1px solid rgba(139, 92, 246, 0.3);
     border-radius: 7px;
     padding: 0.35rem 0.6rem;
@@ -315,6 +317,15 @@
     background-repeat: no-repeat;
     background-position: right 0.6rem center;
     padding-right: 2rem;
+}
+
+.select option {
+    background-color: #1e1930;
+    color: #e2e8f0;
+}
+
+.select option:disabled {
+    color: #94a3b8;
 }
 
 .select:hover {

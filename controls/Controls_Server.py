@@ -35,10 +35,12 @@ from typing import Optional
 import pickle
 import socket
 import logging
+import os
 
 # queue used for control messages from the GUI (rehome/disconnect etc)
 from queue import Queue, Empty
 control_cmd_queue: Queue[dict] = Queue()
+session_active = False
 
 constants = Constants()
 # For the React App
@@ -75,10 +77,26 @@ def find_balls(names, max_attempts, ws=None, loop=None):
             "balls": names
         })
 
+    best_toys = []
+    reported_names = set()
     for attempts in range(0, max_attempts, 1):
+        if KILL_FLAG:
+            break
         print("Attempts to find Spheros: " + str(attempts + 1))
         # find the toys and print what is found
         toys = scanner.find_toys(toy_names = names)
+        if ws:
+            for toy in toys:
+                name = str(toy).split()[0]
+                if name in names and name not in reported_names:
+                    reported_names.add(name)
+                    ws_send(loop, ws, {
+                        "type": "ball_found",
+                        "ball": name,
+                        "found_at": time.time(),
+                    })
+        if len(toys) > len(best_toys):
+            best_toys = toys
         print("Balls found: {}".format(toys))
         if (len(toys) == len(names)):
             print("Found all Sphero balls")
@@ -94,7 +112,7 @@ def find_balls(names, max_attempts, ws=None, loop=None):
         })
 
     # ran out of attempts
-    raise RuntimeError("Not all balls found")
+    return best_toys
 
 # now to sort the addresses
 def address_sort(addresses, map_to_location):
@@ -106,16 +124,34 @@ def address_sort(addresses, map_to_location):
 # connect a ball and then return the object created to the list
 def connect_ball(toy_address, ret_list, location, max_attempts, ws=None, loop=None):
     attempts = 0
-    while (attempts < max_attempts):
+    while (attempts < max_attempts and KILL_FLAG == 0):
         try:
             sb = SpheroEduAPI(toy_address).__enter__()
             ret_list[location] = sb
+            if KILL_FLAG:
+                terminate_ball(sb)
+                ret_list[location] = None
+                return
 
             if ws:
+                battery_percent = None
+                battery_voltage = None
+                try:
+                    reading = Power.get_battery_percentage(sb._SpheroEduAPI__toy)
+                    if 0 <= reading <= 100:
+                        battery_percent = reading
+                except Exception as exc:
+                    logging.warning("Could not read battery percentage for %s: %s", toy_address, exc)
+                    try:
+                        battery_voltage = Power.get_battery_voltage(sb._SpheroEduAPI__toy)
+                    except Exception as voltage_exc:
+                        logging.warning("Could not read battery voltage for %s: %s", toy_address, voltage_exc)
                 ws_send(loop, ws, {
                     "type": "ball_connected",
                     "ball": str(toy_address),
-                    "index": location
+                    "index": location,
+                    "battery_percent": battery_percent,
+                    "battery_voltage": battery_voltage,
                 })
 
 
@@ -132,7 +168,7 @@ def connect_ball(toy_address, ret_list, location, max_attempts, ws=None, loop=No
             "reason": "Connection attempts exceeded"
         })
      
-def connect_multi_ball(toy_addresses, ret_list, max_attempts, ws=None, loop=None):
+def connect_multi_ball(toy_addresses, ret_list, max_attempts, ws=None, loop=None, names=None):
     # hopefully fast enough that control c'ing in this time should not be humanly reactable
     print("Connecting to Spheros...") 
 
@@ -141,6 +177,10 @@ def connect_multi_ball(toy_addresses, ret_list, max_attempts, ws=None, loop=None
 
     # connecting to sb section
     for index in range(0, len(toy_addresses), 1):
+        if toy_addresses[index] is None:
+            if ws:
+                ws_send(loop, ws, {"type": "ball_failed", "ball": names[index] if names else str(index), "reason": "Not found in scan"})
+            continue
         thread = threading.Thread(target=connect_ball, args=[toy_addresses[index], ret_list, index, max_attempts, ws, loop])
         threads.append(thread)
         thread.start()
@@ -168,7 +208,15 @@ def check_voltage(sb):
 # the command_array_2d must be formated such that it sorted with sphero id's ascending
 # same with the valid_sphero_ids
 def command_gathering(valid_sphero_ids, command_array_2d):
+    while KILL_FLAG == 0:
+        _command_gathering_once(valid_sphero_ids, command_array_2d)
+        if KILL_FLAG == 0:
+            control_cmd_queue.put({"type": "stop_all"})
+
+def _command_gathering_once(valid_sphero_ids, command_array_2d):
+    global KILL_FLAG
     s = socket.socket()
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     # arbitrary non-priv port
     port = 1235
     s.bind(('localhost', port))
@@ -183,17 +231,34 @@ def command_gathering(valid_sphero_ids, command_array_2d):
 
     print("Waiting for connection to client...")
     # conn is the object required for comm with the other files
-    conn, address = s.accept()
+    s.settimeout(0.5)
+    while KILL_FLAG == 0:
+        try:
+            conn, address = s.accept()
+            break
+        except socket.timeout:
+            continue
+    else:
+        s.close()
+        return
+    conn.settimeout(0.5)
     # given this is the first and only connection to be made for now, can immediately send relevant information
-    conn.send(pickle.dumps(valid_sphero_ids))
+    try:
+        conn.sendall(pickle.dumps(valid_sphero_ids))
+    except OSError:
+        conn.close()
+        s.close()
+        return
     # will need two in actuality... - one for the center and the other for algo
 
-    global KILL_FLAG
     while (KILL_FLAG == 0):
         try:
             print(valid_sphero_ids)
             appending_array: list[Optional[Instruction]] = [None] * len(valid_sphero_ids)
-            instruction_list = pickle.loads(conn.recv(1024)) 
+            payload = conn.recv(1024)
+            if not payload:
+                break
+            instruction_list = pickle.loads(payload)
             for instruction in instruction_list:
                 # Some clients send singleton wrapper lists; unwrap them.
                 while isinstance(instruction, list) and len(instruction) == 1:
@@ -221,16 +286,13 @@ def command_gathering(valid_sphero_ids, command_array_2d):
             if (KILL_FLAG == 0):
                 command_array_2d.append(appending_array)
                 conn.send("Done".encode())
-        except EOFError:
-            print("EOFError..., other process terminated")
-            s.close()
-            # finish all other proceesses, but now append a kill set command
-            kill_array = []
-            for id in valid_sphero_ids:
-                kill_array.append(Instruction(id,-1))
-            command_array_2d.append(kill_array)
-            # exit for loop - return to main
+        except socket.timeout:
+            continue
+        except (EOFError, ConnectionResetError, OSError):
+            print("Algorithm disconnected; waiting for reconnection")
             break
+    conn.close()
+    s.close()
             
 # the individual method for running a command on a sphero ball
 def run_command(sb, command):
@@ -385,9 +447,8 @@ def run_server(ball_names, ws=None, loop=None):
     toys_addresses = find_balls(ball_names, 5, ws, loop)
 
     # then sort the addresses to match given order, due to system complexities
-    address_sort(toys_addresses, name_to_location_dict)
-    # create a parallel sorted list of names matching the order of toys_addresses
     names_in_order = sorted(ball_names, key=lambda n: name_to_location_dict[n])
+    toys_addresses = [next((toy for toy in toys_addresses if str(toy).split()[0] == name), None) for name in names_in_order]
     print("Names linked to initial ball names provided, sorted: {}".format(names_in_order))
 
     # sb list has length of the number of valid ids
@@ -400,10 +461,13 @@ def run_server(ball_names, ws=None, loop=None):
         except Exception:
             logging.exception("Failed to reset output files at session start")
 
-        connect_multi_ball(toys_addresses, sb_list, 10, ws, loop)
+        connect_multi_ball(toys_addresses, sb_list, 10, ws, loop, names_in_order)
+        if ws:
+            ws_send(loop, ws, {"type": "session_ready"})
 
         for sb in sb_list:
-            print(check_voltage(sb))
+            if sb is not None:
+                print(check_voltage(sb))
 
         commands_array = []
         # set up server at this point in thread...
@@ -436,6 +500,37 @@ def run_server(ball_names, ws=None, loop=None):
                                 sb_list[idx] = None
                         except ValueError:
                             pass
+                elif ctype == "disconnect_all":
+                    for idx, sb in enumerate(sb_list):
+                        if sb is not None:
+                            terminate_ball(sb)
+                            sb_list[idx] = None
+                elif ctype == "retry":
+                    ball = ctrl.get("ball")
+                    if ball in names_in_order:
+                        idx = names_in_order.index(ball)
+                        if sb_list[idx] is None:
+                            if toys_addresses[idx] is None:
+                                found = scanner.find_toys(toy_names=[ball])
+                                toys_addresses[idx] = next((toy for toy in found if str(toy).split()[0] == ball), None)
+                                if toys_addresses[idx] is not None and ctrl.get("_reply_ws"):
+                                    ws_send(ctrl["_reply_loop"], ctrl["_reply_ws"], {
+                                        "type": "ball_found", "ball": ball, "found_at": time.time()
+                                    })
+                            if toys_addresses[idx] is not None:
+                                connect_ball(toys_addresses[idx], sb_list, idx, 10, ctrl.get("_reply_ws"), ctrl.get("_reply_loop"))
+                            elif ctrl.get("_reply_ws"):
+                                ws_send(ctrl["_reply_loop"], ctrl["_reply_ws"], {"type": "ball_failed", "ball": ball, "reason": "Not found in scan"})
+                elif ctype == "shutdown":
+                    KILL_FLAG = 1
+                elif ctype == "stop_all":
+                    commands_array.clear()
+                    for sb in sb_list:
+                        if sb is not None:
+                            try:
+                                sb.stop_roll()
+                            except Exception:
+                                pass
                 # other command types can be added here
 
             print(len(commands_array))
@@ -460,7 +555,7 @@ def test_controls():
     global KILL_FLAG
     KILL_FLAG = 0
 
-    ball_names = [ "SB-B5A9", "SB-0439", "SB-7672", "SB-BD0A", "SB-3881", "SB-8262", "SB-D950", "SB-C596", "SB-1A8C", "SB-387B", "SB-4D8E", "SB-1730"]
+    ball_names = [ "SB-B5A9", "SB-0439", "SB-7672", "SB-BD0A", "SB-3881", "SB-8262", "SB-D950", "SB-C596", "SB-1A8C", "SB-387B", "SB-4D8E", "SB-1730", "SB-1840"]
     
     name_to_location_dict = generate_dict_map(ball_names)
 
@@ -504,7 +599,7 @@ def test_controls():
         terminate_multi_ball(sb_list)
 
 async def handle_client(websocket):
-    global constants
+    global constants, session_active, KILL_FLAG
     print("Client connected")
     loop = asyncio.get_running_loop()
 
@@ -517,16 +612,24 @@ async def handle_client(websocket):
 
             ball_names = data["spheros"]
 
-            await loop.run_in_executor(
-                None,
-                run_server,
-                ball_names,
-                websocket,
-                loop
-            )
+            if session_active:
+                await websocket.send(json.dumps({"type": "scan_failed", "reason": "A controls session is already active"}))
+                continue
+            session_active = True
+            try:
+                await loop.run_in_executor(None, run_server, ball_names, websocket, loop)
+            finally:
+                session_active = False
         else:
+            if typ == "shutdown":
+                if not session_active:
+                    os._exit(0)
+                KILL_FLAG = 1
             # other messages are control commands; enqueue for the running server
             try:
+                if typ == "retry":
+                    data["_reply_ws"] = websocket
+                    data["_reply_loop"] = loop
                 control_cmd_queue.put_nowait(data)
             except Exception:
                 pass
@@ -556,4 +659,4 @@ if __name__ == "__main__":
         asyncio.run(start_web_server())
     else:
         #test_controls()
-        run_server(['SB-3881'])
+        run_server(['SB-1884'])
