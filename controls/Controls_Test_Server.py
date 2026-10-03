@@ -18,6 +18,15 @@ import logging
 
 from queue import Queue, Empty
 
+# Holding many simultaneous BLE connections causes spherov2's background
+# notification threads to occasionally hit corrupted/out-of-sync packets
+# (PacketDecodingException, BleakError) deep inside bleak's asyncio
+# callbacks. asyncio's default handler logs these at ERROR level with a
+# full traceback per occurrence - raising the threshold here silences the
+# noise without touching bleak/spherov2 itself. This does not fix the
+# underlying radio congestion; it only stops it from flooding the terminal.
+logging.getLogger("asyncio").setLevel(logging.CRITICAL)
+
 control_cmd_queue: Queue[dict] = Queue()
 
 KILL_FLAG = 0
@@ -133,7 +142,10 @@ def connect_ball(toy_address, ret_list, location, max_attempts, ws=None, loop=No
 
             return
         except Exception as e:
-            print("[{}] attempt {} failed: {}".format(toy_address, attempts, e))
+            # str(e) is empty for some exceptions (e.g. bare timeouts) -
+            # include the exception type so failures are never silent.
+            print("[{}] attempt {} failed: {}: {}".format(
+                toy_address, attempts, type(e).__name__, e))
             time.sleep(1)
             continue
 
@@ -170,8 +182,20 @@ def check_voltage(sb):
 
 
 def terminate_ball(sb):
-    if sb is not None:
+    if sb is None:
+        return
+    try:
         sb.__exit__(None, None, None)
+    except Exception as e:
+        # A ball whose BLE link got corrupted earlier (bad checksums, lost
+        # service discovery) can fail to disconnect cleanly. Without this,
+        # the exception would silently kill this thread (Python threads
+        # don't propagate exceptions to the caller) and thread.join() below
+        # would still return as if nothing happened - this ball's radio
+        # link may be left dangling on the Sphero side. Catch it, say so
+        # clearly, and move on rather than hang or fail silently.
+        print("[{}] disconnect raised {}: {} - may still be connected on the Sphero side".format(
+            getattr(sb, "_SpheroEduAPI__toy", sb), type(e).__name__, e))
 
 
 def terminate_multi_ball(sb_list):
