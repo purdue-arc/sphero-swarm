@@ -23,6 +23,7 @@ from SpheroCoordinate import SpheroCoordinate
 from input_streams import WebcamStream, VideoFileStream
 import blob_merge
 import color_id
+from grid_geometry import ConfiguredGrid
 
 # Brightness-mode tuning. Lives in constants.json under "PERCEPTION" so it can
 # be changed without editing code or passing a wall of flags; the values below
@@ -133,27 +134,14 @@ def format_sphero_json(spheroCoord):
     return {"ID": spheroCoord.ID, "X": x, "Y": y}
 
 def pixel_to_grid_coords(pixel_x, pixel_y):
-    pixels_per_inch_x = arena_w_px / ARENA_WIDTH_INCH
-    pixels_per_inch_y = arena_h_px / ARENA_HEIGHT_INCH
-
-    cell_w = ROLL_STRAIGHT_INCH * pixels_per_inch_x
-    cell_h = ROLL_STRAIGHT_INCH * pixels_per_inch_y
-
-    grid_x = float(pixel_x / cell_w)
-    grid_y = float(pixel_y / cell_h)
-
-    grid_x = min(grid_x, GRID_WIDTH - 1)
-    grid_y = min(grid_y, GRID_HEIGHT - 1)
-
-    return (grid_x, grid_y)
+    return arena_grid.geometry.pixel_to_grid(
+        pixel_x, pixel_y, (0, 0), (arena_w_px, arena_h_px))
 # 
 
-ARENA_WIDTH_INCH = 59
-ARENA_HEIGHT_INCH = 49
-ROLL_STRAIGHT_INCH = 12.67
-GRID_WIDTH = GRID_HEIGHT = 7
-arena_w_px = 500
-arena_h_px = 500
+arena_grid = ConfiguredGrid(os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), '..', 'constants.json'))
+arena_w_px = 499
+arena_h_px = 499
 
 last_valid_frame = None
 
@@ -163,54 +151,10 @@ zmq_bound = False
 last_latency = None
 
 def draw_grid(frame, top_left, bottom_right):
-    global arena_h_px, arena_w_px
-
     if not args.grid:
         return frame
-
-    x0, y0 = top_left
-    x1, y1 = bottom_right
-
-    # Arena pixel size
-    arena_w_px = x1 - x0
-    arena_h_px = y1 - y0
-
-    # Convert inches → pixels
-    pixels_per_inch_x = arena_w_px / ARENA_WIDTH_INCH
-    pixels_per_inch_y = arena_h_px / ARENA_HEIGHT_INCH
-
-    # Grid cell size in pixels
-    cell_w = ROLL_STRAIGHT_INCH * pixels_per_inch_x
-    cell_h = ROLL_STRAIGHT_INCH * pixels_per_inch_y
-
-    # Determine number of lines (still clamped)
-    num_lines_x = min(int(ARENA_WIDTH_INCH / ROLL_STRAIGHT_INCH), GRID_WIDTH)
-    num_lines_y = min(int(ARENA_HEIGHT_INCH / ROLL_STRAIGHT_INCH), GRID_HEIGHT)
-
-    # Vertical lines
-    for i in range(num_lines_x + 1):
-        x = int(x0 + i * cell_w)
-        cv2.line(frame, (x, y0), (x, y1), (0, 255, 0), 1)
-    
-    # Horizontal lines
-    for j in range(num_lines_y + 1):
-        y = int(y0 + j * cell_h)
-        cv2.line(frame, (x0, y), (x1, y),  (0, 255, 0), 1)
-
-    # Diagonals
-    for i in range(num_lines_x):
-        for j in range(num_lines_y):
-            x_start = int(x0 + i * cell_w)
-            y_start = int(y0 + j * cell_h)
-            x_end   = int(x0 + (i+1) * cell_w)
-            y_end   = int(y0 + (j+1) * cell_h)
-
-            # First diagonal: top-left → bottom-right
-            cv2.line(frame, (x_start, y_start), (x_end, y_end), (0, 255, 0), 1)
-
-            # Second diagonal: bottom-left → top-right
-            cv2.line(frame, (x_start, y_end), (x_end, y_start), (0, 255, 0), 1)
-
+    for start, end in arena_grid.geometry.lines(top_left, bottom_right):
+        cv2.line(frame, start, end, (0, 255, 0), 1)
     return frame
 
 def process_apriltags(frame, force_process=False):
@@ -643,7 +587,7 @@ def start_detection():
 
 def process_frame_async():
     """Background thread for YOLO inference"""
-    global frozen, next_display_id, lost_spheros
+    global frozen, next_display_id, lost_spheros, arena_w_px, arena_h_px
     while not stop_processing.is_set():
         try:
             # Check for commands from GUI (e.g., grid toggle)
@@ -706,6 +650,11 @@ def process_frame_async():
             # Process April tags
             raw = frame.copy()  # tag outlines get drawn on frame
             frame, field = process_apriltags(frame)
+            arena_grid.refresh()
+            # Coordinate mapping follows the current frame even with the
+            # overlay hidden, using the same outer nodes as the drawn grid.
+            arena_w_px = max(1, frame.shape[1] - 1)
+            arena_h_px = max(1, frame.shape[0] - 1)
 
             dets = []  # (cx, cy, cls_id, x1, y1, x2, y2, tracker_id)
             det_colours = {}  # brightness mode only: tracker_id -> colour signature

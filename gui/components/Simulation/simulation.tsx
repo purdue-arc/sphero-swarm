@@ -302,29 +302,34 @@ export function Simulation({
     // ── WebSocket ──────────────────────────────────────────────────────────
 
     useEffect(() => {
-        let ws: WebSocket;
+        let ws: WebSocket | undefined;
+        let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
         let dead = false;
 
         function connect() {
-            ws = new WebSocket(WS_URL);
-            wsRef.current = ws;
+            if (dead) return;
+            const socket = new WebSocket(WS_URL);
+            ws = socket;
+            wsRef.current = socket;
 
-            ws.onopen = () => {
+            socket.onopen = () => {
                 if (dead) return;
                 setConnected(true);
 
                 // Re-apply GUI control state on every fresh connection.
-                ws.send(JSON.stringify({ type: "use_controls", value: useControlsRef.current }));
-                ws.send(JSON.stringify({ type: "use_algorithm_colors", value: useAlgorithmColorsRef.current }));
-                ws.send(JSON.stringify({ type: "step_seconds", value: speedRef.current }));
+                socket.send(JSON.stringify({ type: "use_controls", value: useControlsRef.current }));
+                socket.send(JSON.stringify({ type: "use_algorithm_colors", value: useAlgorithmColorsRef.current }));
+                socket.send(JSON.stringify({ type: "step_seconds", value: speedRef.current }));
             };
-            ws.onclose = () => {
+            socket.onclose = () => {
+                if (dead) return;
                 setConnected(false);
-                if (!dead) setTimeout(connect, 1500);
+                reconnectTimer = setTimeout(connect, 1500);
             };
-            ws.onerror = () => ws.close();
+            socket.onerror = () => socket.close();
 
-            ws.onmessage = (evt) => {
+            socket.onmessage = (evt) => {
+                if (dead) return;
                 let payload: SimulationSnapshot;
                 try { payload = JSON.parse(evt.data); } catch { return; }
                 onSnapshot?.(payload);
@@ -332,8 +337,13 @@ export function Simulation({
             };
         }
 
-        connect();
-        return () => { dead = true; ws?.close(); };
+        // Cancel the initial connection during StrictMode's cleanup check.
+        reconnectTimer = setTimeout(connect, 0);
+        return () => {
+            dead = true;
+            clearTimeout(reconnectTimer);
+            ws?.close();
+        };
     }, [applyPayload, onSnapshot]);
 
     // helper to toggle pause/resume on the server

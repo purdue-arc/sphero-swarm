@@ -86,7 +86,8 @@ function App() {
       ws.onclose = () => { if (!disposed) timer = setTimeout(connect, 1000) }
       ws.onerror = () => ws?.close()
     }
-    connect()
+    // Let StrictMode finish its setup/cleanup check before opening a socket.
+    timer = setTimeout(connect, 0)
     return () => { disposed = true; clearTimeout(timer); ws?.close() }
   }, [])
 
