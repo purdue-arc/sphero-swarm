@@ -10,6 +10,8 @@ from controls.Instruction import Instruction
 import math
 from gui_server import get_next_command, send_algorithm_state
 
+ROLL_STRAIGHT_INCH = 12.67
+
 def _to_int(value, default=None):
     try:
         return int(value)
@@ -152,9 +154,12 @@ def _send_controls_update(
 
 
         speed = int(abs(constants.SPHERO_SPEED * math.hypot((sphero.y - sphero.target_y), (sphero.x - sphero.target_x))))
+        distance = ROLL_STRAIGHT_INCH * math.hypot((sphero.y - sphero.target_y), (sphero.x - sphero.target_x))
+        duration = algorithm.get_roll_duration(distance)
+        print(f"distance: {distance} inches, duration: {duration} seconds")
 
         roll_instructions.append(
-            Instruction(sphero.id, 1, speed, constants.ROLL_DURATION)
+            Instruction(sphero.id, 1, constants.SPHERO_SPEED, duration)
         )
 
     sock.send(pickle.dumps(color_instructions))

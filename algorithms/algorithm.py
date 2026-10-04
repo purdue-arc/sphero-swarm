@@ -402,3 +402,10 @@ class Algorithm:
             for y in range(len(grid[0])):
                 if grid[x][y] < 0:
                     grid[x][y] = 0
+                    
+    def get_roll_duration(self, distance):
+        '''
+        gets the roll duration (seconds) of the sphero using the distance (inches)
+        '''
+        
+        return (distance - constants.SPHERO_SPEED_INTERCEPT) / constants.SPHERO_SPEED_SLOPE

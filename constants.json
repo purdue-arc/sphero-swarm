@@ -147,9 +147,7 @@
     ]
   ],
   "SPHERO_TAGS": [
-    "SB-1730",
-    "SB-5AB9",
-    "SB-D950"
+    "SB-8262"
   ],
   "INITIAL_POSITIONS": [
     [
@@ -166,8 +164,6 @@
     ]
   ],
   "INITIAL_TRAITS": [
-    "head",
-    "tail",
-    "tail"
+    "head"
   ]
 }
