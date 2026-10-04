@@ -1,9 +1,14 @@
 import asyncio
 import json
+import logging
 import threading
 import time
 from queue import Queue, Empty
 import websockets
+from websocket_logging import IgnoreEmptyHandshakes
+
+server_logger = logging.getLogger("sphero.algorithm.websocket")
+server_logger.addFilter(IgnoreEmptyHandshakes())
 
 # ----------------------------------------------------------------------------
 # Command support
@@ -130,7 +135,7 @@ async def handler(websocket):
 
 async def run_server():
     """Run both the WebSocket server and state broadcaster."""
-    async with websockets.serve(handler, "localhost", 6769):
+    async with websockets.serve(handler, "localhost", 6769, logger=server_logger):
         await broadcast_state()
 
 
