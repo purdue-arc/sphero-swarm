@@ -219,7 +219,13 @@ def _command_gathering_once(valid_sphero_ids, command_array_2d):
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     # arbitrary non-priv port
     port = 1235
-    s.bind(('localhost', port))
+    try:
+        s.bind(('localhost', port))
+    except OSError as error:
+        logging.error("Could not start algorithm command server on port %s: %s", port, error)
+        KILL_FLAG = 1
+        s.close()
+        return
     # enables the system to handle up to 5 connections before refusing more
     s.listen(5)
 
@@ -471,7 +477,11 @@ def run_server(ball_names, ws=None, loop=None):
 
         commands_array = []
         # set up server at this point in thread...
-        cmd_gather_thread = threading.Thread(target=command_gathering, args=[constants.SPHERO_TAGS, commands_array])
+        cmd_gather_thread = threading.Thread(
+            target=command_gathering,
+            args=[constants.SPHERO_TAGS, commands_array],
+            daemon=True,
+        )
         cmd_gather_thread.start()
         
         num_commands_run = 1

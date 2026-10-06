@@ -12,6 +12,7 @@ from ultralytics import YOLO    # computer vision imports
 import cv2
 import argparse
 import json
+import sys
 import torch
 
 from pupil_apriltags import Detector # for april tag detection
@@ -44,8 +45,9 @@ PERCEPTION_DEFAULTS = {
     "COLOR_WAIT_FRAMES": 5,      # frames a blob waits for a colour match before closest-colour/position wins
 }
 
-# Load N_SPHEROS and the perception tuning from the shared constants file
-_constants_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'gui', 'constants.json')
+# Robot count follows the algorithm config; perception tuning remains in the GUI config.
+_constants_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'constants.json')
+_tuning_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'gui', 'constants.json')
 try:
     with open(_constants_path) as _f:
         _constants = json.load(_f)
@@ -56,7 +58,11 @@ except Exception as _e:
     N_SPHEROS = 3
     print(f"sphero_spotter: could not read constants.json ({_e}), defaulting N_SPHEROS={N_SPHEROS}")
 
-_perception = _constants.get('PERCEPTION', {})
+try:
+    with open(_tuning_path) as _f:
+        _perception = json.load(_f).get('PERCEPTION', {})
+except Exception:
+    _perception = {}
 tune = SimpleNamespace(**{k: _perception.get(k, v) for k, v in PERCEPTION_DEFAULTS.items()})
 if _perception:
     _overrides = [k for k in PERCEPTION_DEFAULTS if k in _perception]
@@ -131,7 +137,13 @@ spheros = {}
 
 def format_sphero_json(spheroCoord):
     x,y = pixel_to_grid_coords(spheroCoord.x_coordinate, spheroCoord.y_coordinate)
-    return {"ID": spheroCoord.ID, "X": x, "Y": y}
+    return {
+        "ID": spheroCoord.ID,
+        "X": x,
+        "Y": y,
+        "timestamp": sphero_last_seen.get(spheroCoord.ID),
+        "tracking_generation": sphero_tracking_generation.get(spheroCoord.ID, 0),
+    }
 
 def pixel_to_grid_coords(pixel_x, pixel_y):
     return arena_grid.geometry.pixel_to_grid(
@@ -306,8 +318,10 @@ if device != 'cpu':
     except Exception as e:
         print(f"Warning: Could not optimize model for {device}: {e}")
 
-next_display_id = 0
+next_display_id = 1
 lost_spheros = {}  # disp_id -> (last_cx, last_cy)
+sphero_last_seen = {}  # disp_id -> host timestamp of latest detection
+sphero_tracking_generation = {}  # increments when a display ID moves to a new track
 
 # Threading for async processing
 frame_queue = Queue(maxsize=2)  # Only keep latest 2 frames
@@ -554,6 +568,7 @@ def recover_lost_by_colour(dets, det_colours):
     def assign(matches, relaxed):
         for tid, (did, dist) in matches.items():
             id_map[tid] = did
+            sphero_tracking_generation[did] = sphero_tracking_generation.get(did, 0) + 1
             del lost_spheros[did]
             how = f"colour dist {dist:.2f}" if dist is not None else "by position"
             if relaxed:
@@ -611,7 +626,7 @@ def process_frame_async():
                         target_id = int(cmd["target_id"])
                     except (KeyError, TypeError, ValueError):
                         continue
-                    if not (0 <= current_id < N_SPHEROS and 0 <= target_id < N_SPHEROS):
+                    if not (1 <= current_id <= N_SPHEROS and 1 <= target_id <= N_SPHEROS):
                         continue
                     if current_id != target_id and current_id in id_map.values():
                         for tracker_id, display_id in list(id_map.items()):
@@ -630,6 +645,8 @@ def process_frame_async():
                             colour_profiles[target_id] = cur_prof
                         if tgt_prof is not None:
                             colour_profiles[current_id] = tgt_prof
+                        sphero_tracking_generation[current_id] = sphero_tracking_generation.get(current_id, 0) + 1
+                        sphero_tracking_generation[target_id] = sphero_tracking_generation.get(target_id, 0) + 1
                         print(f"[sphero_spotter] Reassigned IDs {current_id} and {target_id}")
             
             # Get latest frame (non-blocking, skip stale frames)
@@ -726,8 +743,9 @@ def process_frame_async():
             if not frozen and dets:
                 # First frame: assign IDs sorted by position for deterministic ordering
                 for (cx, cy, cls_id, x1, y1, x2, y2, tid) in sorted(dets, key=lambda t: (t[0], t[1])):
-                    if tid not in id_map and next_display_id < N_SPHEROS:
+                    if tid not in id_map and next_display_id <= N_SPHEROS:
                         id_map[tid] = next_display_id
+                        sphero_tracking_generation.setdefault(next_display_id, 0)
                         next_display_id += 1
                 frozen = True
 
@@ -742,8 +760,9 @@ def process_frame_async():
                     # it couldn't place waits for a better look next frame
                     # rather than taking whichever lost ID is nearest.
                     if tid not in id_map and not lost_spheros and \
-                            ASSIGN_NEW_IDS_AFTER_FIRST_FRAME and next_display_id < N_SPHEROS:
+                            ASSIGN_NEW_IDS_AFTER_FIRST_FRAME and next_display_id <= N_SPHEROS:
                         id_map[tid] = next_display_id
+                        sphero_tracking_generation.setdefault(next_display_id, 0)
                         next_display_id += 1
                     continue
                 if tid not in id_map:
@@ -753,9 +772,11 @@ def process_frame_async():
                             key=lambda did: (cx - lost_spheros[did][0])**2 + (cy - lost_spheros[did][1])**2
                         )
                         id_map[tid] = nearest
+                        sphero_tracking_generation[nearest] = sphero_tracking_generation.get(nearest, 0) + 1
                         del lost_spheros[nearest]
-                    elif ASSIGN_NEW_IDS_AFTER_FIRST_FRAME and next_display_id < N_SPHEROS:
+                    elif ASSIGN_NEW_IDS_AFTER_FIRST_FRAME and next_display_id <= N_SPHEROS:
                         id_map[tid] = next_display_id
+                        sphero_tracking_generation.setdefault(next_display_id, 0)
                         next_display_id += 1
 
             # Update spheros dictionary and draw detections on frame
@@ -766,6 +787,7 @@ def process_frame_async():
                 disp_id = id_map[tid]
                 detected_disp_ids.add(disp_id)
                 spheros[disp_id] = SpheroCoordinate(disp_id, int(cx), int(cy))
+                sphero_last_seen[disp_id] = time.time()
                 lost_spheros.pop(disp_id, None)
 
                 class_name = class_name_for(cls_id)
@@ -1033,7 +1055,8 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print("\nShutting down...")
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Fatal perception error: {e}", file=sys.stderr)
+        raise
     finally:
         # Stop processing thread
         stop_processing.set()

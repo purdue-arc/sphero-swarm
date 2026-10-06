@@ -32,6 +32,9 @@ export interface SpheroConstants {
   SIM_WIDTH: number;
   SIM_HEIGHT: number;
   EPSILON: number;
+  MIN_ACTUAL_MOVEMENT: number;
+  TARGET_TOLERANCE: number;
+  MAX_PERCEPTION_AGE: number;
   SPHERO_SPEED: number;
   SPHERO_DIAGONAL_SPEED: number;
   ROLL_DURATION: number;
@@ -75,15 +78,19 @@ export interface SimulationSpheroSnapshot {
   color: string | [number, number, number];
   direction: number;
   correction_debug?: {
+    status: "uninitialized" | "stale_measurement" | "below_motion_threshold" | "at_target" | "corrected";
     previous_vector: {
       start: [number, number];
       end: [number, number];
-    };
+    } | null;
     projected_vector: {
       start: [number, number];
       end: [number, number];
-    };
+    } | null;
     angle_change: number;
+    actual_distance: number | null;
+    target_distance: number | null;
+    measurement_age: number | null;
   } | null;
 }
 

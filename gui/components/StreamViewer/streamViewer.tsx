@@ -11,6 +11,16 @@ function formatAngle(angle: number) {
     return `${rounded > 0 ? "+" : ""}${rounded}°`;
 }
 
+function formatCorrectionStatus(status: string) {
+    switch (status) {
+        case "below_motion_threshold": return "low motion";
+        case "at_target": return "at target";
+        case "stale_measurement": return "stale";
+        case "uninitialized": return "waiting";
+        default: return "corrected";
+    }
+}
+
 // Tallest the feed may get in "aspect" sizing, so it always fits the window
 const MAX_FEED_VH = 62;
 const FALLBACK_ASPECT = 16 / 9;
@@ -229,6 +239,7 @@ export function StreamViewer({
                                     </defs>
                                     {correctionSpheros.map(sphero => {
                                         const debug = sphero.correction_debug!;
+                                        if (!debug.previous_vector || !debug.projected_vector) return null;
                                         const [prevStartX, prevStartY] = debug.previous_vector.start;
                                         const [prevEndX, prevEndY] = debug.previous_vector.end;
                                         const [projectedStartX, projectedStartY] = debug.projected_vector.start;
@@ -243,7 +254,7 @@ export function StreamViewer({
                                                 width={gridWidth * 0.24} height={gridHeight * 0.12}
                                                 className={styles.angleObject}>
                                                 <div className={styles.angleLabel}>
-                                                    S{sphero.id} Δθ {formatAngle(debug.angle_change)}
+                                                    S{sphero.id} Δθ {formatAngle(debug.angle_change)} · {formatCorrectionStatus(debug.status)}
                                                 </div>
                                             </foreignObject>
                                         </g>;

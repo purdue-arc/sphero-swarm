@@ -146,8 +146,9 @@ def _send_controls_update(
             Instruction(sphero.id, 2, sphero.delta_angle, constants.TURN_DURATION)
         )
 
+        safe_speed = sphero.speed if sphero.has_perception_measurement else 0
         roll_instructions.append(
-            Instruction(sphero.id, 1, sphero.speed, constants.ROLL_DURATION)
+            Instruction(sphero.id, 1, safe_speed, constants.ROLL_DURATION)
         )
 
     sock.send(pickle.dumps(color_instructions))

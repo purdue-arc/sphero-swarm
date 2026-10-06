@@ -57,7 +57,18 @@ let algorithmProcess: any = null;
 const expectedControlsExitPids = new Set<number>();
 
 function getListeningPidsForPort(port: number): number[] {
-  if (process.platform !== "win32") return [];
+  if (process.platform !== "win32") {
+    const result = spawnSync("lsof", ["-nP", "-t", `-iTCP:${port}`, "-sTCP:LISTEN"], {
+      shell: false,
+      encoding: "utf8",
+    });
+    if (result.status !== 0 || !result.stdout) return [];
+    return [...new Set(
+      result.stdout.split(/\r?\n/)
+        .map(value => Number(value.trim()))
+        .filter(pid => Number.isInteger(pid) && pid > 0)
+    )];
+  }
 
   const result = spawnSync("netstat", ["-ano", "-p", "tcp"], {
     shell: false,
@@ -99,14 +110,26 @@ function killWindowsPidTree(pid: number, force = true) {
 }
 
 function cleanupOrphanedControlsServer(port = 6768) {
-  if (process.platform !== "win32") return;
+  const serverPids = getListeningPidsForPort(port);
+  if (serverPids.length > 0) return;
 
-  const pids = getListeningPidsForPort(port);
-  if (pids.length === 0) return;
+  // A crashed WebSocket server can leave its non-daemon command thread alive
+  // on port 1235. Only remove processes that are recognizably this project's
+  // Controls_Server; never kill an unrelated listener on that port.
+  for (const pid of getListeningPidsForPort(1235)) {
+    const command = spawnSync("ps", ["-p", String(pid), "-o", "command="], {
+      shell: false,
+      encoding: "utf8",
+    }).stdout?.trim() ?? "";
+    if (!command.includes("controls.Controls_Server")) continue;
 
-  for (const pid of pids) {
-    // Best-effort cleanup for stale controls servers that survived abrupt exits.
-    killWindowsPidTree(pid, true);
+    try {
+      if (process.platform === "win32") killWindowsPidTree(pid, true);
+      else process.kill(pid, "SIGKILL");
+      console.log(`Removed orphaned controls process ${pid} from port 1235`);
+    } catch (error) {
+      console.error(`Failed to remove orphaned controls process ${pid}:`, error);
+    }
   }
 }
 
@@ -141,7 +164,12 @@ function startAlgorithm() {
   const repoRoot = path.resolve(__dirname, "../../");
   const child = spawn(getUvCommand().executable,
     ["run", "--project", repoRoot, "python", "-u", "-m", "gui_driver"],
-    { cwd: repoRoot, stdio: "pipe", env: { ...process.env, PYTHONUNBUFFERED: "1" } });
+    {
+      cwd: repoRoot,
+      stdio: "pipe",
+      detached: process.platform !== "win32",
+      env: { ...process.env, PYTHONUNBUFFERED: "1" },
+    });
   algorithmProcess = child;
   child.stdout.on("data", (data: Buffer) => process.stdout.write(data));
   child.stderr.on("data", (data: Buffer) => process.stderr.write(data));
@@ -193,9 +221,12 @@ function terminateProcessTree(child: any, force = false) {
   }
 
   try {
-    child.kill(force ? "SIGKILL" : "SIGTERM");
+    const signal = force ? "SIGKILL" : "SIGTERM";
+    if (process.platform !== "win32") process.kill(-child.pid, signal);
+    else child.kill(signal);
   } catch (error) {
-    console.error("Failed to terminate child process:", error);
+    try { child.kill(force ? "SIGKILL" : "SIGTERM"); }
+    catch { console.error("Failed to terminate child process:", error); }
   }
 }
 
@@ -241,8 +272,59 @@ function normalizeConstantsForSave(raw: any) {
   };
 }
 
-function startSpheroSpotter(config: any = {}) {
-  if (spheroProcess) { console.log("Sphero Spotter already running"); return; }
+function waitForPerceptionFrame(child: any, getOutput: () => string, windowMs = 45000): Promise<void> {
+  const startedAt = Date.now();
+
+  return new Promise((resolve, reject) => {
+    let socket: WebSocket | null = null;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
+    let settled = false;
+
+    const cleanup = () => {
+      if (retryTimer) clearTimeout(retryTimer);
+      child.off("close", onProcessClose);
+      socket?.close();
+      socket = null;
+    };
+    const succeed = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve();
+    };
+    const fail = (message: string) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      const details = getOutput().trim();
+      reject(new Error(details ? `${message}\n${details}` : message));
+    };
+    const onProcessClose = (code: number | null, signal: string | null) => {
+      fail(`Sphero Spotter exited before the camera produced a frame (code=${code}, signal=${signal}).`);
+    };
+    const connect = () => {
+      if (settled) return;
+      if (Date.now() - startedAt >= windowMs) {
+        fail("Timed out waiting for the camera to produce a frame.");
+        return;
+      }
+
+      socket = new WebSocket("ws://localhost:6767");
+      socket.addEventListener("message", succeed, { once: true });
+      socket.addEventListener("error", () => socket?.close(), { once: true });
+      socket.addEventListener("close", () => {
+        socket = null;
+        if (!settled) retryTimer = setTimeout(connect, 250);
+      }, { once: true });
+    };
+
+    child.once("close", onProcessClose);
+    connect();
+  });
+}
+
+async function startSpheroSpotter(config: any = {}) {
+  if (spheroProcess) { console.log("Sphero Spotter already running"); return false; }
   const cfg = { ...DEFAULT_PERCEPTION_CONFIG, ...config };
   const uvCmd = getUvCommand();
   const repoRoot = path.resolve(__dirname, "../../");
@@ -279,13 +361,29 @@ function startSpheroSpotter(config: any = {}) {
   if (cfg.locked) pyArgs.push("-l");
   if (cfg.latency) pyArgs.push("-t");
 
-  const child = spawn(uvCmd.executable, pyArgs, { cwd: moduleFolder, stdio: "pipe" });
+  const child = spawn(uvCmd.executable, pyArgs, {
+    cwd: moduleFolder,
+    stdio: "pipe",
+    detached: process.platform !== "win32",
+  });
   spheroProcess = child;
-  child.stderr.on("data", (data: any) => { console.error(`Python error: ${data.toString()}`); });
+  let outputTail = "";
+  const recordOutput = (data: any) => {
+    outputTail = `${outputTail}${data.toString()}`.slice(-6000);
+  };
+  child.stdout.on("data", (data: Buffer) => { recordOutput(data); process.stdout.write(data); });
+  child.stderr.on("data", (data: Buffer) => { recordOutput(data); process.stderr.write(data); });
+  child.on("error", (error: Error) => { recordOutput(`Sphero Spotter failed to start: ${error.message}`); });
   child.on("close", (code: any, signal: any) => {
     console.log(`Sphero Spotter exited (code=${code}, signal=${signal})`);
     if (spheroProcess === child) spheroProcess = null;
   });
+  try {
+    await waitForPerceptionFrame(child, () => outputTail);
+  } catch (error) {
+    if (spheroProcess === child) stopSpheroSpotter(true);
+    throw error;
+  }
   return true;
 }
 
@@ -322,7 +420,12 @@ function startControls(config: any = {}) {
   const repoRoot = path.resolve(__dirname, "../../");
   const moduleFolder = path.join(__dirname, "../../");
 
-  // Prevent bind failures from orphaned servers left by abrupt shutdowns.
+  if (getListeningPidsForPort(6768).length > 0) {
+    console.error("Controls server cannot start: port 6768 is already in use.");
+    return false;
+  }
+
+  // Prevent bind failures from an orphaned command thread left by an abrupt shutdown.
   cleanupOrphanedControlsServer(6768);
 
   console.log(`Starting controls server with uv: uv run --project ${repoRoot} python -u -m controls.Controls_Server -s`);
@@ -333,6 +436,7 @@ function startControls(config: any = {}) {
     {
       cwd: moduleFolder,
       stdio: "pipe",
+      detached: process.platform !== "win32",
       env: {
         ...process.env,
         PYTHONUNBUFFERED: "1",
@@ -387,7 +491,10 @@ function waitForControlsStartup(windowMs = 15000, pollMs = 200): Promise<boolean
   });
 }
 
-ipcMain.handle("start-sphero-spotter", async (_event, config) => { startSpheroSpotter(config); return { status: "started" }; });
+ipcMain.handle("start-sphero-spotter", async (_event, config) => {
+  const started = await startSpheroSpotter(config);
+  return { status: started ? "started" : "already-running" };
+});
 ipcMain.handle("stop-sphero-spotter", async () => { stopSpheroSpotter(); return { status: "stopped" }; });
 ipcMain.handle("get-constants", async () => {
   try { return await getConfig(); }
@@ -419,7 +526,7 @@ ipcMain.handle("get-service-status", () => ({
 ipcMain.handle("restart-perception", async (_event, config) => {
   stopSpheroSpotter(true);
   await new Promise(resolve => setTimeout(resolve, 350));
-  startSpheroSpotter(config);
+  await startSpheroSpotter(config);
   return { status: "started" };
 });
 ipcMain.handle("start-algorithm", () => ({ status: startAlgorithm() ? "started" : "already-running" }));
@@ -602,10 +709,26 @@ function createMainWindow() {
   }, 500);
 }
 
-app.whenReady().then(() => {
+async function waitForDevServer(url: string, windowMs = 15000) {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < windowMs) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) return;
+    } catch {
+      // Vite is still starting.
+    }
+    await new Promise(resolve => setTimeout(resolve, 200));
+  }
+  throw new Error(`Vite did not become ready at ${url} within ${windowMs} ms.`);
+}
+
+app.whenReady().then(async () => {
   createSplashWindow();
-  createMainWindow();
   try { startAlgorithm(); } catch (error) { console.error("Algorithm startup failed:", error); }
+  try { await waitForDevServer("http://localhost:5173"); }
+  catch (error) { console.error("GUI dev server startup failed:", error); }
+  createMainWindow();
 });
 
 let quitting = false;

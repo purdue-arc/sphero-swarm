@@ -19,6 +19,11 @@ class Sphero:
         self.prev_true_y = y
         self.true_x = x
         self.true_y = y
+        self.has_perception_measurement = False
+        self.measurement_timestamp = None
+        self.measurement_stale = True
+        self.tracking_generation = None
+        self.correction_debug = None
         self.target_x = target_x if target_x is not None else x
         self.target_y = target_y if target_y is not None else y
         self.previous_direction = previous_direction

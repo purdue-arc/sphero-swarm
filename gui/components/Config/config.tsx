@@ -37,7 +37,7 @@ const KNOWN_TAGS = [
     'SB-ADA3',
     'SB-0439',
     'SB-AD19',
-    'SB-865A',
+    'SB-856A',
     'SB-4D8E',
     'SB-7672',
     'SB-7673',
@@ -255,6 +255,33 @@ function ConfigEditor({ constants, onUpdate, algorithmRunning = false, onSaved }
                                 onChange={e => update("TURN_DURATION", parseFloat(e.target.value) || 0)}
                             />
                             <span className={s.hint}>Time per 90° heading change</span>
+                        </div>
+                        <div className={s.formGroup}>
+                            <label className={s.label}>Minimum Measured Motion</label>
+                            <input
+                                type="number" min={0} step={0.01} className={s.input}
+                                value={form.MIN_ACTUAL_MOVEMENT}
+                                onChange={e => update("MIN_ACTUAL_MOVEMENT", Math.max(0, parseFloat(e.target.value) || 0))}
+                            />
+                            <span className={s.hint}>Distance required before estimating travel direction</span>
+                        </div>
+                        <div className={s.formGroup}>
+                            <label className={s.label}>Target Tolerance</label>
+                            <input
+                                type="number" min={0} step={0.01} className={s.input}
+                                value={form.TARGET_TOLERANCE}
+                                onChange={e => update("TARGET_TOLERANCE", Math.max(0, parseFloat(e.target.value) || 0))}
+                            />
+                            <span className={s.hint}>Distance treated as having reached the target</span>
+                        </div>
+                        <div className={s.formGroup}>
+                            <label className={s.label}>Maximum Measurement Age (s)</label>
+                            <input
+                                type="number" min={0.1} step={0.1} className={s.input}
+                                value={form.MAX_PERCEPTION_AGE}
+                                onChange={e => update("MAX_PERCEPTION_AGE", Math.max(0.1, parseFloat(e.target.value) || 0.1))}
+                            />
+                            <span className={s.hint}>Older perception samples stop movement commands</span>
                         </div>
                     </div>
                 </div>

@@ -479,7 +479,7 @@ export function Perception({
                                 {telemetry.spheros.map(sp => (
                                     <tr key={sp.id}>
                                         <td className={s.td}>
-                                            <span className={s.idBadge}>{sp.id}</span> {spheroTags[sp.id] ?? "Unassigned"}
+                                            <span className={s.idBadge}>{sp.id}</span> {spheroTags[sp.id - 1] ?? "Unassigned"}
                                         </td>
                                         <td className={s.td}>
                                             <span className={s.mono}>({sp.px}, {sp.py})</span>
@@ -490,7 +490,7 @@ export function Perception({
                                         <td className={s.td}>
                                             <select aria-label={`Assign Sphero tag for detection ${sp.id}`} value={sp.id}
                                                 onChange={e => sendCommand({ action: "assign_id", current_id: sp.id, target_id: Number(e.target.value) })}>
-                                                {spheroTags.map((tag, index) => <option key={`${tag}-${index}`} value={index}>{tag}</option>)}
+                                                {spheroTags.map((tag, index) => <option key={`${tag}-${index}`} value={index + 1}>{tag}</option>)}
                                             </select>
                                         </td>
                                     </tr>

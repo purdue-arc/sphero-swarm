@@ -1,11 +1,11 @@
 import random
+import time
 
-import numpy as np
 from .constants import constants
 from .sphero import Sphero
 from .bonded_group import BondedGroup
 from typing import cast
-from math import hypot
+from math import atan2, degrees, hypot
 
 class Algorithm:
     def __init__(self, grid_width, grid_height, spheros: list[Sphero]):
@@ -51,66 +51,164 @@ class Algorithm:
         log_line = line.replace('\n', '\n(')
         print(f"[ {log_line}")
               
-        # Returns necessary change in angle to point in new direction
-    def calculate_angle_change(self, sphero):
-        previous_vector_start = [sphero.prev_true_x, sphero.prev_true_y]
-        previous_vector_end = [sphero.true_x, sphero.true_y]
-        projected_vector_start = [sphero.true_x, sphero.true_y]
-        projected_vector_end = [sphero.target_x, sphero.target_y]
+    def _measurement_age(self, sphero, now=None):
+        if sphero.measurement_timestamp is None:
+            return None
+        current_time = time.time() if now is None else now
+        return max(0.0, current_time - sphero.measurement_timestamp)
 
-        if (sphero.target_x == sphero.x and sphero.target_y == sphero.y) == 0:
-            sphero.correction_debug = {
-                "previous_vector": {
-                    "start": previous_vector_start,
-                    "end": previous_vector_end,
-                },
-                "projected_vector": {
-                    "start": projected_vector_start,
-                    "end": projected_vector_end,
-                },
-                "angle_change": 0,
+    def _has_fresh_measurement(self, sphero, now=None):
+        age = self._measurement_age(sphero, now)
+        return (
+            sphero.has_perception_measurement
+            and not sphero.measurement_stale
+            and age is not None
+            and age <= constants.MAX_PERCEPTION_AGE
+        )
+
+    def _set_correction_debug(
+        self,
+        sphero,
+        status,
+        angle_change=0,
+        actual_distance=None,
+        target_distance=None,
+        measurement_age=None,
+        include_vectors=True,
+    ):
+        if include_vectors:
+            previous_vector = {
+                "start": [sphero.prev_true_x, sphero.prev_true_y],
+                "end": [sphero.true_x, sphero.true_y],
             }
-            return 0  # no movement → no turn
-
-        prev_angle = np.arctan2(sphero.true_y - sphero.prev_true_y, sphero.true_x - sphero.prev_true_x) # Current position
-        target_angle = np.arctan2(sphero.target_y - sphero.true_y, sphero.target_x - sphero.true_x) # Next position
-
-        # Compute smallest angle difference
-        theta = target_angle - prev_angle
-
-        # Normalize to [-180, 180]
-        theta = (theta + 180) % 360 - 180
+            projected_vector = {
+                "start": [sphero.true_x, sphero.true_y],
+                "end": [sphero.target_x, sphero.target_y],
+            }
+        else:
+            previous_vector = None
+            projected_vector = None
 
         sphero.correction_debug = {
-            "previous_vector": {
-                "start": previous_vector_start,
-                "end": previous_vector_end,
-            },
-            "projected_vector": {
-                "start": projected_vector_start,
-                "end": projected_vector_end,
-            },
-            "angle_change": int(round(theta)),
+            "status": status,
+            "previous_vector": previous_vector,
+            "projected_vector": projected_vector,
+            "angle_change": angle_change,
+            "actual_distance": actual_distance,
+            "target_distance": target_distance,
+            "measurement_age": measurement_age,
         }
 
+    # Return the signed turn from measured travel direction toward the target.
+    def calculate_angle_change(self, sphero, now=None):
+        measurement_age = self._measurement_age(sphero, now)
+        if not self._has_fresh_measurement(sphero, now):
+            status = "uninitialized" if not sphero.has_perception_measurement else "stale_measurement"
+            self._set_correction_debug(
+                sphero,
+                status,
+                measurement_age=measurement_age,
+                include_vectors=False,
+            )
+            return 0
+
+        actual_dx = sphero.true_x - sphero.prev_true_x
+        actual_dy = sphero.true_y - sphero.prev_true_y
+        target_dx = sphero.target_x - sphero.true_x
+        target_dy = sphero.target_y - sphero.true_y
+        actual_distance = hypot(actual_dx, actual_dy)
+        target_distance = hypot(target_dx, target_dy)
+
+        if actual_distance < constants.MIN_ACTUAL_MOVEMENT:
+            self._set_correction_debug(
+                sphero,
+                "below_motion_threshold",
+                actual_distance=actual_distance,
+                target_distance=target_distance,
+                measurement_age=measurement_age,
+            )
+            return 0
+
+        if target_distance <= constants.TARGET_TOLERANCE:
+            self._set_correction_debug(
+                sphero,
+                "at_target",
+                actual_distance=actual_distance,
+                target_distance=target_distance,
+                measurement_age=measurement_age,
+            )
+            sphero.prev_true_x = sphero.true_x
+            sphero.prev_true_y = sphero.true_y
+            return 0
+
+        cross = actual_dx * target_dy - actual_dy * target_dx
+        dot = actual_dx * target_dx + actual_dy * target_dy
+        angle_change = int(round(degrees(atan2(cross, dot))))
+
+        self._set_correction_debug(
+            sphero,
+            "corrected",
+            angle_change=angle_change,
+            actual_distance=actual_distance,
+            target_distance=target_distance,
+            measurement_age=measurement_age,
+        )
         sphero.prev_true_x = sphero.true_x
         sphero.prev_true_y = sphero.true_y
+        return angle_change
+        
+    def calculate_speed(self, sphero, now=None):
+        if not self._has_fresh_measurement(sphero, now):
+            return 0
+        distance = hypot(sphero.target_x - sphero.true_x, sphero.target_y - sphero.true_y)
+        if distance <= constants.TARGET_TOLERANCE:
+            return 0
+        return min(255, max(0, int(round(constants.SPHERO_SPEED * distance))))
+        
+        
+    def set_true_positions(self, data, now=None):
+        current_time = time.time() if now is None else now
+        id_to_sphero = {sphero.id: sphero for sphero in self.find_all_spheros()}
+        for entry in data.get("spheros", []):
+            sphero_id = entry.get("id", entry.get("ID"))
+            true_x = entry.get("x", entry.get("X"))
+            true_y = entry.get("y", entry.get("Y"))
+            sphero = id_to_sphero.get(sphero_id)
+            if sphero is None:
+                print(f"[algorithm] ignored perception position for unknown Sphero ID {sphero_id}")
+                continue
 
-        return int(round(theta))
-        
-    def calculate_speed(self, sphero):
-        distance = math.hypot(sphero.target_x - sphero.true_x, sphero.target_y - sphero.true_y)
-        return int(constants.SPHERO_SPEED * distance)
-        
-        
-    def set_true_positions(self, data):
-        id_to_sphero = {sphero.id: sphero for sphero in self.find_all_spheros()}                                                                    
-        for entry in data["spheros"]:                                                                                                                    
-            sphero = id_to_sphero.get(entry["id"])                                                                                                       
-            if sphero:                                                                                                                                   
-                # update real position                                                                                                     
-                sphero.true_x = entry["x"]                                                                                                                    
-                sphero.true_y = entry["y"]
+            try:
+                true_x = float(true_x)
+                true_y = float(true_y)
+                measurement_time = float(entry.get("timestamp", data.get("timestamp", current_time)))
+            except (TypeError, ValueError):
+                print(f"[algorithm] ignored invalid perception position for Sphero ID {sphero_id}")
+                continue
+
+            measurement_age = max(0.0, current_time - measurement_time)
+            if measurement_age > constants.MAX_PERCEPTION_AGE:
+                sphero.measurement_stale = True
+                continue
+
+            tracking_generation = entry.get("tracking_generation", 0)
+            tracking_changed = (
+                sphero.tracking_generation is not None
+                and tracking_generation != sphero.tracking_generation
+            )
+            first_measurement = not sphero.has_perception_measurement
+
+            sphero.true_x = true_x
+            sphero.true_y = true_y
+            sphero.measurement_timestamp = measurement_time
+            sphero.measurement_stale = False
+            sphero.has_perception_measurement = True
+            sphero.tracking_generation = tracking_generation
+
+            if first_measurement or tracking_changed:
+                sphero.prev_true_x = true_x
+                sphero.prev_true_y = true_y
+                sphero.correction_debug = None
 
 
     def find_all_spheros(self) -> list[Sphero]:
@@ -334,7 +432,8 @@ class Algorithm:
         for group in self.bonded_groups:
             for sphero in group.spheros:
                 sphero.delta_angle = self.calculate_angle_change(sphero)
-                sphero.speed = self.calculate_speed(sphero)
+                if sphero.has_perception_measurement:
+                    sphero.speed = self.calculate_speed(sphero)
         
         
         print('yea we moved!\n')

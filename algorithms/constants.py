@@ -46,6 +46,9 @@ class Constants:
         self.GRID_HEIGHT = 4
         self.SPHERO_SPEED = 60
         self.SPHERO_DIAGONAL_SPEED = 76
+        self.MIN_ACTUAL_MOVEMENT = 0.1
+        self.TARGET_TOLERANCE = 0.1
+        self.MAX_PERCEPTION_AGE = 1.0
 
         self.ROLL_DURATION = 0.8
         self.TURN_DURATION = 0.5
@@ -76,6 +79,9 @@ class Constants:
             "GRID_HEIGHT",
             "SPHERO_SPEED",
             "SPHERO_DIAGONAL_SPEED",
+            "MIN_ACTUAL_MOVEMENT",
+            "TARGET_TOLERANCE",
+            "MAX_PERCEPTION_AGE",
             "ROLL_DURATION",
             "TURN_DURATION",
             "SPHERO_TAGS",
