@@ -23,6 +23,7 @@ except ImportError:
     from ..algorithms.constants import Constants
 # instructions for the purposes of organization
 from .Instruction import Instruction
+from .protocol import receive_batch, send_result
 
 import argparse
 import time
@@ -255,10 +256,9 @@ def _command_gathering_once(valid_sphero_ids, command_array_2d):
         try:
             print(valid_sphero_ids)
             appending_array: list[Optional[Instruction]] = [None] * len(valid_sphero_ids)
-            payload = conn.recv(1024)
-            if not payload:
-                break
-            instruction_list = pickle.loads(payload)
+            payload = receive_batch(conn)
+            wait_for_completion = isinstance(payload, dict) and payload.get("wait_for_completion")
+            instruction_list = payload["instructions"] if isinstance(payload, dict) else payload
             for instruction in instruction_list:
                 # Some clients send singleton wrapper lists; unwrap them.
                 while isinstance(instruction, list) and len(instruction) == 1:
@@ -284,8 +284,16 @@ def _command_gathering_once(valid_sphero_ids, command_array_2d):
                     print("Attempting to send command to not connnected ball...")
                     continue
             if (KILL_FLAG == 0):
-                command_array_2d.append(appending_array)
-                conn.send("Done".encode())
+                if wait_for_completion:
+                    batch = {"instructions": appending_array, "done": threading.Event(), "outcomes": {}}
+                    command_array_2d.append(batch)
+                    while not batch["done"].wait(0.1):
+                        if KILL_FLAG:
+                            break
+                    send_result(conn, batch["outcomes"])
+                else:
+                    command_array_2d.append(appending_array)
+                    conn.send("Done".encode())
         except socket.timeout:
             continue
         except (EOFError, ConnectionResetError, OSError):
@@ -360,9 +368,27 @@ def run_multi_command(sb_list, commands):
     # holds what processes are running right now
     threads = []
 
+    batch = commands if isinstance(commands, dict) else None
+    if batch is not None:
+        commands = batch["instructions"]
+
+    def execute(sb, command):
+        if command is None:
+            return
+        status = "disconnected" if sb is None else "complete"
+        try:
+            run_command(sb, command)
+            if KILL_FLAG:
+                status = "cancelled"
+        except Exception:
+            logging.exception("Command failed for Sphero %s", command.spheroID)
+            status = "failed"
+        if batch is not None:
+            batch["outcomes"][str(command.spheroID)] = status
+
     for i in range(0, len(sb_list), 1):
         command = commands[i] if i < len(commands) else None
-        thread = threading.Thread(target=run_command, args=[sb_list[i], command])
+        thread = threading.Thread(target=execute, args=[sb_list[i], command])
         threads.append(thread)
         thread.start()
 
@@ -375,6 +401,8 @@ def run_multi_command(sb_list, commands):
 
     for thread in threads:
         thread.join(timeout=None)
+    if batch is not None:
+        batch["done"].set()
 
 # terminate ball to free it for future use
 def terminate_ball(sb):
@@ -524,6 +552,9 @@ def run_server(ball_names, ws=None, loop=None):
                 elif ctype == "shutdown":
                     KILL_FLAG = 1
                 elif ctype == "stop_all":
+                    for pending in commands_array:
+                        if isinstance(pending, dict):
+                            pending["done"].set()
                     commands_array.clear()
                     for sb in sb_list:
                         if sb is not None:

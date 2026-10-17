@@ -1,16 +1,35 @@
 import pickle
 import socket
 import time
+import uuid
+import zmq
 
 from algorithms.algorithm import Algorithm
 from algorithms.constants import Constants
 from algorithms.form_instruction import nextVectorDirection
 from algorithms.sphero import Sphero
 from controls.Instruction import Instruction
+from controls.protocol import send_batch
 import math
 from gui_server import get_next_command, send_algorithm_state
 
 ROLL_STRAIGHT_INCH = 12.67
+
+
+def _perception_request(message):
+    """Short-lived socket keeps a missing perception process from blocking rolls."""
+    sock = zmq.Context.instance().socket(zmq.REQ)
+    sock.setsockopt(zmq.LINGER, 0)
+    sock.setsockopt(zmq.RCVTIMEO, 1000)
+    sock.setsockopt(zmq.SNDTIMEO, 1000)
+    try:
+        sock.connect("tcp://127.0.0.1:5555")
+        sock.send_json(message)
+        return sock.recv_json()
+    except zmq.ZMQError:
+        return None
+    finally:
+        sock.close()
 
 def _to_int(value, default=None):
     try:
@@ -131,6 +150,8 @@ def _send_controls_update(
     color_instructions = []
     rotate_instructions = []
     roll_instructions = []
+    targets = []
+    trial_id = uuid.uuid4().hex
 
     custom_palette = constants.COLORS if len(constants.COLORS) > 0 else [constants.WHITE]
 
@@ -153,23 +174,48 @@ def _send_controls_update(
         )
 
 
-        speed = int(abs(constants.SPHERO_SPEED * math.hypot((sphero.y - sphero.target_y), (sphero.x - sphero.target_x))))
         distance = ROLL_STRAIGHT_INCH * math.hypot((sphero.y - sphero.target_y), (sphero.x - sphero.target_x))
-        duration = algorithm.get_roll_duration(distance)
+        if distance == 0:
+            continue
+        duration = max(0.0, algorithm.get_roll_duration(distance))
         print(f"distance: {distance} inches, duration: {duration} seconds")
 
         roll_instructions.append(
             Instruction(sphero.id, 1, constants.SPHERO_SPEED, duration)
         )
+        targets.append({"trial_id": trial_id, "algorithm_id": sphero.id,
+                        "id": sphero.id - 1, "x": sphero.target_x, "y": sphero.target_y,
+                        "speed": constants.SPHERO_SPEED, "distance": distance,
+                        "duration": duration, "inches_per_step": ROLL_STRAIGHT_INCH})
 
-    sock.send(pickle.dumps(color_instructions))
-    sock.recv(1024)
-
-    sock.send(pickle.dumps(rotate_instructions))
-    sock.recv(1024)
-
-    sock.send(pickle.dumps(roll_instructions))
-    sock.recv(1024)
+    send_batch(sock, color_instructions)
+    turn_outcomes = send_batch(sock, rotate_instructions)
+    if not targets:
+        return
+    evaluation = _perception_request({"action": "roll_targets", "targets": targets})
+    evaluating = bool(evaluation and evaluation.get("ok"))
+    if not evaluating:
+        print("[gui_driver] Roll evaluation unavailable: start calibrated perception to record endpoints")
+    valid_rolls = [instruction for instruction in roll_instructions
+                   if turn_outcomes.get(str(instruction.spheroID)) == "complete"]
+    outcomes = send_batch(sock, valid_rolls) if valid_rolls else {}
+    for instruction in roll_instructions:
+        if turn_outcomes.get(str(instruction.spheroID)) != "complete":
+            outcomes[str(instruction.spheroID)] = "turn_failed"
+    if evaluating:
+        _perception_request({"action": "roll_complete", "trial_id": trial_id, "outcomes": outcomes})
+        deadline = time.monotonic() + 12
+        while time.monotonic() < deadline:
+            result = _perception_request({"action": "roll_results", "trial_id": trial_id})
+            if result and result.get("finished"):
+                print(f"[gui_driver] Roll evaluation: {result['trials']}")
+                break
+            if result is None:
+                print("[gui_driver] Perception disconnected during roll evaluation")
+                break
+            time.sleep(0.1)
+        else:
+            print("[gui_driver] Roll evaluation timed out; inspect perception tracking")
 
 
 def _connect_controls(port: int) -> socket.socket:

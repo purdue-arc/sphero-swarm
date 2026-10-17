@@ -51,6 +51,17 @@ interface Telemetry {
     mask_streaming?: boolean;
     // False until "Start detecting" is pressed; the camera opens on a white frame
     detecting?: boolean;
+    roll_trials?: {
+        trial_id: string;
+        id: number;
+        x: number;
+        y: number;
+        duration: number;
+        status: string;
+        endpoint: [number, number] | null;
+        error: number | null;
+        passed: boolean | null;
+    }[];
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -451,6 +462,38 @@ export function Perception({
 
             {/* ── Bottom grid ─────────────────────────────────────────────── */}
             <div className={s.bottomGrid}>
+                {telemetry?.roll_trials && telemetry.roll_trials.length > 0 && (
+                    <div className={s.card}>
+                        <div className={s.cardHeader}>
+                            <div className={s.cardIcon}><FontAwesomeIcon icon={faCrosshairs} /></div>
+                            <span className={s.cardTitle}>Roll accuracy — latest trial per Sphero</span>
+                        </div>
+                        <table className={s.table}>
+                            <thead><tr>
+                                <th className={s.th}>ID</th>
+                                <th className={s.th}>Target / Final (grid)</th>
+                                <th className={s.th}>Predicted time</th>
+                                <th className={s.th}>Error (grid)</th>
+                                <th className={s.th}>Result</th>
+                            </tr></thead>
+                            <tbody>{telemetry.roll_trials.map(trial => (
+                                <tr key={`${trial.trial_id}-${trial.id}`}>
+                                    <td className={s.td}>{trial.id} {spheroTags[trial.id] ?? "Unassigned"}</td>
+                                    <td className={s.td}>
+                                        ({trial.x}, {trial.y}) / {trial.endpoint
+                                            ? `(${trial.endpoint[0].toFixed(3)}, ${trial.endpoint[1].toFixed(3)})`
+                                            : "—"}
+                                    </td>
+                                    <td className={s.td}>{trial.duration.toFixed(3)} s</td>
+                                    <td className={s.td}>{trial.error?.toFixed(3) ?? "—"}</td>
+                                    <td className={s.td}>{trial.status}{trial.passed !== null
+                                        ? ` · ${trial.passed ? "PASS" : "FAIL"}` : ""}</td>
+                                </tr>
+                            ))}</tbody>
+                        </table>
+                        <p className={s.fieldHint}>Crosshair: target. Circle: settled endpoint. Results are saved to roll_evaluation.csv.</p>
+                    </div>
+                )}
                 {/* Detections table */}
                 <div className={s.card}>
                     <div className={s.cardHeader}>
