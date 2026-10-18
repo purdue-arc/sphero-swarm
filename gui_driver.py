@@ -178,7 +178,6 @@ def _send_controls_update(
         if distance == 0:
             continue
         duration = max(0.0, algorithm.get_roll_duration(distance))
-        print(f"distance: {distance} inches, duration: {duration} seconds")
 
         roll_instructions.append(
             Instruction(sphero.id, 1, constants.SPHERO_SPEED, duration)
@@ -187,6 +186,9 @@ def _send_controls_update(
                         "id": sphero.id - 1, "x": sphero.target_x, "y": sphero.target_y,
                         "speed": constants.SPHERO_SPEED, "distance": distance,
                         "duration": duration, "inches_per_step": ROLL_STRAIGHT_INCH})
+        
+        algorithm.log(f"sphero: {sphero.id}")
+        algorithm.log(f"x-error: {ROLL_STRAIGHT_INCH * (sphero.true_x - sphero.x)}\ny-error: {ROLL_STRAIGHT_INCH * (sphero.true_y - sphero.y)}\ndelta angle: {delta_angle}\ndistance: {distance} inches\nduration: {duration} seconds", indent=1)
 
     send_batch(sock, color_instructions)
     turn_outcomes = send_batch(sock, rotate_instructions)
