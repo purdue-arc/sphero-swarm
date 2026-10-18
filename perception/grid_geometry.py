@@ -6,6 +6,13 @@ from pathlib import Path
 import time
 
 
+# Adjacent navigation nodes are 12.67 inches apart.  The AprilTags mark the
+# outside of the arena, while the first and last grid nodes sit four inches in
+# from that boundary.
+NODE_SPACING_INCHES = 12.67
+GRID_PADDING_INCHES = 4.0
+
+
 @dataclass(frozen=True)
 class GridGeometry:
     width: int = 4
@@ -15,9 +22,22 @@ class GridGeometry:
         if self.width < 2 or self.height < 2:
             raise ValueError("Grid dimensions must contain at least two nodes")
 
+    @staticmethod
+    def _inset_axis(start, end, node_count):
+        """Return node bounds inside an AprilTag-bounded image axis."""
+        grid_span_inches = (node_count - 1) * NODE_SPACING_INCHES
+        arena_span_inches = grid_span_inches + 2 * GRID_PADDING_INCHES
+        padding_pixels = (end - start) * GRID_PADDING_INCHES / arena_span_inches
+        return (start + padding_pixels, end - padding_pixels)
+
+    def node_bounds(self, top_left, bottom_right):
+        """Bounds of the grid nodes, four physical inches inside the tags."""
+        x0, x1 = self._inset_axis(top_left[0], bottom_right[0], self.width)
+        y0, y1 = self._inset_axis(top_left[1], bottom_right[1], self.height)
+        return ((x0, y0), (x1, y1))
+
     def pixel_to_grid(self, pixel_x, pixel_y, top_left, bottom_right):
-        x0, y0 = top_left
-        x1, y1 = bottom_right
+        (x0, y0), (x1, y1) = self.node_bounds(top_left, bottom_right)
         x = (pixel_x - x0) * (self.width - 1) / max(1, x1 - x0)
         y = (pixel_y - y0) * (self.height - 1) / max(1, y1 - y0)
         return (max(0.0, min(x, self.width - 1)),
@@ -25,8 +45,8 @@ class GridGeometry:
 
     def lines(self, top_left, bottom_right):
         """Connect nodes, including both diagonals in every complete cell."""
-        x0, y0 = top_left
-        x1, y1 = bottom_right
+        (x0, y0), (x1, y1) = self.node_bounds(top_left, bottom_right)
+        x0, y0, x1, y1 = map(round, (x0, y0, x1, y1))
         xs = [round(x0 + i * (x1 - x0) / (self.width - 1))
               for i in range(self.width)]
         ys = [round(y0 + j * (y1 - y0) / (self.height - 1))

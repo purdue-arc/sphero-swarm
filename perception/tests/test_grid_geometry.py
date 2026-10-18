@@ -4,7 +4,12 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from perception.grid_geometry import ConfiguredGrid, GridGeometry
+from perception.grid_geometry import (
+    ConfiguredGrid,
+    GRID_PADDING_INCHES,
+    GridGeometry,
+    NODE_SPACING_INCHES,
+)
 
 
 class GridGeometryTests(unittest.TestCase):
@@ -19,15 +24,32 @@ class GridGeometryTests(unittest.TestCase):
                 self.assertEqual(len(horizontal), height)
                 self.assertEqual(len(lines) - width - height,
                                  2 * (width - 1) * (height - 1))
-                self.assertIn(((509, 20), (509, 319)), vertical)
-                self.assertIn(((10, 319), (509, 319)), horizontal)
+                (x0, y0), (x1, y1) = grid.node_bounds((10, 20), (509, 319))
+                rounded_bounds = (round(x0), round(y0), round(x1), round(y1))
+                x0, y0, x1, y1 = rounded_bounds
+                self.assertIn(((x1, y0), (x1, y1)), vertical)
+                self.assertIn(((x0, y1), (x1, y1)), horizontal)
                 last_x = vertical[-2][0][0]
                 last_y = horizontal[-2][0][1]
-                self.assertIn(((last_x, last_y), (509, 319)), lines)
-                self.assertIn(((last_x, 319), (509, last_y)), lines)
+                self.assertIn(((last_x, last_y), (x1, y1)), lines)
+                self.assertIn(((last_x, y1), (x1, last_y)), lines)
                 for line in lines:
                     for x, y in line:
                         self.assertTrue(10 <= x <= 509 and 20 <= y <= 319)
+
+    def test_grid_is_padded_four_inches_inside_apriltags(self):
+        grid = GridGeometry(5, 4)
+        bounds = ((0, 0), (1000, 800))
+        (x0, y0), (x1, y1) = grid.node_bounds(*bounds)
+
+        expected_x_padding = 1000 * GRID_PADDING_INCHES / (
+            4 * NODE_SPACING_INCHES + 2 * GRID_PADDING_INCHES)
+        expected_y_padding = 800 * GRID_PADDING_INCHES / (
+            3 * NODE_SPACING_INCHES + 2 * GRID_PADDING_INCHES)
+        self.assertAlmostEqual(x0, expected_x_padding)
+        self.assertAlmostEqual(1000 - x1, expected_x_padding)
+        self.assertAlmostEqual(y0, expected_y_padding)
+        self.assertAlmostEqual(800 - y1, expected_y_padding)
 
     def test_reported_coordinates_match_overlay_nodes(self):
         grid = GridGeometry(6, 4)
