@@ -1,13 +1,33 @@
-import pickle
+import math
 import socket
 import time
+import uuid
 import zmq
 
 from algorithms.algorithm import Algorithm
 from algorithms.constants import Constants
 from algorithms.sphero import Sphero
 from controls.Instruction import Instruction
+from controls.protocol import send_batch
 from gui_server import get_next_command, send_algorithm_state
+
+ROLL_STRAIGHT_INCH = 12.67
+
+
+def _perception_request(message):
+    """Short-lived socket keeps a missing perception process from blocking rolls."""
+    sock = zmq.Context.instance().socket(zmq.REQ)
+    sock.setsockopt(zmq.LINGER, 0)
+    sock.setsockopt(zmq.RCVTIMEO, 1000)
+    sock.setsockopt(zmq.SNDTIMEO, 1000)
+    try:
+        sock.connect("tcp://127.0.0.1:5555")
+        sock.send_json(message)
+        return sock.recv_json()
+    except zmq.ZMQError:
+        return None
+    finally:
+        sock.close()
 
 def _to_int(value, default=None):
     try:
@@ -118,16 +138,41 @@ def _rebond_from_current_positions(algorithm: Algorithm) -> Algorithm:
     return rebuilt
 
 
+def _distance_based_roll(algorithm: Algorithm, sphero: Sphero, constants: Constants):
+    """Use calibrated speed and vary duration to cover measured target distance."""
+    if not algorithm._has_fresh_measurement(sphero):
+        return None
+    distance_grid = math.hypot(sphero.target_x - sphero.true_x, sphero.target_y - sphero.true_y)
+    if distance_grid <= constants.TARGET_TOLERANCE:
+        return None
+    distance = ROLL_STRAIGHT_INCH * distance_grid
+    return constants.SPHERO_SPEED, distance, max(0.0, algorithm.get_roll_duration(distance))
+
+
+def _speed_based_roll(algorithm: Algorithm, sphero: Sphero, constants: Constants):
+    """Keep the error-correction strategy: vary speed with a fixed roll duration."""
+    speed = algorithm.calculate_speed(sphero)
+    if speed <= 0:
+        return None
+    distance = ROLL_STRAIGHT_INCH * math.hypot(
+        sphero.target_x - sphero.true_x, sphero.target_y - sphero.true_y
+    )
+    return speed, distance, constants.ROLL_DURATION
+
+
 def _send_controls_update(
     sock: socket.socket,
     algorithm: Algorithm,
     constants: Constants,
     use_algorithm_colors: bool,
+    roll_strategy=_distance_based_roll,
 ) -> None:
     """Send color/rotate/roll instruction batches for the current sphero state."""
     color_instructions = []
     rotate_instructions = []
     roll_instructions = []
+    targets = []
+    trial_id = uuid.uuid4().hex
 
     custom_palette = constants.COLORS if len(constants.COLORS) > 0 else [constants.WHITE]
 
@@ -142,23 +187,54 @@ def _send_controls_update(
             Instruction(sphero.id, 0, r, g, b)
         )
 
+        roll = roll_strategy(algorithm, sphero, constants)
+        if roll is None:
+            continue
+        speed, distance, duration = roll
+
         rotate_instructions.append(
             Instruction(sphero.id, 2, sphero.delta_angle, constants.TURN_DURATION)
         )
 
-        safe_speed = sphero.speed if sphero.has_perception_measurement else 0
         roll_instructions.append(
-            Instruction(sphero.id, 1, safe_speed, constants.ROLL_DURATION)
+            Instruction(sphero.id, 1, speed, duration)
         )
+        targets.append({"trial_id": trial_id, "algorithm_id": sphero.id,
+                        "id": sphero.id - 1, "x": sphero.target_x, "y": sphero.target_y,
+                        "speed": speed, "distance": distance,
+                        "duration": duration, "inches_per_step": ROLL_STRAIGHT_INCH})
 
-    sock.send(pickle.dumps(color_instructions))
-    sock.recv(1024)
+        algorithm.log(f"sphero: {sphero.id}")
+        algorithm.log(f"x-error: {ROLL_STRAIGHT_INCH * (sphero.true_x - sphero.x)}\ny-error: {ROLL_STRAIGHT_INCH * (sphero.true_y - sphero.y)}\ndelta angle: {sphero.delta_angle}\ndistance: {distance} inches\nduration: {duration} seconds", indent=1)
 
-    sock.send(pickle.dumps(rotate_instructions))
-    sock.recv(1024)
-
-    sock.send(pickle.dumps(roll_instructions))
-    sock.recv(1024)
+    send_batch(sock, color_instructions)
+    turn_outcomes = send_batch(sock, rotate_instructions)
+    if not targets:
+        return
+    evaluation = _perception_request({"action": "roll_targets", "targets": targets})
+    evaluating = bool(evaluation and evaluation.get("ok"))
+    if not evaluating:
+        print("[gui_driver] Roll evaluation unavailable: start calibrated perception to record endpoints")
+    valid_rolls = [instruction for instruction in roll_instructions
+                   if turn_outcomes.get(str(instruction.spheroID)) == "complete"]
+    outcomes = send_batch(sock, valid_rolls) if valid_rolls else {}
+    for instruction in roll_instructions:
+        if turn_outcomes.get(str(instruction.spheroID)) != "complete":
+            outcomes[str(instruction.spheroID)] = "turn_failed"
+    if evaluating:
+        _perception_request({"action": "roll_complete", "trial_id": trial_id, "outcomes": outcomes})
+        deadline = time.monotonic() + 12
+        while time.monotonic() < deadline:
+            result = _perception_request({"action": "roll_results", "trial_id": trial_id})
+            if result and result.get("finished"):
+                print(f"[gui_driver] Roll evaluation: {result['trials']}")
+                break
+            if result is None:
+                print("[gui_driver] Perception disconnected during roll evaluation")
+                break
+            time.sleep(0.1)
+        else:
+            print("[gui_driver] Roll evaluation timed out; inspect perception tracking")
 
 
 def _connect_controls(port: int) -> socket.socket:

@@ -572,3 +572,7 @@ class Algorithm:
             for y in range(len(grid[0])):
                 if grid[x][y] < 0:
                     grid[x][y] = 0
+
+    def get_roll_duration(self, distance):
+        """Return calibrated roll duration in seconds for a distance in inches."""
+        return (distance - constants.SPHERO_SPEED_INTERCEPT) / constants.SPHERO_SPEED_SLOPE
