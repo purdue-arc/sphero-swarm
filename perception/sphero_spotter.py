@@ -17,6 +17,7 @@ import torch
 from pupil_apriltags import Detector # for april tag detection
 import numpy as np
 import time
+import math
 detector = Detector()
 
 from SpheroCoordinate import SpheroCoordinate
@@ -24,6 +25,7 @@ from input_streams import WebcamStream, VideoFileStream
 import blob_merge
 import color_id
 from grid_geometry import ConfiguredGrid
+from roll_evaluation import RollEvaluation
 
 # Brightness-mode tuning. Lives in constants.json under "PERCEPTION" so it can
 # be changed without editing code or passing a wall of flags; the values below
@@ -142,6 +144,17 @@ arena_grid = ConfiguredGrid(os.path.join(
     os.path.dirname(os.path.abspath(__file__)), '..', 'constants.json'))
 arena_w_px = 499
 arena_h_px = 499
+
+_evaluation_config = _constants.get("ROLL_EVALUATION", {})
+roll_evaluation = RollEvaluation(
+    os.path.join(os.path.dirname(__file__), "..", "controls", "Data_Collection", "roll_evaluation.csv"),
+    settle_seconds=float(_evaluation_config.get("SETTLE_SECONDS", 0.75)),
+    jitter=float(_evaluation_config.get("JITTER_GRID", 0.03)),
+    tolerance=float(_evaluation_config.get("TOLERANCE_GRID", 0.1)),
+    timeout=float(_evaluation_config.get("TIMEOUT_SECONDS", 10)),
+)
+evaluation_commands = Queue()
+evaluation_snapshot = []
 
 last_valid_frame = None
 
@@ -262,7 +275,43 @@ def listener():
         msg = socket.recv_string()
         print(f"Received request '{msg}' from algorithms!")
 
-        if msg == 'init':
+        if msg.startswith('{'):
+            try:
+                command = json.loads(msg)
+                action = command.get("action")
+                if action == "roll_targets":
+                    if last_warp_matrix is None or not detecting:
+                        raise ValueError("Calibrated, active perception is required")
+                    targets = command["targets"]
+                    if not isinstance(targets, list) or not targets:
+                        raise ValueError("Targets must be a nonempty list")
+                    for target in targets:
+                        if (not isinstance(target["id"], int) or
+                                not 0 <= target["id"] < N_SPHEROS or
+                                target["algorithm_id"] != target["id"] + 1 or
+                                not isinstance(target["trial_id"], str) or
+                                not target["trial_id"]):
+                            raise ValueError("Invalid target identity")
+                        if not all(math.isfinite(float(target[k])) for k in ("x", "y", "speed", "distance", "duration")):
+                            raise ValueError("Invalid target measurement")
+                        if not (0 <= target["x"] <= arena_grid.geometry.width - 1 and
+                                0 <= target["y"] <= arena_grid.geometry.height - 1 and
+                                target["duration"] >= 0):
+                            raise ValueError("Target outside arena or invalid duration")
+                    evaluation_commands.put(command)
+                    socket.send_json({"ok": True})
+                elif action == "roll_complete":
+                    evaluation_commands.put(command)
+                    socket.send_json({"ok": True})
+                elif action == "roll_results":
+                    trials = [t for t in evaluation_snapshot if t["trial_id"] == command["trial_id"]]
+                    socket.send_json({"trials": trials, "finished": bool(trials) and
+                                      all(t["status"] not in ("rolling", "settling") for t in trials)})
+                else:
+                    socket.send_json({"ok": False, "error": "Unknown evaluation action"})
+            except (ValueError, TypeError, KeyError, AttributeError) as error:
+                socket.send_json({"ok": False, "error": str(error)})
+        elif msg == 'init':
             num_found = initialize_spheros() # get their positions and assign IDs.
             socket.send_string(f"connected - {num_found}")
 
@@ -585,11 +634,50 @@ def start_detection():
         detecting = True
         print("[sphero_spotter] Detection started")
 
+def draw_roll_targets(frame, positions):
+    geometry = arena_grid.geometry
+    bounds = ((0, 0), (frame.shape[1] - 1, frame.shape[0] - 1))
+    def pixel(point):
+        return tuple(round(v) for v in geometry.grid_to_pixel(*point, *bounds))
+    colors = [(0, 220, 255), (255, 180, 0), (220, 80, 255)]
+    for trial in roll_evaluation.trials.values():
+        color = colors[trial["id"] % len(colors)]
+        target = pixel((trial["x"], trial["y"]))
+        cv2.drawMarker(frame, target, color, cv2.MARKER_CROSS, 18, 2)
+        axes = (max(1, round(roll_evaluation.tolerance * bounds[1][0] / (geometry.width - 1))),
+                max(1, round(roll_evaluation.tolerance * bounds[1][1] / (geometry.height - 1))))
+        cv2.ellipse(frame, target, axes, 0, 0, 360, color, 1)
+        actual = trial["endpoint"] or positions.get(trial["id"])
+        if actual is not None:
+            cv2.line(frame, target, pixel(actual), color, 1)
+        if trial["endpoint"] is not None:
+            cv2.circle(frame, pixel(trial["endpoint"]), 6, color, 2)
+        label = f'{trial["id"]} TARGET ({trial["x"]}, {trial["y"]})'
+        result_label = trial["status"]
+        if trial["error"] is not None:
+            result_label += f' err={trial["error"]:.3f} grid {"PASS" if trial["passed"] else "FAIL"}'
+        labels = (label, result_label)
+        text_width = max(cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, 0.38, 1)[0][0]
+                         for text in labels)
+        origin = (max(0, min(target[0] + 10, frame.shape[1] - text_width - 2)),
+                  max(15, min(target[1] - 15, frame.shape[0] - 28)))
+        for index, text in enumerate(labels):
+            cv2.putText(frame, text, (origin[0], origin[1] + index * 16),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.38, color, 1, cv2.LINE_AA)
+
+
 def process_frame_async():
     """Background thread for YOLO inference"""
     global frozen, next_display_id, lost_spheros, arena_w_px, arena_h_px
+    global evaluation_snapshot
     while not stop_processing.is_set():
         try:
+            while not evaluation_commands.empty():
+                event = evaluation_commands.get_nowait()
+                if event["action"] == "roll_targets":
+                    roll_evaluation.start(event["targets"], time.time())
+                elif event["action"] == "roll_complete":
+                    roll_evaluation.complete(event["trial_id"], event["outcomes"], time.time())
             # Check for commands from GUI (e.g., grid toggle)
             cmd = server.get_command()
             if cmd:
@@ -614,6 +702,9 @@ def process_frame_async():
                     if not (0 <= current_id < N_SPHEROS and 0 <= target_id < N_SPHEROS):
                         continue
                     if current_id != target_id and current_id in id_map.values():
+                        for trial in roll_evaluation.trials.values():
+                            if trial["status"] in ("rolling", "settling"):
+                                roll_evaluation.finish(trial, "identity_changed")
                         for tracker_id, display_id in list(id_map.items()):
                             if display_id == current_id:
                                 id_map[tracker_id] = target_id
@@ -637,6 +728,8 @@ def process_frame_async():
                 frame_data = frame_queue.get(timeout=0.1)
                 frame, frame_timestamp = frame_data
             except Empty:
+                roll_evaluation.tick(time.time())
+                evaluation_snapshot = roll_evaluation.snapshot()
                 continue
             
             # Skip if queue has newer frames (drop stale frames)
@@ -783,6 +876,15 @@ def process_frame_async():
             # Grid goes on last, over the detections, so detection never sees it
             frame = draw_grid(frame, (0, 0), (frame.shape[1] - 1, frame.shape[0] - 1))
 
+            # Use only this frame's detections, never the cached spheros dictionary.
+            positions = {id_map[tid]: pixel_to_grid_coords(cx, cy)
+                         for cx, cy, _, _, _, _, _, tid in dets if tid in id_map}
+            roll_evaluation.update(positions, frame_timestamp, time.time(),
+                                   calibrated=last_warp_matrix is not None and detecting)
+            evaluation_snapshot = roll_evaluation.snapshot()
+            if last_warp_matrix is not None:
+                draw_roll_targets(frame, positions)
+
             # Record last known position of any sphero not seen this frame
             for disp_id, coord in spheros.items():
                 if disp_id not in detected_disp_ids and disp_id not in lost_spheros:
@@ -816,6 +918,7 @@ def process_frame_async():
                     "tuning": {k: getattr(tune, k) for k in PERCEPTION_DEFAULTS},
                     "mask_streaming": mask_view is not None,
                     "detecting": detecting,
+                    "roll_trials": evaluation_snapshot,
                 })
 
             # Put result in queue (replace if queue is full)

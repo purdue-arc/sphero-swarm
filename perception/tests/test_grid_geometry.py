@@ -13,6 +13,15 @@ from perception.grid_geometry import (
 
 
 class GridGeometryTests(unittest.TestCase):
+    def test_fractional_targets_roundtrip_in_rectangular_arena(self):
+        grid = GridGeometry(6, 4)
+        bounds = ((10, 20), (509, 319))
+        for point in ((0, 0), (5, 3), (2.25, 1.75)):
+            pixel = grid.grid_to_pixel(*point, *bounds)
+            actual = grid.pixel_to_grid(*pixel, *bounds)
+            self.assertAlmostEqual(actual[0], point[0])
+            self.assertAlmostEqual(actual[1], point[1])
+
     def test_configured_node_counts_and_complete_diagonals(self):
         for width, height in [(4, 4), (6, 3), (2, 2)]:
             with self.subTest(width=width, height=height):

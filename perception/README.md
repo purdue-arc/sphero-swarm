@@ -75,3 +75,42 @@ This section summarizes the purpose, key components, and connections between the
 
 - [models/*.pt](models/*.pt)
   - Purpose: Hosts models for running sphero_swarm
+
+## Roll accuracy evaluation
+
+Start perception and detect all four AprilTags to calibrate the arena. Confirm
+the grid aligns with physical grid nodes and the detection IDs match the Sphero
+tags in the GUI. Algorithm ID 1 maps to perception ID 0, and so on. Enable
+controls and step the algorithm to run a trial. Use one robot at a time initially,
+then repeat distances and directions for each robot at the regression's speed.
+
+The camera feed draws a labeled crosshair and tolerance ring at each commanded
+target. After controls finishes the roll batch, fresh detections must stay within
+0.03 grid steps for at least 0.75 seconds and five frames. The mean of those
+positions becomes the endpoint circle. A line joins it to the target. The GUI's
+Roll accuracy table shows the predicted time, measured error, and pass/fail
+(default tolerance: 0.1 grid steps). These overlays are drawn after detection;
+they are not drawn into the detection image or pixel mask.
+
+The driver waits for endpoint measurements before issuing the next move.
+Trials time out after 10 seconds of waiting for a stable endpoint. Missing/stale
+detections cannot become endpoints. Disconnected robots, failed turns/rolls,
+identity edits, missing start positions, and timeouts receive explicit statuses.
+Zero-distance moves do not roll. Start/end positions are camera measurements;
+algorithm simulation coordinates are not measured endpoints. Targets remain
+visible until that robot's next trial or perception restarts.
+
+Results append to `controls/Data_Collection/roll_evaluation.csv`. Coordinates
+and signed along/perpendicular errors use grid units; endpoint distance is also
+reported in inches using the driver's `ROLL_STRAIGHT_INCH` scale (12.67 by
+default). Check that scale against your arena before interpreting inch errors.
+Along error is positive for overshoot; perpendicular error reports heading drift.
+Use the CSV to compare mean/worst endpoint error and pass percentage per robot.
+
+Optional `ROLL_EVALUATION` settings in `gui/constants.json` are read at perception
+startup: `SETTLE_SECONDS`, `JITTER_GRID`, `TOLERANCE_GRID`, and `TIMEOUT_SECONDS`.
+All must be positive. Keep timeout below the driver's 12-second evaluation wait.
+Restart both the driver and controls server after updating: the driver uses
+framed batches with completion replies. Legacy controls clients still receive
+the existing queue acknowledgement. If calibrated perception is unavailable,
+the driver reports that evaluation is unavailable and still executes movement.

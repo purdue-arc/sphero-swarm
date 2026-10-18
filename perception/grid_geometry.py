@@ -43,6 +43,13 @@ class GridGeometry:
         return (max(0.0, min(x, self.width - 1)),
                 max(0.0, min(y, self.height - 1)))
 
+    def grid_to_pixel(self, x, y, top_left, bottom_right):
+        """Inverse mapping, retaining fractional grid coordinates."""
+        x0, y0 = top_left
+        x1, y1 = bottom_right
+        return (x0 + x * (x1 - x0) / (self.width - 1),
+                y0 + y * (y1 - y0) / (self.height - 1))
+
     def lines(self, top_left, bottom_right):
         """Connect nodes, including both diagonals in every complete cell."""
         (x0, y0), (x1, y1) = self.node_bounds(top_left, bottom_right)
