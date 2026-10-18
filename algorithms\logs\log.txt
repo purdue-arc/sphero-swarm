@@ -1,0 +1,896 @@
+START SIMULATION
+
+
+<  Step 1  >
+
+
+	checking sphero pos: 2, 2, id: 1, direction: 0, target pos: 2, 2 and POTENTIAL direction 5
+	checking sphero pos: 3, 3, id: 3, direction: 0, target pos: 3, 3 and POTENTIAL direction 5
+
+Group: 1	Direction: 5	Translation
+
+	checking sphero pos: 4, 1, id: 2, direction: 0, target pos: 4, 1 and POTENTIAL direction 6
+
+Group: 2	Direction: 6	Translation
+
+
+<  Step 2  >
+
+
+	checking sphero pos: 2, 1, id: 1, direction: 5, target pos: 2, 1 and POTENTIAL direction 3
+	checking sphero pos: 3, 2, id: 3, direction: 5, target pos: 3, 2 and POTENTIAL direction 3
+
+Group: 1	Direction: 3	Translation
+
+	checking sphero pos: 3, 0, id: 2, direction: 6, target pos: 3, 0 and POTENTIAL direction 6
+	checking sphero pos: 3, 0, id: 2, direction: 6, target pos: 3, 0 and POTENTIAL direction 7
+
+Group: 2	Direction: 7	Translation
+
+
+<  Step 3  >
+
+
+	checking sphero pos: 3, 1, id: 1, direction: 3, target pos: 3, 1 and POTENTIAL direction 8
+	checking sphero pos: 4, 2, id: 3, direction: 3, target pos: 4, 2 and POTENTIAL direction 8
+
+Group: 1	Direction: 8	Translation
+
+	checking sphero pos: 2, 0, id: 2, direction: 7, target pos: 2, 0 and POTENTIAL direction 6
+	checking sphero pos: 2, 0, id: 2, direction: 7, target pos: 2, 0 and POTENTIAL direction 3
+
+Group: 2	Direction: 3	Translation
+
+
+<  Step 4  >
+
+
+	checking sphero pos: 2, 2, id: 1, direction: 8, target pos: 2, 2 and POTENTIAL direction 3
+	checking sphero pos: 3, 3, id: 3, direction: 8, target pos: 3, 3 and POTENTIAL direction 3
+
+Group: 1	Direction: 3	Translation
+
+	checking sphero pos: 3, 0, id: 2, direction: 3, target pos: 3, 0 and POTENTIAL direction 8
+
+Group: 2	Direction: 8	Translation
+
+
+<  Step 5  >
+
+
+	checking sphero pos: 3, 2, id: 1, direction: 3, target pos: 3, 2 and POTENTIAL direction 5
+	checking sphero pos: 4, 3, id: 3, direction: 3, target pos: 4, 3 and POTENTIAL direction 5
+
+Group: 1	Direction: 5	Translation
+
+	checking sphero pos: 2, 1, id: 2, direction: 8, target pos: 2, 1 and POTENTIAL direction 5
+
+Group: 2	Direction: 5	Translation
+
+
+<  Step 6  >
+
+
+	checking sphero pos: 3, 1, id: 1, direction: 5, target pos: 3, 1 and POTENTIAL direction 4
+	checking sphero pos: 4, 2, id: 3, direction: 5, target pos: 4, 2 and POTENTIAL direction 4
+	checking sphero pos: 3, 1, id: 1, direction: 5, target pos: 3, 1 and POTENTIAL direction 6
+	checking sphero pos: 4, 2, id: 3, direction: 5, target pos: 4, 2 and POTENTIAL direction 6
+	checking sphero pos: 3, 1, id: 1, direction: 5, target pos: 3, 1 and POTENTIAL direction 7
+	checking sphero pos: 4, 2, id: 3, direction: 5, target pos: 4, 2 and POTENTIAL direction 7
+
+Group: 1	Direction: 7	Translation
+
+	checking sphero pos: 2, 0, id: 2, direction: 5, target pos: 2, 0 and POTENTIAL direction 1
+	checking sphero pos: 2, 0, id: 2, direction: 5, target pos: 2, 0 and POTENTIAL direction 4
+	checking sphero pos: 2, 0, id: 2, direction: 5, target pos: 2, 0 and POTENTIAL direction 8
+
+Group: 2	Direction: 8	Translation
+
+
+<  Step 7  >
+
+
+	checking sphero pos: 2, 1, id: 1, direction: 7, target pos: 2, 1 and POTENTIAL direction 4
+	checking sphero pos: 3, 2, id: 3, direction: 7, target pos: 3, 2 and POTENTIAL direction 4
+
+Group: 1	Direction: 4	Translation
+
+	checking sphero pos: 1, 1, id: 2, direction: 8, target pos: 1, 1 and POTENTIAL direction 6
+
+Group: 2	Direction: 6	Translation
+
+
+<  Step 8  >
+
+
+	checking sphero pos: 3, 0, id: 1, direction: 4, target pos: 3, 0 and POTENTIAL direction 5
+	checking sphero pos: 4, 1, id: 3, direction: 4, target pos: 4, 1 and POTENTIAL direction 5
+	checking sphero pos: 3, 0, id: 1, direction: 4, target pos: 3, 0 and POTENTIAL direction 8
+	checking sphero pos: 4, 1, id: 3, direction: 4, target pos: 4, 1 and POTENTIAL direction 8
+
+Group: 1	Direction: 8	Translation
+
+	checking sphero pos: 0, 0, id: 2, direction: 6, target pos: 0, 0 and POTENTIAL direction 4
+	checking sphero pos: 0, 0, id: 2, direction: 6, target pos: 0, 0 and POTENTIAL direction 8
+	checking sphero pos: 0, 0, id: 2, direction: 6, target pos: 0, 0 and POTENTIAL direction 7
+	checking sphero pos: 0, 0, id: 2, direction: 6, target pos: 0, 0 and POTENTIAL direction 2
+
+Group: 2	Direction: 2	Translation
+
+
+<  Step 9  >
+
+
+	checking sphero pos: 2, 1, id: 1, direction: 8, target pos: 2, 1 and POTENTIAL direction 8
+	checking sphero pos: 3, 2, id: 3, direction: 8, target pos: 3, 2 and POTENTIAL direction 8
+
+Group: 1	Direction: 8	Translation
+
+	checking sphero pos: 1, 1, id: 2, direction: 2, target pos: 1, 1 and POTENTIAL direction 1
+	checking sphero pos: 1, 1, id: 2, direction: 2, target pos: 1, 1 and POTENTIAL direction 2
+	checking sphero pos: 1, 1, id: 2, direction: 2, target pos: 1, 1 and POTENTIAL direction 5
+
+Group: 2	Direction: 5	Translation
+
+
+<  Step 10  >
+
+
+	checking sphero pos: 1, 2, id: 1, direction: 8, target pos: 1, 2 and POTENTIAL direction 8
+	checking sphero pos: 2, 3, id: 3, direction: 8, target pos: 2, 3 and POTENTIAL direction 8
+
+Group: 1	Direction: 8	Translation
+
+	checking sphero pos: 1, 0, id: 2, direction: 5, target pos: 1, 0 and POTENTIAL direction 1
+
+Group: 2	Direction: 1	Translation
+
+
+<  Step 11  >
+
+
+	checking sphero pos: 0, 3, id: 1, direction: 8, target pos: 0, 3 and POTENTIAL direction 1
+	checking sphero pos: 1, 4, id: 3, direction: 8, target pos: 1, 4 and POTENTIAL direction 1
+	checking sphero pos: 0, 3, id: 1, direction: 8, target pos: 0, 3 and POTENTIAL direction 2
+	checking sphero pos: 1, 4, id: 3, direction: 8, target pos: 1, 4 and POTENTIAL direction 2
+	checking sphero pos: 0, 3, id: 1, direction: 8, target pos: 0, 3 and POTENTIAL direction 5
+	checking sphero pos: 1, 4, id: 3, direction: 8, target pos: 1, 4 and POTENTIAL direction 5
+
+Group: 1	Direction: 5	Translation
+
+	checking sphero pos: 1, 1, id: 2, direction: 1, target pos: 1, 1 and POTENTIAL direction 4
+
+Group: 2	Direction: 4	Translation
+
+
+<  Step 12  >
+
+
+	checking sphero pos: 0, 2, id: 1, direction: 5, target pos: 0, 2 and POTENTIAL direction 5
+	checking sphero pos: 1, 3, id: 3, direction: 5, target pos: 1, 3 and POTENTIAL direction 5
+
+Group: 1	Direction: 5	Translation
+
+	checking sphero pos: 2, 0, id: 2, direction: 4, target pos: 2, 0 and POTENTIAL direction 1
+
+Group: 2	Direction: 1	Translation
+
+
+<  Step 13  >
+
+
+	checking sphero pos: 0, 1, id: 1, direction: 5, target pos: 0, 1 and POTENTIAL direction 4
+	checking sphero pos: 1, 2, id: 3, direction: 5, target pos: 1, 2 and POTENTIAL direction 4
+	checking sphero pos: 2, 1, id: 2, direction: 1, target pos: 2, 1 and POTENTIAL direction 4
+
+Group: 1	Direction: 4	Translation
+
+
+<  Step 14  >
+
+
+	checking sphero pos: 1, 0, id: 1, direction: 4, target pos: 1, 0 and POTENTIAL direction 8
+	checking sphero pos: 2, 1, id: 3, direction: 4, target pos: 2, 1 and POTENTIAL direction 8
+	checking sphero pos: 3, 0, id: 2, direction: 4, target pos: 3, 0 and POTENTIAL direction 8
+
+Group: 1	Direction: 8	Translation
+
+
+<  Step 15  >
+
+
+	checking sphero pos: 0, 1, id: 1, direction: 8, target pos: 0, 1 and POTENTIAL direction 7
+	checking sphero pos: 1, 2, id: 3, direction: 8, target pos: 1, 2 and POTENTIAL direction 7
+	checking sphero pos: 2, 1, id: 2, direction: 8, target pos: 2, 1 and POTENTIAL direction 7
+	checking sphero pos: 0, 1, id: 1, direction: 8, target pos: 0, 1 and POTENTIAL direction 5
+	checking sphero pos: 1, 2, id: 3, direction: 8, target pos: 1, 2 and POTENTIAL direction 5
+	checking sphero pos: 2, 1, id: 2, direction: 8, target pos: 2, 1 and POTENTIAL direction 5
+
+Group: 1	Direction: 5	Translation
+
+
+<  Step 16  >
+
+
+	checking sphero pos: 0, 0, id: 1, direction: 5, target pos: 0, 0 and POTENTIAL direction 4
+	checking sphero pos: 1, 1, id: 3, direction: 5, target pos: 1, 1 and POTENTIAL direction 4
+	checking sphero pos: 2, 0, id: 2, direction: 5, target pos: 2, 0 and POTENTIAL direction 4
+	checking sphero pos: 0, 0, id: 1, direction: 5, target pos: 0, 0 and POTENTIAL direction 1
+	checking sphero pos: 1, 1, id: 3, direction: 5, target pos: 1, 1 and POTENTIAL direction 1
+	checking sphero pos: 2, 0, id: 2, direction: 5, target pos: 2, 0 and POTENTIAL direction 1
+
+Group: 1	Direction: 1	Translation
+
+
+<  Step 17  >
+
+
+	checking sphero pos: 0, 1, id: 1, direction: 1, target pos: 0, 1 and POTENTIAL direction 3
+	checking sphero pos: 1, 2, id: 3, direction: 1, target pos: 1, 2 and POTENTIAL direction 3
+	checking sphero pos: 2, 1, id: 2, direction: 1, target pos: 2, 1 and POTENTIAL direction 3
+
+Group: 1	Direction: 3	Translation
+
+
+<  Step 18  >
+
+
+	checking sphero pos: 1, 1, id: 1, direction: 3, target pos: 1, 1 and POTENTIAL direction 8
+	checking sphero pos: 2, 2, id: 3, direction: 3, target pos: 2, 2 and POTENTIAL direction 8
+	checking sphero pos: 3, 1, id: 2, direction: 3, target pos: 3, 1 and POTENTIAL direction 8
+
+Group: 1	Direction: 8	Translation
+
+
+<  Step 19  >
+
+
+	checking sphero pos: 0, 2, id: 1, direction: 8, target pos: 0, 2 and POTENTIAL direction 2
+	checking sphero pos: 1, 3, id: 3, direction: 8, target pos: 1, 3 and POTENTIAL direction 2
+	checking sphero pos: 2, 2, id: 2, direction: 8, target pos: 2, 2 and POTENTIAL direction 2
+
+Group: 1	Direction: 2	Translation
+
+
+<  Step 20  >
+
+
+	checking sphero pos: 1, 3, id: 1, direction: 2, target pos: 1, 3 and POTENTIAL direction 6
+	checking sphero pos: 2, 4, id: 3, direction: 2, target pos: 2, 4 and POTENTIAL direction 6
+	checking sphero pos: 3, 3, id: 2, direction: 2, target pos: 3, 3 and POTENTIAL direction 6
+
+Group: 1	Direction: 6	Translation
+
+
+<  Step 21  >
+
+
+	checking sphero pos: 0, 2, id: 1, direction: 6, target pos: 0, 2 and POTENTIAL direction 4
+	checking sphero pos: 1, 3, id: 3, direction: 6, target pos: 1, 3 and POTENTIAL direction 4
+	checking sphero pos: 2, 2, id: 2, direction: 6, target pos: 2, 2 and POTENTIAL direction 4
+
+Group: 1	Direction: 4	Translation
+
+
+<  Step 22  >
+
+
+	checking sphero pos: 1, 1, id: 1, direction: 4, target pos: 1, 1 and POTENTIAL direction 6
+	checking sphero pos: 2, 2, id: 3, direction: 4, target pos: 2, 2 and POTENTIAL direction 6
+	checking sphero pos: 3, 1, id: 2, direction: 4, target pos: 3, 1 and POTENTIAL direction 6
+
+Group: 1	Direction: 6	Translation
+
+
+<  Step 23  >
+
+
+	checking sphero pos: 0, 0, id: 1, direction: 6, target pos: 0, 0 and POTENTIAL direction 5
+	checking sphero pos: 1, 1, id: 3, direction: 6, target pos: 1, 1 and POTENTIAL direction 5
+	checking sphero pos: 2, 0, id: 2, direction: 6, target pos: 2, 0 and POTENTIAL direction 5
+	checking sphero pos: 0, 0, id: 1, direction: 6, target pos: 0, 0 and POTENTIAL direction 6
+	checking sphero pos: 1, 1, id: 3, direction: 6, target pos: 1, 1 and POTENTIAL direction 6
+	checking sphero pos: 2, 0, id: 2, direction: 6, target pos: 2, 0 and POTENTIAL direction 6
+	checking sphero pos: 0, 0, id: 1, direction: 6, target pos: 0, 0 and POTENTIAL direction 7
+	checking sphero pos: 1, 1, id: 3, direction: 6, target pos: 1, 1 and POTENTIAL direction 7
+	checking sphero pos: 2, 0, id: 2, direction: 6, target pos: 2, 0 and POTENTIAL direction 7
+	checking sphero pos: 0, 0, id: 1, direction: 6, target pos: 0, 0 and POTENTIAL direction 3
+	checking sphero pos: 1, 1, id: 3, direction: 6, target pos: 1, 1 and POTENTIAL direction 3
+	checking sphero pos: 2, 0, id: 2, direction: 6, target pos: 2, 0 and POTENTIAL direction 3
+
+Group: 1	Direction: 3	Translation
+
+
+<  Step 24  >
+
+
+	checking sphero pos: 1, 0, id: 1, direction: 3, target pos: 1, 0 and POTENTIAL direction 6
+	checking sphero pos: 2, 1, id: 3, direction: 3, target pos: 2, 1 and POTENTIAL direction 6
+	checking sphero pos: 3, 0, id: 2, direction: 3, target pos: 3, 0 and POTENTIAL direction 6
+	checking sphero pos: 1, 0, id: 1, direction: 3, target pos: 1, 0 and POTENTIAL direction 2
+	checking sphero pos: 2, 1, id: 3, direction: 3, target pos: 2, 1 and POTENTIAL direction 2
+	checking sphero pos: 3, 0, id: 2, direction: 3, target pos: 3, 0 and POTENTIAL direction 2
+
+Group: 1	Direction: 2	Translation
+
+
+<  Step 25  >
+
+
+	checking sphero pos: 2, 1, id: 1, direction: 2, target pos: 2, 1 and POTENTIAL direction 2
+	checking sphero pos: 3, 2, id: 3, direction: 2, target pos: 3, 2 and POTENTIAL direction 2
+	checking sphero pos: 4, 1, id: 2, direction: 2, target pos: 4, 1 and POTENTIAL direction 2
+
+Group: 1	Direction: 9	Rotation
+
+
+<  Step 26  >
+
+
+	checking sphero pos: 2, 3, id: 1, direction: 9, target pos: 2, 3 and POTENTIAL direction 3
+	checking sphero pos: 3, 2, id: 3, direction: 9, target pos: 3, 2 and POTENTIAL direction 3
+	checking sphero pos: 2, 1, id: 2, direction: 9, target pos: 2, 1 and POTENTIAL direction 3
+
+Group: 1	Direction: 3	Translation
+
+
+<  Step 27  >
+
+
+	checking sphero pos: 3, 3, id: 1, direction: 3, target pos: 3, 3 and POTENTIAL direction 5
+	checking sphero pos: 4, 2, id: 3, direction: 3, target pos: 4, 2 and POTENTIAL direction 5
+	checking sphero pos: 3, 1, id: 2, direction: 3, target pos: 3, 1 and POTENTIAL direction 5
+
+Group: 1	Direction: 5	Translation
+
+
+<  Step 28  >
+
+
+	checking sphero pos: 3, 2, id: 1, direction: 5, target pos: 3, 2 and POTENTIAL direction 4
+	checking sphero pos: 4, 1, id: 3, direction: 5, target pos: 4, 1 and POTENTIAL direction 4
+	checking sphero pos: 3, 0, id: 2, direction: 5, target pos: 3, 0 and POTENTIAL direction 4
+	checking sphero pos: 3, 2, id: 1, direction: 5, target pos: 3, 2 and POTENTIAL direction 1
+	checking sphero pos: 4, 1, id: 3, direction: 5, target pos: 4, 1 and POTENTIAL direction 1
+	checking sphero pos: 3, 0, id: 2, direction: 5, target pos: 3, 0 and POTENTIAL direction 1
+
+Group: 1	Direction: 1	Translation
+
+
+<  Step 29  >
+
+
+	checking sphero pos: 3, 3, id: 1, direction: 1, target pos: 3, 3 and POTENTIAL direction 5
+	checking sphero pos: 4, 2, id: 3, direction: 1, target pos: 4, 2 and POTENTIAL direction 5
+	checking sphero pos: 3, 1, id: 2, direction: 1, target pos: 3, 1 and POTENTIAL direction 5
+
+Group: 1	Direction: 5	Translation
+
+
+<  Step 30  >
+
+
+	checking sphero pos: 3, 2, id: 1, direction: 5, target pos: 3, 2 and POTENTIAL direction 2
+	checking sphero pos: 4, 1, id: 3, direction: 5, target pos: 4, 1 and POTENTIAL direction 2
+	checking sphero pos: 3, 0, id: 2, direction: 5, target pos: 3, 0 and POTENTIAL direction 2
+	checking sphero pos: 3, 2, id: 1, direction: 5, target pos: 3, 2 and POTENTIAL direction 1
+	checking sphero pos: 4, 1, id: 3, direction: 5, target pos: 4, 1 and POTENTIAL direction 1
+	checking sphero pos: 3, 0, id: 2, direction: 5, target pos: 3, 0 and POTENTIAL direction 1
+
+Group: 1	Direction: 1	Translation
+
+
+<  Step 31  >
+
+
+	checking sphero pos: 3, 3, id: 1, direction: 1, target pos: 3, 3 and POTENTIAL direction 2
+	checking sphero pos: 4, 2, id: 3, direction: 1, target pos: 4, 2 and POTENTIAL direction 2
+	checking sphero pos: 3, 1, id: 2, direction: 1, target pos: 3, 1 and POTENTIAL direction 2
+	checking sphero pos: 3, 3, id: 1, direction: 1, target pos: 3, 3 and POTENTIAL direction 4
+	checking sphero pos: 4, 2, id: 3, direction: 1, target pos: 4, 2 and POTENTIAL direction 4
+	checking sphero pos: 3, 1, id: 2, direction: 1, target pos: 3, 1 and POTENTIAL direction 4
+	checking sphero pos: 3, 3, id: 1, direction: 1, target pos: 3, 3 and POTENTIAL direction 1
+	checking sphero pos: 4, 2, id: 3, direction: 1, target pos: 4, 2 and POTENTIAL direction 1
+	checking sphero pos: 3, 1, id: 2, direction: 1, target pos: 3, 1 and POTENTIAL direction 1
+
+Group: 1	Direction: 1	Translation
+
+
+<  Step 32  >
+
+
+	checking sphero pos: 3, 4, id: 1, direction: 1, target pos: 3, 4 and POTENTIAL direction 1
+	checking sphero pos: 4, 3, id: 3, direction: 1, target pos: 4, 3 and POTENTIAL direction 1
+	checking sphero pos: 3, 2, id: 2, direction: 1, target pos: 3, 2 and POTENTIAL direction 1
+	checking sphero pos: 3, 4, id: 1, direction: 1, target pos: 3, 4 and POTENTIAL direction 7
+	checking sphero pos: 4, 3, id: 3, direction: 1, target pos: 4, 3 and POTENTIAL direction 7
+	checking sphero pos: 3, 2, id: 2, direction: 1, target pos: 3, 2 and POTENTIAL direction 7
+
+Group: 1	Direction: 7	Translation
+
+
+<  Step 33  >
+
+
+	checking sphero pos: 2, 4, id: 1, direction: 7, target pos: 2, 4 and POTENTIAL direction 2
+	checking sphero pos: 3, 3, id: 3, direction: 7, target pos: 3, 3 and POTENTIAL direction 2
+	checking sphero pos: 2, 2, id: 2, direction: 7, target pos: 2, 2 and POTENTIAL direction 2
+	checking sphero pos: 2, 4, id: 1, direction: 7, target pos: 2, 4 and POTENTIAL direction 6
+	checking sphero pos: 3, 3, id: 3, direction: 7, target pos: 3, 3 and POTENTIAL direction 6
+	checking sphero pos: 2, 2, id: 2, direction: 7, target pos: 2, 2 and POTENTIAL direction 6
+
+Group: 1	Direction: 6	Translation
+
+
+<  Step 34  >
+
+
+	checking sphero pos: 1, 3, id: 1, direction: 6, target pos: 1, 3 and POTENTIAL direction 3
+	checking sphero pos: 2, 2, id: 3, direction: 6, target pos: 2, 2 and POTENTIAL direction 3
+	checking sphero pos: 1, 1, id: 2, direction: 6, target pos: 1, 1 and POTENTIAL direction 3
+
+Group: 1	Direction: 3	Translation
+
+
+<  Step 35  >
+
+
+	checking sphero pos: 2, 3, id: 1, direction: 3, target pos: 2, 3 and POTENTIAL direction 4
+	checking sphero pos: 3, 2, id: 3, direction: 3, target pos: 3, 2 and POTENTIAL direction 4
+	checking sphero pos: 2, 1, id: 2, direction: 3, target pos: 2, 1 and POTENTIAL direction 4
+
+Group: 1	Direction: 4	Translation
+
+
+<  Step 36  >
+
+
+	checking sphero pos: 3, 2, id: 1, direction: 4, target pos: 3, 2 and POTENTIAL direction 8
+	checking sphero pos: 4, 1, id: 3, direction: 4, target pos: 4, 1 and POTENTIAL direction 8
+	checking sphero pos: 3, 0, id: 2, direction: 4, target pos: 3, 0 and POTENTIAL direction 8
+
+Group: 1	Direction: 8	Translation
+
+
+<  Step 37  >
+
+
+	checking sphero pos: 2, 3, id: 1, direction: 8, target pos: 2, 3 and POTENTIAL direction 6
+	checking sphero pos: 3, 2, id: 3, direction: 8, target pos: 3, 2 and POTENTIAL direction 6
+	checking sphero pos: 2, 1, id: 2, direction: 8, target pos: 2, 1 and POTENTIAL direction 6
+
+Group: 1	Direction: 6	Translation
+
+
+<  Step 38  >
+
+
+	checking sphero pos: 1, 2, id: 1, direction: 6, target pos: 1, 2 and POTENTIAL direction 6
+	checking sphero pos: 2, 1, id: 3, direction: 6, target pos: 2, 1 and POTENTIAL direction 6
+	checking sphero pos: 1, 0, id: 2, direction: 6, target pos: 1, 0 and POTENTIAL direction 6
+	checking sphero pos: 1, 2, id: 1, direction: 6, target pos: 1, 2 and POTENTIAL direction 1
+	checking sphero pos: 2, 1, id: 3, direction: 6, target pos: 2, 1 and POTENTIAL direction 1
+	checking sphero pos: 1, 0, id: 2, direction: 6, target pos: 1, 0 and POTENTIAL direction 1
+
+Group: 1	Direction: 1	Translation
+
+
+<  Step 39  >
+
+
+
+Group: 1	Direction: 10	Rotation
+
+
+<  Step 40  >
+
+
+
+Group: 1	Direction: 9	Rotation
+
+
+<  Step 41  >
+
+
+	checking sphero pos: 1, 3, id: 1, direction: 9, target pos: 1, 3 and POTENTIAL direction 1
+	checking sphero pos: 2, 2, id: 3, direction: 9, target pos: 2, 2 and POTENTIAL direction 1
+	checking sphero pos: 1, 1, id: 2, direction: 9, target pos: 1, 1 and POTENTIAL direction 1
+
+Group: 1	Direction: 1	Translation
+
+
+<  Step 42  >
+
+
+	checking sphero pos: 1, 4, id: 1, direction: 1, target pos: 1, 4 and POTENTIAL direction 6
+	checking sphero pos: 2, 3, id: 3, direction: 1, target pos: 2, 3 and POTENTIAL direction 6
+	checking sphero pos: 1, 2, id: 2, direction: 1, target pos: 1, 2 and POTENTIAL direction 6
+
+Group: 1	Direction: 6	Translation
+
+
+<  Step 43  >
+
+
+	checking sphero pos: 0, 3, id: 1, direction: 6, target pos: 0, 3 and POTENTIAL direction 4
+	checking sphero pos: 1, 2, id: 3, direction: 6, target pos: 1, 2 and POTENTIAL direction 4
+	checking sphero pos: 0, 1, id: 2, direction: 6, target pos: 0, 1 and POTENTIAL direction 4
+
+Group: 1	Direction: 4	Translation
+
+
+<  Step 44  >
+
+
+
+Group: 1	Direction: 9	Rotation
+
+
+<  Step 45  >
+
+
+	checking sphero pos: 3, 2, id: 1, direction: 9, target pos: 3, 2 and POTENTIAL direction 5
+	checking sphero pos: 2, 1, id: 3, direction: 9, target pos: 2, 1 and POTENTIAL direction 5
+	checking sphero pos: 1, 2, id: 2, direction: 9, target pos: 1, 2 and POTENTIAL direction 5
+
+Group: 1	Direction: 5	Translation
+
+
+<  Step 46  >
+
+
+	checking sphero pos: 3, 1, id: 1, direction: 5, target pos: 3, 1 and POTENTIAL direction 7
+	checking sphero pos: 2, 0, id: 3, direction: 5, target pos: 2, 0 and POTENTIAL direction 7
+	checking sphero pos: 1, 1, id: 2, direction: 5, target pos: 1, 1 and POTENTIAL direction 7
+
+Group: 1	Direction: 7	Translation
+
+
+<  Step 47  >
+
+
+	checking sphero pos: 2, 1, id: 1, direction: 7, target pos: 2, 1 and POTENTIAL direction 2
+	checking sphero pos: 1, 0, id: 3, direction: 7, target pos: 1, 0 and POTENTIAL direction 2
+	checking sphero pos: 0, 1, id: 2, direction: 7, target pos: 0, 1 and POTENTIAL direction 2
+
+Group: 1	Direction: 2	Translation
+
+
+<  Step 48  >
+
+
+	checking sphero pos: 3, 2, id: 1, direction: 2, target pos: 3, 2 and POTENTIAL direction 6
+	checking sphero pos: 2, 1, id: 3, direction: 2, target pos: 2, 1 and POTENTIAL direction 6
+	checking sphero pos: 1, 2, id: 2, direction: 2, target pos: 1, 2 and POTENTIAL direction 6
+
+Group: 1	Direction: 6	Translation
+
+
+<  Step 49  >
+
+
+	checking sphero pos: 2, 1, id: 1, direction: 6, target pos: 2, 1 and POTENTIAL direction 1
+	checking sphero pos: 1, 0, id: 3, direction: 6, target pos: 1, 0 and POTENTIAL direction 1
+	checking sphero pos: 0, 1, id: 2, direction: 6, target pos: 0, 1 and POTENTIAL direction 1
+
+Group: 1	Direction: 1	Translation
+
+
+<  Step 50  >
+
+
+	checking sphero pos: 2, 2, id: 1, direction: 1, target pos: 2, 2 and POTENTIAL direction 2
+	checking sphero pos: 1, 1, id: 3, direction: 1, target pos: 1, 1 and POTENTIAL direction 2
+	checking sphero pos: 0, 2, id: 2, direction: 1, target pos: 0, 2 and POTENTIAL direction 2
+
+Group: 1	Direction: 2	Translation
+
+
+<  Step 51  >
+
+
+	checking sphero pos: 3, 3, id: 1, direction: 2, target pos: 3, 3 and POTENTIAL direction 3
+	checking sphero pos: 2, 2, id: 3, direction: 2, target pos: 2, 2 and POTENTIAL direction 3
+	checking sphero pos: 1, 3, id: 2, direction: 2, target pos: 1, 3 and POTENTIAL direction 3
+
+Group: 1	Direction: 3	Translation
+
+
+<  Step 52  >
+
+
+	checking sphero pos: 4, 3, id: 1, direction: 3, target pos: 4, 3 and POTENTIAL direction 4
+	checking sphero pos: 3, 2, id: 3, direction: 3, target pos: 3, 2 and POTENTIAL direction 4
+	checking sphero pos: 2, 3, id: 2, direction: 3, target pos: 2, 3 and POTENTIAL direction 4
+
+Group: 1	Direction: 10	Rotation
+
+
+<  Step 53  >
+
+
+	checking sphero pos: 2, 3, id: 1, direction: 10, target pos: 2, 3 and POTENTIAL direction 4
+	checking sphero pos: 3, 2, id: 3, direction: 10, target pos: 3, 2 and POTENTIAL direction 4
+	checking sphero pos: 2, 1, id: 2, direction: 10, target pos: 2, 1 and POTENTIAL direction 4
+
+Group: 1	Direction: 4	Translation
+
+
+<  Step 54  >
+
+
+	checking sphero pos: 3, 2, id: 1, direction: 4, target pos: 3, 2 and POTENTIAL direction 7
+	checking sphero pos: 4, 1, id: 3, direction: 4, target pos: 4, 1 and POTENTIAL direction 7
+	checking sphero pos: 3, 0, id: 2, direction: 4, target pos: 3, 0 and POTENTIAL direction 7
+
+Group: 1	Direction: 7	Translation
+
+
+<  Step 55  >
+
+
+	checking sphero pos: 2, 2, id: 1, direction: 7, target pos: 2, 2 and POTENTIAL direction 4
+	checking sphero pos: 3, 1, id: 3, direction: 7, target pos: 3, 1 and POTENTIAL direction 4
+	checking sphero pos: 2, 0, id: 2, direction: 7, target pos: 2, 0 and POTENTIAL direction 4
+	checking sphero pos: 2, 2, id: 1, direction: 7, target pos: 2, 2 and POTENTIAL direction 2
+	checking sphero pos: 3, 1, id: 3, direction: 7, target pos: 3, 1 and POTENTIAL direction 2
+	checking sphero pos: 2, 0, id: 2, direction: 7, target pos: 2, 0 and POTENTIAL direction 2
+
+Group: 1	Direction: 2	Translation
+
+
+<  Step 56  >
+
+
+	checking sphero pos: 3, 3, id: 1, direction: 2, target pos: 3, 3 and POTENTIAL direction 5
+	checking sphero pos: 4, 2, id: 3, direction: 2, target pos: 4, 2 and POTENTIAL direction 5
+	checking sphero pos: 3, 1, id: 2, direction: 2, target pos: 3, 1 and POTENTIAL direction 5
+
+Group: 1	Direction: 5	Translation
+
+
+<  Step 57  >
+
+
+	checking sphero pos: 3, 2, id: 1, direction: 5, target pos: 3, 2 and POTENTIAL direction 8
+	checking sphero pos: 4, 1, id: 3, direction: 5, target pos: 4, 1 and POTENTIAL direction 8
+	checking sphero pos: 3, 0, id: 2, direction: 5, target pos: 3, 0 and POTENTIAL direction 8
+
+Group: 1	Direction: 8	Translation
+
+
+<  Step 58  >
+
+
+	checking sphero pos: 2, 3, id: 1, direction: 8, target pos: 2, 3 and POTENTIAL direction 1
+	checking sphero pos: 3, 2, id: 3, direction: 8, target pos: 3, 2 and POTENTIAL direction 1
+	checking sphero pos: 2, 1, id: 2, direction: 8, target pos: 2, 1 and POTENTIAL direction 1
+
+Group: 1	Direction: 1	Translation
+
+
+<  Step 59  >
+
+
+	checking sphero pos: 2, 4, id: 1, direction: 1, target pos: 2, 4 and POTENTIAL direction 5
+	checking sphero pos: 3, 3, id: 3, direction: 1, target pos: 3, 3 and POTENTIAL direction 5
+	checking sphero pos: 2, 2, id: 2, direction: 1, target pos: 2, 2 and POTENTIAL direction 5
+
+Group: 1	Direction: 5	Translation
+
+
+<  Step 60  >
+
+
+	checking sphero pos: 2, 3, id: 1, direction: 5, target pos: 2, 3 and POTENTIAL direction 6
+	checking sphero pos: 3, 2, id: 3, direction: 5, target pos: 3, 2 and POTENTIAL direction 6
+	checking sphero pos: 2, 1, id: 2, direction: 5, target pos: 2, 1 and POTENTIAL direction 6
+
+Group: 1	Direction: 6	Translation
+
+
+<  Step 61  >
+
+
+	checking sphero pos: 1, 2, id: 1, direction: 6, target pos: 1, 2 and POTENTIAL direction 1
+	checking sphero pos: 2, 1, id: 3, direction: 6, target pos: 2, 1 and POTENTIAL direction 1
+	checking sphero pos: 1, 0, id: 2, direction: 6, target pos: 1, 0 and POTENTIAL direction 1
+
+Group: 1	Direction: 1	Translation
+
+
+<  Step 62  >
+
+
+	checking sphero pos: 1, 3, id: 1, direction: 1, target pos: 1, 3 and POTENTIAL direction 3
+	checking sphero pos: 2, 2, id: 3, direction: 1, target pos: 2, 2 and POTENTIAL direction 3
+	checking sphero pos: 1, 1, id: 2, direction: 1, target pos: 1, 1 and POTENTIAL direction 3
+
+Group: 1	Direction: 3	Translation
+
+
+<  Step 63  >
+
+
+	checking sphero pos: 2, 3, id: 1, direction: 3, target pos: 2, 3 and POTENTIAL direction 5
+	checking sphero pos: 3, 2, id: 3, direction: 3, target pos: 3, 2 and POTENTIAL direction 5
+	checking sphero pos: 2, 1, id: 2, direction: 3, target pos: 2, 1 and POTENTIAL direction 5
+
+Group: 1	Direction: 5	Translation
+
+
+<  Step 64  >
+
+
+	checking sphero pos: 2, 2, id: 1, direction: 5, target pos: 2, 2 and POTENTIAL direction 8
+	checking sphero pos: 3, 1, id: 3, direction: 5, target pos: 3, 1 and POTENTIAL direction 8
+	checking sphero pos: 2, 0, id: 2, direction: 5, target pos: 2, 0 and POTENTIAL direction 8
+
+Group: 1	Direction: 8	Translation
+
+
+<  Step 65  >
+
+
+	checking sphero pos: 1, 3, id: 1, direction: 8, target pos: 1, 3 and POTENTIAL direction 4
+	checking sphero pos: 2, 2, id: 3, direction: 8, target pos: 2, 2 and POTENTIAL direction 4
+	checking sphero pos: 1, 1, id: 2, direction: 8, target pos: 1, 1 and POTENTIAL direction 4
+
+Group: 1	Direction: 4	Translation
+
+
+<  Step 66  >
+
+
+	checking sphero pos: 2, 2, id: 1, direction: 4, target pos: 2, 2 and POTENTIAL direction 3
+	checking sphero pos: 3, 1, id: 3, direction: 4, target pos: 3, 1 and POTENTIAL direction 3
+	checking sphero pos: 2, 0, id: 2, direction: 4, target pos: 2, 0 and POTENTIAL direction 3
+
+Group: 1	Direction: 3	Translation
+
+
+<  Step 67  >
+
+
+	checking sphero pos: 3, 2, id: 1, direction: 3, target pos: 3, 2 and POTENTIAL direction 3
+	checking sphero pos: 4, 1, id: 3, direction: 3, target pos: 4, 1 and POTENTIAL direction 3
+	checking sphero pos: 3, 0, id: 2, direction: 3, target pos: 3, 0 and POTENTIAL direction 3
+	checking sphero pos: 3, 2, id: 1, direction: 3, target pos: 3, 2 and POTENTIAL direction 7
+	checking sphero pos: 4, 1, id: 3, direction: 3, target pos: 4, 1 and POTENTIAL direction 7
+	checking sphero pos: 3, 0, id: 2, direction: 3, target pos: 3, 0 and POTENTIAL direction 7
+
+Group: 1	Direction: 7	Translation
+
+
+<  Step 68  >
+
+
+	checking sphero pos: 2, 2, id: 1, direction: 7, target pos: 2, 2 and POTENTIAL direction 2
+	checking sphero pos: 3, 1, id: 3, direction: 7, target pos: 3, 1 and POTENTIAL direction 2
+	checking sphero pos: 2, 0, id: 2, direction: 7, target pos: 2, 0 and POTENTIAL direction 2
+
+Group: 1	Direction: 2	Translation
+
+
+<  Step 69  >
+
+
+	checking sphero pos: 3, 3, id: 1, direction: 2, target pos: 3, 3 and POTENTIAL direction 6
+	checking sphero pos: 4, 2, id: 3, direction: 2, target pos: 4, 2 and POTENTIAL direction 6
+	checking sphero pos: 3, 1, id: 2, direction: 2, target pos: 3, 1 and POTENTIAL direction 6
+
+Group: 1	Direction: 6	Translation
+
+
+<  Step 70  >
+
+
+	checking sphero pos: 2, 2, id: 1, direction: 6, target pos: 2, 2 and POTENTIAL direction 5
+	checking sphero pos: 3, 1, id: 3, direction: 6, target pos: 3, 1 and POTENTIAL direction 5
+	checking sphero pos: 2, 0, id: 2, direction: 6, target pos: 2, 0 and POTENTIAL direction 5
+	checking sphero pos: 2, 2, id: 1, direction: 6, target pos: 2, 2 and POTENTIAL direction 8
+	checking sphero pos: 3, 1, id: 3, direction: 6, target pos: 3, 1 and POTENTIAL direction 8
+	checking sphero pos: 2, 0, id: 2, direction: 6, target pos: 2, 0 and POTENTIAL direction 8
+
+Group: 1	Direction: 8	Translation
+
+
+<  Step 71  >
+
+
+	checking sphero pos: 1, 3, id: 1, direction: 8, target pos: 1, 3 and POTENTIAL direction 6
+	checking sphero pos: 2, 2, id: 3, direction: 8, target pos: 2, 2 and POTENTIAL direction 6
+	checking sphero pos: 1, 1, id: 2, direction: 8, target pos: 1, 1 and POTENTIAL direction 6
+
+Group: 1	Direction: 6	Translation
+
+
+<  Step 72  >
+
+
+	checking sphero pos: 0, 2, id: 1, direction: 6, target pos: 0, 2 and POTENTIAL direction 3
+	checking sphero pos: 1, 1, id: 3, direction: 6, target pos: 1, 1 and POTENTIAL direction 3
+	checking sphero pos: 0, 0, id: 2, direction: 6, target pos: 0, 0 and POTENTIAL direction 3
+
+Group: 1	Direction: 3	Translation
+
+
+<  Step 73  >
+
+
+	checking sphero pos: 1, 2, id: 1, direction: 3, target pos: 1, 2 and POTENTIAL direction 2
+	checking sphero pos: 2, 1, id: 3, direction: 3, target pos: 2, 1 and POTENTIAL direction 2
+	checking sphero pos: 1, 0, id: 2, direction: 3, target pos: 1, 0 and POTENTIAL direction 2
+
+Group: 1	Direction: 2	Translation
+
+
+<  Step 74  >
+
+
+	checking sphero pos: 2, 3, id: 1, direction: 2, target pos: 2, 3 and POTENTIAL direction 4
+	checking sphero pos: 3, 2, id: 3, direction: 2, target pos: 3, 2 and POTENTIAL direction 4
+	checking sphero pos: 2, 1, id: 2, direction: 2, target pos: 2, 1 and POTENTIAL direction 4
+
+Group: 1	Direction: 4	Translation
+
+
+<  Step 75  >
+
+
+	checking sphero pos: 3, 2, id: 1, direction: 4, target pos: 3, 2 and POTENTIAL direction 8
+	checking sphero pos: 4, 1, id: 3, direction: 4, target pos: 4, 1 and POTENTIAL direction 8
+	checking sphero pos: 3, 0, id: 2, direction: 4, target pos: 3, 0 and POTENTIAL direction 8
+
+Group: 1	Direction: 8	Translation
+
+
+<  Step 76  >
+
+
+	checking sphero pos: 2, 3, id: 1, direction: 8, target pos: 2, 3 and POTENTIAL direction 7
+	checking sphero pos: 3, 2, id: 3, direction: 8, target pos: 3, 2 and POTENTIAL direction 7
+	checking sphero pos: 2, 1, id: 2, direction: 8, target pos: 2, 1 and POTENTIAL direction 7
+
+Group: 1	Direction: 7	Translation
+
+
+<  Step 77  >
+
+
+	checking sphero pos: 1, 3, id: 1, direction: 7, target pos: 1, 3 and POTENTIAL direction 6
+	checking sphero pos: 2, 2, id: 3, direction: 7, target pos: 2, 2 and POTENTIAL direction 6
+	checking sphero pos: 1, 1, id: 2, direction: 7, target pos: 1, 1 and POTENTIAL direction 6
+
+Group: 1	Direction: 6	Translation
+
+
+<  Step 78  >
+
+
+	checking sphero pos: 0, 2, id: 1, direction: 6, target pos: 0, 2 and POTENTIAL direction 3
+	checking sphero pos: 1, 1, id: 3, direction: 6, target pos: 1, 1 and POTENTIAL direction 3
+	checking sphero pos: 0, 0, id: 2, direction: 6, target pos: 0, 0 and POTENTIAL direction 3
+
+Group: 1	Direction: 3	Translation
+
+
+<  Step 79  >
+
+
+	checking sphero pos: 1, 2, id: 1, direction: 3, target pos: 1, 2 and POTENTIAL direction 1
+	checking sphero pos: 2, 1, id: 3, direction: 3, target pos: 2, 1 and POTENTIAL direction 1
+	checking sphero pos: 1, 0, id: 2, direction: 3, target pos: 1, 0 and POTENTIAL direction 1
+
+Group: 1	Direction: 1	Translation
+
+
+<  Step 80  >
+
+
+	checking sphero pos: 1, 3, id: 1, direction: 1, target pos: 1, 3 and POTENTIAL direction 4
+	checking sphero pos: 2, 2, id: 3, direction: 1, target pos: 2, 2 and POTENTIAL direction 4
+	checking sphero pos: 1, 1, id: 2, direction: 1, target pos: 1, 1 and POTENTIAL direction 4
+
+Group: 1	Direction: 4	Translation
+END SIMULATION
