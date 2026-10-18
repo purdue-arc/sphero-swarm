@@ -334,6 +334,42 @@
     background: #223a62;
 }
 
+.idHandle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    width: 43px;
+}
+
+.idHandle[draggable=true] {
+    cursor: grab;
+}
+
+.idHandle[draggable=true]:active {
+    cursor: grabbing;
+}
+
+.settingsTable tbody tr.draggedRow {
+    opacity: .45;
+}
+
+.settingsTable tbody tr.idDropTarget {
+    background: rgba(139, 92, 246, .25);
+    outline: 2px dashed #a78bfa;
+    outline-offset: -2px;
+}
+
+.assignmentNotice {
+    margin: 7px 1px 0;
+    color: #c4b5fd;
+    font-size: 11px;
+}
+
+.assignmentNotice:empty {
+    display: none;
+}
+
 .roleSwitch {
     display: inline-flex;
     align-items: center;

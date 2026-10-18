@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faArrowRotateRight, faBrain, faCamera, faCrosshairs, faGear, faPlay, faPlus, faRobot, faStop, faTrash } from '@fortawesome/free-solid-svg-icons'
+import { faArrowRotateRight, faBrain, faCamera, faCrosshairs, faGear, faGripVertical, faPlay, faPlus, faRobot, faStop, faTrash } from '@fortawesome/free-solid-svg-icons'
 import { StreamViewer } from '../StreamViewer/streamViewer'
 import { useSpheroConnection } from '../SpheroConnection/useSpheroConnection'
 import type { PerceptionConfig, SimulationSnapshot, SpheroConstants, SpheroStatus } from '../../types/swarm_types'
@@ -125,6 +125,10 @@ export function MainSimulation(p: Props) {
   const [draft, setDraft] = useState(p.constants)
   const selectableTags = [...new Set([...KNOWN_TAGS, ...draft.SPHERO_TAGS])].sort()
   const [selectedBall, setSelectedBall] = useState(0)
+  const [draggedTag, setDraggedTag] = useState<string | null>(null)
+  const [dropTarget, setDropTarget] = useState<number | null>(null)
+  const [assignmentNotice, setAssignmentNotice] = useState('')
+  const idHandles = useRef<(HTMLButtonElement | null)[]>([])
   const [saveState, setSaveState] = useState<'saved' | 'saving' | 'error'>('saved')
   const [services, setServices] = useState({ controls: false, perception: false, algorithm: false })
   const [busy, setBusy] = useState(false)
@@ -230,6 +234,25 @@ export function MainSimulation(p: Props) {
     tags[index] = nextTag
     changeSettings({ ...draft, SPHERO_TAGS: tags })
   }
+  const canChangeId = (index: number) => !p.algorithmRunning && !busy && connection.connectState !== 'connecting'
+    && !p.spheros.some(ball => ball.id === draft.SPHERO_TAGS[index]
+      && (ball.connection === 'connected' || ball.connection === 'pending' || ball.connection === 'found'))
+  const swapIds = (from: number, to: number) => {
+    if (from === to || from < 0 || to < 0 || from >= draft.N_SPHEROS || to >= draft.N_SPHEROS
+      || !canChangeId(from) || !canChangeId(to)) return
+    const tags = [...draft.SPHERO_TAGS]
+    const positions = [...draft.INITIAL_POSITIONS]
+    const traits = [...draft.INITIAL_TRAITS]
+    // The array index is the algorithm ID. Keep each ball's setup together.
+    ;[tags[from], tags[to]] = [tags[to], tags[from]]
+    ;[positions[from], positions[to]] = [positions[to], positions[from]]
+    ;[traits[from], traits[to]] = [traits[to], traits[from]]
+    changeSettings({ ...draft, SPHERO_TAGS: tags, INITIAL_POSITIONS: positions, INITIAL_TRAITS: traits })
+    setSelectedBall(current => current === from ? to : current === to ? from : current)
+    setAssignmentNotice(`${tags[to]} is now ID ${to + 1}; ${tags[from]} is now ID ${from + 1}.`)
+    return true
+  }
+  const endIdDrag = () => { setDraggedTag(null); setDropTarget(null) }
   const moveBall = (index: number, x: number, y: number) => {
     const positions = draft.INITIAL_POSITIONS.map(position => [...position] as [number, number])
     const old = positions[index]
@@ -400,8 +423,45 @@ export function MainSimulation(p: Props) {
           </div>
           <div className={s.tableHeading}><span>SPHERO BALLS</span><span>{draft.N_SPHEROS} TOTAL</span></div>
           <div className={s.tableWrap}><table className={s.settingsTable}><thead><tr><th>ID</th><th>Sphero tag</th><th>X</th><th>Y</th><th>Role</th><th></th></tr></thead>
-            <tbody>{draft.SPHERO_TAGS.map((tag, index) => <tr key={index} className={selectedBall === index ? s.selectedRow : ''}>
-              <td><button className={`${s.ballIndex} ${draft.INITIAL_TRAITS[index] === 'head' ? s.ballIndexHead : s.ballIndexTail}`} onClick={() => setSelectedBall(index)} aria-label={`Select ball ${index + 1}`}>{String(index + 1).padStart(2, '0')}</button></td>
+            <tbody>{draft.SPHERO_TAGS.map((tag, index) => <tr key={index}
+              className={`${selectedBall === index ? s.selectedRow : ''} ${draggedTag === tag ? s.draggedRow : ''} ${dropTarget === index ? s.idDropTarget : ''}`}
+              onDragOver={e => {
+                const from = draft.SPHERO_TAGS.indexOf(draggedTag ?? '')
+                if (from < 0 || from === index || !canChangeId(from) || !canChangeId(index)) return
+                e.preventDefault()
+                e.dataTransfer.dropEffect = 'move'
+                setDropTarget(index)
+              }}
+              onDragLeave={e => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropTarget(current => current === index ? null : current)
+              }}
+              onDrop={e => {
+                e.preventDefault()
+                if (draggedTag && e.dataTransfer.getData('application/x-sphero-tag') === draggedTag) {
+                  swapIds(draft.SPHERO_TAGS.indexOf(draggedTag), index)
+                }
+                endIdDrag()
+              }}>
+              <td><button className={`${s.idHandle} ${s.ballIndex} ${draft.INITIAL_TRAITS[index] === 'head' ? s.ballIndexHead : s.ballIndexTail}`}
+                ref={element => { idHandles.current[index] = element }}
+                draggable={canChangeId(index)}
+                onDragStart={e => {
+                  if (!canChangeId(index)) { e.preventDefault(); return }
+                  e.dataTransfer.setData('application/x-sphero-tag', tag)
+                  e.dataTransfer.effectAllowed = 'move'
+                  setDraggedTag(tag)
+                }}
+                onDragEnd={endIdDrag}
+                onKeyDown={e => {
+                  if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return
+                  e.preventDefault()
+                  const target = index + (e.key === 'ArrowUp' ? -1 : 1)
+                  if (swapIds(index, target)) requestAnimationFrame(() => idHandles.current[target]?.focus())
+                }}
+                onClick={() => setSelectedBall(index)} aria-label={`Select ball ${index + 1}`}
+                aria-describedby="runner-id-hint"
+                title={canChangeId(index) ? 'Drag onto another row to swap IDs, or use Alt + Up/Down' : 'Stop the algorithm and disconnect this Sphero to change its ID'}>
+                <FontAwesomeIcon icon={faGripVertical} aria-hidden="true" />{String(index + 1).padStart(2, '0')}</button></td>
               <td><select className={s.tagInput} aria-label={`Tag for ball ${index + 1}`} value={tag} disabled={p.algorithmRunning || p.spheros.some(ball => ball.id === tag && ball.connection === 'connected')} onChange={e => updateTag(index, e.target.value)}>
                 {selectableTags.map(candidate => <option key={candidate} value={candidate} disabled={candidate !== tag && p.spheros.some(ball => ball.id === candidate && ball.connection === 'connected')}>{candidate}</option>)}
               </select></td>
@@ -413,6 +473,8 @@ export function MainSimulation(p: Props) {
               <td><button className={s.rowAction} disabled={p.algorithmRunning || draft.N_SPHEROS <= 1} aria-label={`Remove ball ${index + 1}`} onClick={() => removeBall(index)}><FontAwesomeIcon icon={faTrash} /></button></td>
             </tr>)}</tbody></table></div>
           <button className={s.addButton} onClick={addBall} disabled={p.algorithmRunning || draft.N_SPHEROS >= width * height}><FontAwesomeIcon icon={faPlus} /> Add Sphero</button>
+          <p id="runner-id-hint" className={s.inlineHint}>Drag an ID onto another row to swap IDs, or focus an ID and press Alt + Up/Down. Stop the algorithm and disconnect the affected Spheros first.</p>
+          <p className={s.assignmentNotice} role="status">{assignmentNotice}</p>
           <p className={s.inlineHint}>Choose a ball, then click a node in the algorithm preview to place it.</p>
         </div>
       </section>

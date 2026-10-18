@@ -15,7 +15,6 @@ from gui_server import get_next_command, send_algorithm_state
 
 ROLL_STRAIGHT_INCH = 12.67
 
-
 def _perception_request(message):
     """Short-lived socket keeps a missing perception process from blocking rolls."""
     sock = zmq.Context.instance().socket(zmq.REQ)
