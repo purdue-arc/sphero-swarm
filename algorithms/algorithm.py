@@ -119,6 +119,17 @@ class Algorithm:
         actual_distance = hypot(actual_dx, actual_dy)
         target_distance = hypot(target_dx, target_dy)
 
+        # Skip correction when this cycle has no planned movement.
+        if sphero.target_x == sphero.x and sphero.target_y == sphero.y:
+            self._set_correction_debug(
+                sphero,
+                "no_planned_movement",
+                actual_distance=actual_distance,
+                target_distance=target_distance,
+                measurement_age=measurement_age,
+            )
+            return 0
+
         if actual_distance < constants.MIN_ACTUAL_MOVEMENT:
             self._set_correction_debug(
                 sphero,

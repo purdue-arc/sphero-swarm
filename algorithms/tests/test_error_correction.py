@@ -72,9 +72,19 @@ class ErrorCorrectionTests(unittest.TestCase):
         self.sphero.target_y = 0
         self.assertEqual(self.algorithm.calculate_angle_change(self.sphero, now=100.1), -90)
 
+    def test_no_planned_movement_skips_turn_and_preserves_anchor(self):
+        self.set_position(0, 0, 100.0)
+        self.set_position(1, 0, 100.1)
+
+        self.assertEqual(self.algorithm.calculate_angle_change(self.sphero, now=100.1), 0)
+        self.assertEqual(self.sphero.prev_true_x, 0)
+        self.assertEqual(self.sphero.prev_true_y, 0)
+        self.assertEqual(self.sphero.correction_debug["status"], "no_planned_movement")
+
     def test_opposite_direction_returns_180_degrees(self):
         self.set_position(0, 0, 100.0)
         self.set_position(1, 0, 100.1)
+        self.sphero.x = 1  # Plan a move back to the origin.
         self.sphero.target_x = 0
         self.sphero.target_y = 0
 
