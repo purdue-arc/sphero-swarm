@@ -73,8 +73,9 @@ class Algorithm:
             }
             return 0  # no movement → no turn
 
-        prev_angle = np.arctan2(sphero.true_y - sphero.prev_true_y, sphero.true_x - sphero.prev_true_x) # Current position
-        target_angle = np.arctan2(sphero.target_y - sphero.true_y, sphero.target_x - sphero.true_x) # Next position
+        # arctan2 gives radians; everything below (and the turn instruction) is in degrees
+        prev_angle = np.degrees(np.arctan2(sphero.true_y - sphero.prev_true_y, sphero.true_x - sphero.prev_true_x)) # Current position
+        target_angle = np.degrees(np.arctan2(sphero.target_y - sphero.true_y, sphero.target_x - sphero.true_x)) # Next position
 
         # Compute smallest angle difference
         theta = target_angle - prev_angle
@@ -101,18 +102,27 @@ class Algorithm:
         return int(round(theta))
         
     def calculate_speed(self, sphero):
-        distance = math.hypot(sphero.target_x - sphero.true_x, sphero.target_y - sphero.true_y)
+        distance = hypot(sphero.target_x - sphero.true_x, sphero.target_y - sphero.true_y)
         return int(constants.SPHERO_SPEED * distance)
         
         
     def set_true_positions(self, data):
-        id_to_sphero = {sphero.id: sphero for sphero in self.find_all_spheros()}                                                                    
-        for entry in data["spheros"]:                                                                                                                    
-            sphero = id_to_sphero.get(entry["id"])                                                                                                       
-            if sphero:                                                                                                                                   
-                # update real position                                                                                                     
-                sphero.true_x = entry["x"]                                                                                                                    
-                sphero.true_y = entry["y"]
+        '''
+        Updates each sphero's true position from perception's "coords" reply,
+        {"spheros": [{"ID": __, "X": __, "Y": __}]} in grid units. Perception
+        numbers spheros from 0, the algorithm from 1. A sphero perception didn't
+        report (or no reply at all, data=None) is taken to be where the grid has it.
+        '''
+        id_to_sphero = {sphero.id: sphero for sphero in self.find_all_spheros()}
+        for sphero in id_to_sphero.values():
+            sphero.true_x = sphero.x
+            sphero.true_y = sphero.y
+        for entry in (data or {}).get("spheros", []):
+            sphero = id_to_sphero.get(entry["ID"] + 1)
+            if sphero:
+                # update real position
+                sphero.true_x = entry["X"]
+                sphero.true_y = entry["Y"]
 
 
     def find_all_spheros(self) -> list[Sphero]:

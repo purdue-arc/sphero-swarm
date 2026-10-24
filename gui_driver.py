@@ -23,7 +23,10 @@ def _perception_request(message):
     sock.setsockopt(zmq.SNDTIMEO, 1000)
     try:
         sock.connect("tcp://127.0.0.1:5555")
-        sock.send_json(message)
+        if isinstance(message, str):
+            sock.send_string(message)  # plain commands, e.g. "coords"
+        else:
+            sock.send_json(message)
         return sock.recv_json()
     except zmq.ZMQError:
         return None
@@ -230,12 +233,6 @@ def main_server():
     constants = Constants()
     algorithm = _build_algorithm(constants)
     
-    context = zmq.Context()
-    socket = context.socket(zmq.REQ)
-    socket.connect("tcp://127.0.0.1:5555")
-
-    print("Connected to ZeroMQ server")
-
     running = False
     paused = False
     use_controls = False
@@ -352,9 +349,9 @@ def main_server():
                     print("NEW EDIT BALL MOVE")
 
             elif running and not paused and time.monotonic() >= next_step_at:
-                socket.send_string("coords")
-                response = socket.recv()
-                algorithm.set_true_positions(response)
+                # None when perception isn't running: spheros are then assumed
+                # to be where the grid has them
+                algorithm.set_true_positions(_perception_request("coords"))
                 
                 for sphero in algorithm.find_all_spheros():
                     sphero.x = sphero.target_x
