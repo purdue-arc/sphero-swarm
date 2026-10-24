@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pi Agent Tester</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --color-paper:    oklch(14% 0.012 250);
+    --color-paper-2:  oklch(18% 0.014 250);
+    --color-rule:     oklch(30% 0.012 250);
+    --color-neutral:  oklch(58% 0.010 250);
+    --color-muted:    oklch(74% 0.008 250);
+    --color-ink:      oklch(94% 0.006 250);
+    --color-accent:   oklch(75% 0.15 70);
+    --color-good:     oklch(72% 0.14 150);
+    --color-danger:   oklch(66% 0.15 25);
+
+    --font-display: "JetBrains Mono", ui-monospace, monospace;
+    --font-body:    "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: var(--font-body);
+    background: var(--color-paper);
+    color: var(--color-ink);
+    max-width: 980px;
+    margin: 0 auto;
+    padding: clamp(1.25rem, 4vw, 2.5rem);
+    line-height: 1.5;
+  }
+  h1 {
+    font-family: var(--font-display);
+    font-size: 1.6rem;
+    border-bottom: 1px solid var(--color-rule);
+    padding-bottom: 1rem;
+  }
+  h2 {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    color: var(--color-accent);
+    margin-top: 2rem;
+  }
+  label {
+    display: block;
+    font-family: var(--font-display);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-neutral);
+    margin: 0.75rem 0 0.25rem;
+  }
+  input {
+    width: 100%;
+    background: var(--color-paper-2);
+    border: 1px solid var(--color-rule);
+    border-radius: 4px;
+    color: var(--color-ink);
+    padding: 0.5rem 0.6rem;
+    font-family: var(--font-display);
+    font-size: 0.9rem;
+  }
+  input:focus { outline: none; border-color: var(--color-accent); }
+  .row { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  .row > div { flex: 1; min-width: 140px; }
+  .presets {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.75rem;
+  }
+  button {
+    font-family: var(--font-display);
+    font-size: 0.82rem;
+    background: var(--color-paper-2);
+    border: 1px solid var(--color-rule);
+    color: var(--color-ink);
+    padding: 0.55rem 0.9rem;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--color-accent); }
+  button.danger:hover { border-color: var(--color-danger); }
+  .section {
+    background: var(--color-paper-2);
+    border: 1px solid var(--color-rule);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin-top: 0.75rem;
+  }
+  #log {
+    margin-top: 1.5rem;
+    max-height: 420px;
+    overflow-y: auto;
+    border: 1px solid var(--color-rule);
+    border-radius: 6px;
+  }
+  .entry {
+    padding: 0.6rem 0.9rem;
+    border-bottom: 1px solid var(--color-rule);
+    font-family: var(--font-display);
+    font-size: 0.82rem;
+  }
+  .entry:last-child { border-bottom: none; }
+  .entry .label { color: var(--color-muted); }
+  .entry .status { font-weight: 700; }
+  .entry.ok .status { color: var(--color-good); }
+  .entry.bad .status { color: var(--color-danger); }
+  pre {
+    margin: 0.4rem 0 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: var(--color-ink);
+  }
+  ::selection { background: var(--color-accent); color: var(--color-paper); }
+</style>
+</head>
+<body>
+
+<h1>Pi Agent Tester</h1>
+<p style="color:var(--color-muted)">Sends real HTTP requests to a Pi running <code>controls/pi_agent.py</code>. Nothing here talks to the Sphero directly — every button below is just a <code>fetch()</code> call to whichever Pi you point it at.</p>
+
+<div class="row">
+  <div>
+    <label>Pi base URL</label>
+    <input id="baseUrl" value="http://sphero-pi-01.local:5000">
+  </div>
+  <div>
+    <label>Robot ID</label>
+    <input id="robotId" value="SB-8262">
+  </div>
+  <div>
+    <label>Agent token (only needed for git-checkout)</label>
+    <input id="token" value="change-me">
+  </div>
+</div>
+
+<h2>Status</h2>
+<div class="presets">
+  <button onclick="callAgent('GET','/health')">Health</button>
+  <button onclick="callAgent('GET','/robots')">List robots</button>
+  <button onclick="callAgent('GET','/system/version')">Version</button>
+  <button onclick="callAgent('GET', '/robots/' + robotId() + '/battery')">Battery</button>
+</div>
+
+<h2>Drive presets</h2>
+<div class="presets">
+  <button onclick="drive(60, 0, 1000)">Forward · 1s</button>
+  <button onclick="drive(-60, 0, 1000)">Backward · 1s</button>
+  <button onclick="drive(60, 90, 1000)">Right · 1s</button>
+  <button onclick="drive(60, 180, 1000)">Turn around · 1s</button>
+  <button onclick="callAgent('POST', '/robots/' + robotId() + '/stop')">Stop</button>
+</div>
+<div class="section">
+  <div class="row">
+    <div><label>Speed</label><input id="customSpeed" value="60"></div>
+    <div><label>Heading</label><input id="customHeading" value="0"></div>
+    <div><label>Duration (ms)</label><input id="customDuration" value="1000"></div>
+  </div>
+  <div class="presets">
+    <button onclick="drive(num('customSpeed'), num('customHeading'), num('customDuration'))">Drive (custom)</button>
+  </div>
+</div>
+
+<h2>LED presets</h2>
+<div class="presets">
+  <button onclick="led(255,0,0)">Red</button>
+  <button onclick="led(0,255,0)">Green</button>
+  <button onclick="led(0,0,255)">Blue</button>
+  <button onclick="led(255,255,255)">White</button>
+  <button onclick="led(0,0,0)">Off</button>
+</div>
+
+<h2>Deploy (gated by token)</h2>
+<div class="row">
+  <div><label>Branch</label><input id="branch" value="main"></div>
+</div>
+<div class="presets">
+  <button class="danger" onclick="gitCheckout()">git checkout + pull</button>
+</div>
+
+<div id="log"></div>
+
+<script>
+function robotId() { return document.getElementById('robotId').value.trim(); }
+function num(id) { return parseInt(document.getElementById(id).value, 10); }
+function baseUrl() { return document.getElementById('baseUrl').value.trim().replace(/\/$/, ''); }
+
+function logEntry(label, ok, body) {
+  const log = document.getElementById('log');
+  const entry = document.createElement('div');
+  entry.className = 'entry ' + (ok ? 'ok' : 'bad');
+  entry.innerHTML = `<span class="label">${new Date().toLocaleTimeString()}  ${label}</span>  <span class="status">${ok ? 'OK' : 'BAD'}</span><pre>${JSON.stringify(body, null, 2)}</pre>`;
+  log.prepend(entry);
+}
+
+async function callAgent(method, path, body, headers) {
+  const label = `${method} ${path}`;
+  try {
+    const resp = await fetch(baseUrl() + path, {
+      method,
+      headers: { 'Content-Type': 'application/json', ...(headers || {}) },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = await resp.json().catch(() => ({ ok: false, error: 'non-JSON response' }));
+    logEntry(label, data.ok === true, data);
+    return data;
+  } catch (e) {
+    logEntry(label, false, { error: String(e) });
+  }
+}
+
+function drive(speed, heading, duration_ms) {
+  callAgent('POST', `/robots/${robotId()}/drive`, { speed, heading, duration_ms });
+}
+
+function led(r, g, b) {
+  callAgent('POST', `/robots/${robotId()}/led`, { r, g, b });
+}
+
+function gitCheckout() {
+  const branch = document.getElementById('branch').value.trim() || 'main';
+  const token = document.getElementById('token').value;
+  callAgent('POST', '/system/git-checkout', { branch }, { 'X-Agent-Token': token });
+}
+</script>
+
+</body>
+</html>

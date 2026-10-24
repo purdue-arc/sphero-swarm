@@ -6,16 +6,20 @@ import styles from "./SpheroConnection.module.css";
 export function SpheroConnectionList({
     spheros,
     onDisconnect,
+    onRetry,
 }: {
     spheros: SpheroStatus[];
     onDisconnect?: (id: string) => void;
+    onRetry?: (id: string) => void;
 }) {
     const getConnectionLabel = (connection: string) => {
         switch (connection) {
             case "connected":
                 return "Connected";
             case "pending":
-                return "Connecting";
+                return "Scanning";
+            case "found":
+                return "Found";
             case "failed":
                 return "Failed";
             default:
@@ -53,6 +57,18 @@ export function SpheroConnectionList({
 
                     <div className={styles.spheroPositions}>
                         <div className={styles.positionRow}>
+                            <span className={styles.positionLabel}>Found at:</span>
+                            <span className={styles.positionValue}>
+                                {sphero.foundAt ? new Date(sphero.foundAt).toLocaleString() : "—"}
+                            </span>
+                        </div>
+                        <div className={styles.positionRow}>
+                            <span className={styles.positionLabel}>Charge:</span>
+                            <span className={styles.positionValue}>
+                                {sphero.connection === "connected" && sphero.batteryPercent !== undefined ? `${sphero.batteryPercent}%` : "—"}
+                            </span>
+                        </div>
+                        <div className={styles.positionRow}>
                             <span className={styles.positionLabel}>Expected Position: </span>
                             <span className={styles.positionValue}>
                                 {sphero.expectedPosition
@@ -82,6 +98,9 @@ export function SpheroConnectionList({
                         >
                             Disconnect
                         </button>
+                    )}
+                    {onRetry && (sphero.connection === "failed" || sphero.connection === "not-attempted") && (
+                        <button className={styles.disconnectButton} onClick={() => onRetry(sphero.id)}>Retry</button>
                     )}
                 </div>
             ))}

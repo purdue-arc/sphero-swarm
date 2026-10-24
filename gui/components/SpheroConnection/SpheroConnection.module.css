@@ -42,6 +42,8 @@
     animation: none;
 }
 
+.spheroCard.found::before { background: #a78bfa; box-shadow: 0 0 10px rgba(167, 139, 250, .5); }
+
 .spheroCard.failed::before {
     background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
 }
@@ -91,6 +93,8 @@
     animation: none;
 }
 
+.connectionStatus.found { color: #bda9ff; filter: drop-shadow(0 0 6px rgba(167, 139, 250, .8)); }
+
 .connectionStatus.failed {
     color: #ef4444;
     filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.8));
@@ -123,6 +127,8 @@
     color: #f59e0b;
     border: 1px solid rgba(245, 158, 11, 0.3);
 }
+
+.connectionBadge.found { background: rgba(167, 139, 250, .15); color: #c4b5fd; border: 1px solid rgba(167, 139, 250, .35); }
 
 .connectionBadge.failed {
     background: rgba(239, 68, 68, 0.15);

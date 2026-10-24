@@ -44,8 +44,10 @@ class Constants:
         self.N_SPHEROS = 2
         self.GRID_WIDTH = 4
         self.GRID_HEIGHT = 4
-        self.SPHERO_SPEED = 60
+        self.SPHERO_SPEED = 66
         self.SPHERO_DIAGONAL_SPEED = 76
+        self.SPHERO_SPEED_SLOPE = 20.973
+        self.SPHERO_SPEED_INTERCEPT = -1.293
 
         self.ROLL_DURATION = 0.8
         self.TURN_DURATION = 0.5

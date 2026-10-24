@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faSave,
@@ -42,34 +42,37 @@ const KNOWN_TAGS = [
     'SB-7672',
     'SB-7673',
     'SB-E1F3'
-].toSorted();
+].sort();
 
 interface ConfigProps {
     constants: SpheroConstants;
     onUpdate: (newConstants: SpheroConstants) => void;
     algorithmRunning?: boolean;
+    onSaved?: () => void;
 }
 
-export function Config({ constants, onUpdate, algorithmRunning = false }: ConfigProps) {
+export function Config(props: ConfigProps) {
+    return <ConfigEditor key={JSON.stringify(props.constants)} {...props} />;
+}
+
+function ConfigEditor({ constants, onUpdate, algorithmRunning = false, onSaved }: ConfigProps) {
     const [form, setForm] = useState<SpheroConstants>(constants);
     const [hasChanges, setHasChanges] = useState(false);
 
-    useEffect(() => {
-        setForm(constants);
-        setHasChanges(false);
-    }, [constants]);
-
-    const update = (field: keyof SpheroConstants, value: any) => {
+    const update = (field: keyof SpheroConstants, value: SpheroConstants[keyof SpheroConstants]) => {
         setForm(prev => ({ ...prev, [field]: value }));
         setHasChanges(true);
     };
 
-    const updateSpheroRow = (index: number, field: "tag" | "x" | "y" | "trait", value: any) => {
+    const updateSpheroRow = (index: number, field: "tag" | "x" | "y" | "trait", value: string | number) => {
         const tags = [...form.SPHERO_TAGS];
         const positions = form.INITIAL_POSITIONS.map(p => [...p] as [number, number]);
         const traits = [...form.INITIAL_TRAITS] as ("head" | "tail")[];
 
         if (field === "tag") {
+            const previousTag = tags[index];
+            const previousOwner = tags.findIndex((tag, i) => i !== index && tag === value);
+            if (previousOwner !== -1) tags[previousOwner] = previousTag;
             tags[index] = value;
         } else if (field === "x") {
             positions[index][0] = Number(value);
@@ -144,9 +147,10 @@ export function Config({ constants, onUpdate, algorithmRunning = false }: Config
             };
         }
 
-        onUpdate(form);
         await window.electronAPI.saveConstants(form);
+        onUpdate(form);
         setHasChanges(false);
+        onSaved?.();
     };
     const reset = () => { setForm(constants); setHasChanges(false); };
 
@@ -156,9 +160,7 @@ export function Config({ constants, onUpdate, algorithmRunning = false }: Config
         y: form.INITIAL_POSITIONS[i]?.[1] ?? 0,
         trait: (form.INITIAL_TRAITS[i] ?? "tail") as "head" | "tail",
     }));
-
-    const availableTagsFor = (currentTag: string) =>
-        KNOWN_TAGS.filter(t => t === currentTag || !form.SPHERO_TAGS.includes(t));
+    const selectableTags = [...new Set([...KNOWN_TAGS, ...form.SPHERO_TAGS])].sort();
 
     return (
         <div className={s.page}>
@@ -380,10 +382,7 @@ export function Config({ constants, onUpdate, algorithmRunning = false }: Config
                                         value={row.tag}
                                         onChange={e => updateSpheroRow(i, "tag", e.target.value)}
                                     >
-                                        {availableTagsFor(row.tag).length === 0 && (
-                                            <option value={row.tag}>{row.tag}</option>
-                                        )}
-                                        {availableTagsFor(row.tag).map(t => (
+                                        {selectableTags.map(t => (
                                             <option key={t} value={t}>{t}</option>
                                         ))}
                                     </select>

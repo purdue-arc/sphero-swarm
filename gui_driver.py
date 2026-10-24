@@ -1,6 +1,7 @@
 import pickle
 import socket
 import time
+import uuid
 import zmq
 
 from algorithms.algorithm import Algorithm
@@ -8,8 +9,26 @@ from algorithms.constants import Constants
 from algorithms.form_instruction import nextVectorDirection
 from algorithms.sphero import Sphero
 from controls.Instruction import Instruction
+from controls.protocol import send_batch
 import math
 from gui_server import get_next_command, send_algorithm_state
+
+ROLL_STRAIGHT_INCH = 12.67
+
+def _perception_request(message):
+    """Short-lived socket keeps a missing perception process from blocking rolls."""
+    sock = zmq.Context.instance().socket(zmq.REQ)
+    sock.setsockopt(zmq.LINGER, 0)
+    sock.setsockopt(zmq.RCVTIMEO, 1000)
+    sock.setsockopt(zmq.SNDTIMEO, 1000)
+    try:
+        sock.connect("tcp://127.0.0.1:5555")
+        sock.send_json(message)
+        return sock.recv_json()
+    except zmq.ZMQError:
+        return None
+    finally:
+        sock.close()
 
 def _to_int(value, default=None):
     try:
@@ -130,6 +149,8 @@ def _send_controls_update(
     color_instructions = []
     rotate_instructions = []
     roll_instructions = []
+    targets = []
+    trial_id = uuid.uuid4().hex
 
     custom_palette = constants.COLORS if len(constants.COLORS) > 0 else [constants.WHITE]
 
@@ -148,23 +169,60 @@ def _send_controls_update(
             Instruction(sphero.id, 2, sphero.delta_angle, constants.TURN_DURATION)
         )
 
+
+        # Error correction: roll from where perception last saw the sphero
+        # (true_x/true_y), not where the grid assumes it ended up
+        distance = ROLL_STRAIGHT_INCH * math.hypot((sphero.true_y - sphero.target_y), (sphero.true_x - sphero.target_x))
+        if distance == 0:
+            continue
+        duration = max(0.0, algorithm.get_roll_duration(distance))
+
         roll_instructions.append(
-            Instruction(sphero.id, 1, sphero.speed, constants.ROLL_DURATION)
+            Instruction(sphero.id, 1, constants.SPHERO_SPEED, duration)
         )
+        targets.append({"trial_id": trial_id, "algorithm_id": sphero.id,
+                        "id": sphero.id - 1, "x": sphero.target_x, "y": sphero.target_y,
+                        "speed": constants.SPHERO_SPEED, "distance": distance,
+                        "duration": duration, "inches_per_step": ROLL_STRAIGHT_INCH})
+        
+        algorithm.log(f"sphero: {sphero.id}")
+        error = sphero.get_error()
+        algorithm.log(f"x-error: {ROLL_STRAIGHT_INCH * error['x']}\ny-error: {ROLL_STRAIGHT_INCH * error['y']}\ndelta angle: {sphero.delta_angle}\ndistance: {distance} inches\nduration: {duration} seconds", indent=1)
 
-    sock.send(pickle.dumps(color_instructions))
-    sock.recv(1024)
-
-    sock.send(pickle.dumps(rotate_instructions))
-    sock.recv(1024)
-
-    sock.send(pickle.dumps(roll_instructions))
-    sock.recv(1024)
+    send_batch(sock, color_instructions)
+    turn_outcomes = send_batch(sock, rotate_instructions)
+    if not targets:
+        return
+    evaluation = _perception_request({"action": "roll_targets", "targets": targets})
+    evaluating = bool(evaluation and evaluation.get("ok"))
+    if not evaluating:
+        print("[gui_driver] Roll evaluation unavailable: start calibrated perception to record endpoints")
+    valid_rolls = [instruction for instruction in roll_instructions
+                   if turn_outcomes.get(str(instruction.spheroID)) == "complete"]
+    outcomes = send_batch(sock, valid_rolls) if valid_rolls else {}
+    for instruction in roll_instructions:
+        if turn_outcomes.get(str(instruction.spheroID)) != "complete":
+            outcomes[str(instruction.spheroID)] = "turn_failed"
+    if evaluating:
+        _perception_request({"action": "roll_complete", "trial_id": trial_id, "outcomes": outcomes})
+        deadline = time.monotonic() + 12
+        while time.monotonic() < deadline:
+            result = _perception_request({"action": "roll_results", "trial_id": trial_id})
+            if result and result.get("finished"):
+                print(f"[gui_driver] Roll evaluation: {result['trials']}")
+                break
+            if result is None:
+                print("[gui_driver] Perception disconnected during roll evaluation")
+                break
+            time.sleep(0.1)
+        else:
+            print("[gui_driver] Roll evaluation timed out; inspect perception tracking")
 
 
 def _connect_controls(port: int) -> socket.socket:
     sock = socket.socket()
     sock.connect(("localhost", port))
+    sock.recv(1024)  # Controls sends the configured Sphero IDs before instruction acknowledgements.
     return sock
 
 
@@ -184,7 +242,8 @@ def main_server():
     use_algorithm_colors = True
     controls_sock = None
 
-    step_delay = 6.0
+    step_seconds = 4.0
+    next_step_at = 4.0
     edit_ball_queue: list[tuple[int, tuple[int, int]]] = []
     port = 1235
 
@@ -214,12 +273,13 @@ def main_server():
                     running = True
                     paused = False
                     edit_ball_queue.clear()
+                    next_step_at = step_seconds
 
-                    start_speed = cmd.get("speed", cmd.get("value"))
-                    if start_speed is not None:
+                    requested_step_seconds = cmd.get("step_seconds")
+                    if requested_step_seconds is not None:
                         try:
-                            step_delay = max(0, float(start_speed))
-                            print(f"[gui_driver] speed set to {step_delay} (from start)")
+                            step_seconds = max(0.1, float(requested_step_seconds))
+                            print(f"[gui_driver] step seconds set to {step_seconds} (from start)")
                         except Exception:
                             pass
 
@@ -230,9 +290,13 @@ def main_server():
                 elif typ == "reset":
                     running = False
                     paused = False
+                    if controls_sock is not None:
+                        controls_sock.close()
+                        controls_sock = None
                     constants = Constants()
                     algorithm = _build_algorithm(constants)
                     edit_ball_queue.clear()
+                    next_step_at = step_seconds
                     print("[gui_driver] reset")
 
                 elif typ == "pause" and running:
@@ -243,10 +307,10 @@ def main_server():
                     paused = False
                     print("[gui_driver] resumed")
 
-                elif typ == "speed":
+                elif typ == "step_seconds":
                     try:
-                        step_delay = max(0, float(cmd.get("value", step_delay)))
-                        print(f"[gui_driver] speed set to {step_delay}")
+                        step_seconds = max(0.1, float(cmd.get("value", step_seconds)))
+                        print(f"[gui_driver] step seconds set to {step_seconds}")
                     except Exception:
                         pass
 
@@ -287,7 +351,7 @@ def main_server():
                     processed_edit_move_this_tick = True
                     print("NEW EDIT BALL MOVE")
 
-            elif running and not paused:
+            elif running and not paused and time.monotonic() >= next_step_at:
                 socket.send_string("coords")
                 response = socket.recv()
                 algorithm.set_true_positions(response)
@@ -315,9 +379,10 @@ def main_server():
                     sphero.y = sphero.target_y
 
                 print("NEW_MOVE")
+                next_step_at = time.monotonic() + step_seconds
 
             send_algorithm_state(algorithm)
-            time.sleep(10-step_delay)
+            time.sleep(0.1)
 
     except Exception as error:
         print(f"[gui_driver] exception: {error}")

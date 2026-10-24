@@ -45,18 +45,20 @@ function toCssColor(input: string | [number, number, number] | undefined, fallba
 export function Simulation({
     constants,
     onRunningChange,
+    initialRunning = false,
     compact = false,
-    latestSnapshot,
     onSnapshot,
     speed,
     onSpeedChange,
     useControls,
     onUseControlsChange,
+    hasConnectedSphero = false,
     useAlgorithmColors,
     onUseAlgorithmColorsChange,
 } : {
     constants : SpheroConstants,
     onRunningChange?: (running: boolean) => void,
+    initialRunning?: boolean,
     compact?: boolean,
     latestSnapshot?: SimulationSnapshot | null,
     onSnapshot?: (payload: SimulationSnapshot) => void,
@@ -64,13 +66,15 @@ export function Simulation({
     onSpeedChange: (value: number) => void,
     useControls: boolean,
     onUseControlsChange: (value: boolean) => void,
+    hasConnectedSphero?: boolean,
     useAlgorithmColors: boolean,
     onUseAlgorithmColorsChange: (value: boolean) => void,
 }) {
     const [gridSize, setGridSize] = useState({ width: constants.GRID_WIDTH, height: constants.GRID_HEIGHT });
     const [connected, setConnected] = useState(false);
     const [paused, setPaused] = useState(false);    
-    const [running, setRunning] = useState(false);  
+    const [running, setRunning] = useState(initialRunning);
+    const [startError, setStartError] = useState("");
     const [currentEditPath, setEditPath] = useState<number[]>([]);
     const [editBall, setEditBall] = useState(false);
     const [selectedEditBallId, setSelectedEditBallId] = useState<number | null>(null);
@@ -85,7 +89,7 @@ export function Simulation({
 
     const gridRef = useRef({ width: 10, height: 10 });
 
-    const [, forceRender] = useState(0);
+    const [renderState, setRenderState] = useState<{ balls: Ball[]; bonds: [number, number][] }>({ balls: [], bonds: [] });
     const { width: COLS, height: ROWS } = gridSize;
 
     const wsRef = useRef<WebSocket | null>(null);
@@ -298,29 +302,34 @@ export function Simulation({
     // ── WebSocket ──────────────────────────────────────────────────────────
 
     useEffect(() => {
-        let ws: WebSocket;
+        let ws: WebSocket | undefined;
+        let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
         let dead = false;
 
         function connect() {
-            ws = new WebSocket(WS_URL);
-            wsRef.current = ws;
+            if (dead) return;
+            const socket = new WebSocket(WS_URL);
+            ws = socket;
+            wsRef.current = socket;
 
-            ws.onopen = () => {
+            socket.onopen = () => {
                 if (dead) return;
                 setConnected(true);
 
                 // Re-apply GUI control state on every fresh connection.
-                ws.send(JSON.stringify({ type: "use_controls", value: useControlsRef.current }));
-                ws.send(JSON.stringify({ type: "use_algorithm_colors", value: useAlgorithmColorsRef.current }));
-                ws.send(JSON.stringify({ type: "speed", value: speedRef.current }));
+                socket.send(JSON.stringify({ type: "use_controls", value: useControlsRef.current }));
+                socket.send(JSON.stringify({ type: "use_algorithm_colors", value: useAlgorithmColorsRef.current }));
+                socket.send(JSON.stringify({ type: "step_seconds", value: speedRef.current }));
             };
-            ws.onclose = () => {
+            socket.onclose = () => {
+                if (dead) return;
                 setConnected(false);
-                if (!dead) setTimeout(connect, 1500);
+                reconnectTimer = setTimeout(connect, 1500);
             };
-            ws.onerror = () => ws.close();
+            socket.onerror = () => socket.close();
 
-            ws.onmessage = (evt) => {
+            socket.onmessage = (evt) => {
+                if (dead) return;
                 let payload: SimulationSnapshot;
                 try { payload = JSON.parse(evt.data); } catch { return; }
                 onSnapshot?.(payload);
@@ -328,14 +337,14 @@ export function Simulation({
             };
         }
 
-        connect();
-        return () => { dead = true; ws?.close(); };
+        // Cancel the initial connection during StrictMode's cleanup check.
+        reconnectTimer = setTimeout(connect, 0);
+        return () => {
+            dead = true;
+            clearTimeout(reconnectTimer);
+            ws?.close();
+        };
     }, [applyPayload, onSnapshot]);
-
-    useEffect(() => {
-        if (!latestSnapshot) return;
-        applyPayload(latestSnapshot);
-    }, [latestSnapshot, applyPayload]);
 
     // helper to toggle pause/resume on the server
     const togglePause = () => {
@@ -368,7 +377,10 @@ export function Simulation({
                 ball.progress = Math.min(1, ball.progress + moveAmount);
             }
 
-            forceRender(v => v + 1);
+            setRenderState({
+                balls: Array.from(ballsRef.current.values(), ball => ({ ...ball })),
+                bonds: [...bondLinesRef.current],
+            });
             raf = requestAnimationFrame(tick);
         };
 
@@ -384,7 +396,8 @@ export function Simulation({
 
     // ── Derived render values ──────────────────────────────────────────────
 
-    const balls = Array.from(ballsRef.current.values());
+    const balls = renderState.balls;
+    const renderedBallsById = new Map(balls.map(ball => [ball.id, ball]));
 
     function ballPos(ball: Ball) {
         const from = getNodePos(ball.currentNode, COLS, ROWS);
@@ -393,22 +406,36 @@ export function Simulation({
         return { cx: from.x + (to.x - from.x) * t, cy: from.y + (to.y - from.y) * t };
     }
 
-    const handleStart = () => {
-        sendCommand({ type: "start" });
-        sendCommand({ type: "speed", value: speed });
+    const handleStart = async () => {
+        if (useControls) {
+            try {
+                const status = await window.electronAPI.getServiceStatus();
+                if (!status.controls || !hasConnectedSphero) {
+                    setStartError("Connect a Sphero before enabling hardware movement.");
+                    return;
+                }
+            } catch (error) {
+                setStartError(String(error));
+                return;
+            }
+        }
+        setStartError("");
+        sendCommand({ type: "use_controls", value: useControls });
+        sendCommand({ type: "start", step_seconds: speed });
         setRunning(true);
         setPaused(false);
     };
 
     const handleStop = () => {
         sendCommand({ type: "reset" });
+        setStartError("");
         setRunning(false);
         setPaused(false);
         setEditBall(false);
         setSelectedEditBallId(null);
         setEditPath([]);
         setIsPathDrawing(false);
-        // clear animation state and bonds but keep speed slider value
+        // Clear animation state and bonds but keep the step interval.
         ballsRef.current.clear();
         bondLinesRef.current = [];
         groupColorRef.current.clear();
@@ -419,7 +446,7 @@ export function Simulation({
     const handleSpeedChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = parseFloat(e.target.value);
         onSpeedChange(val);
-        sendCommand({ type: "speed", value: val });
+        sendCommand({ type: "step_seconds", value: val });
     };
 
     const handleEditBall = () => {
@@ -444,15 +471,8 @@ export function Simulation({
     const toggleUseControls = () => {
         const next = !useControls;
         onUseControlsChange(next);
+        setStartError("");
         sendCommand({ type: "use_controls", value: next });
-        if (!next) {
-            setRunning(false);
-            setPaused(false);
-            setEditBall(false);
-            setSelectedEditBallId(null);
-            setEditPath([]);
-            setIsPathDrawing(false);
-        }
     };
 
     const toggleUseAlgorithmColors = () => {
@@ -588,9 +608,9 @@ export function Simulation({
                     );
                 })}
 
-                {bondLinesRef.current.map(([a, b]) => {
-                    const ba = ballsRef.current.get(a);
-                    const bb = ballsRef.current.get(b);
+                {renderState.bonds.map(([a, b]) => {
+                    const ba = renderedBallsById.get(a);
+                    const bb = renderedBallsById.get(b);
                     if (!ba || !bb) return null;
                     const pa = ballPos(ba);
                     const pb = ballPos(bb);
@@ -631,11 +651,12 @@ export function Simulation({
                     <span className={styles.sectionLabel}>Simulation</span>
                     <button
                         className={`${styles.sidebarButton} ${styles.play}`}
-                        onClick={handleStart}
+                        onClick={() => void handleStart()}
                         disabled={!connected || running}
                     >
                         ▶ Start
                     </button>
+                    {startError && <p className={styles.startError} role="alert">{startError}</p>}
                     <button
                         className={`${styles.sidebarButton} ${styles.reset}`}
                         onClick={handleStop}
@@ -664,11 +685,11 @@ export function Simulation({
 
                 <div className={styles.sidebarDivider} />
 
-                {/* Speed */}
+                {/* Step interval */}
                 <div className={styles.sidebarSection}>
                     <div className={styles.sectionLabelRow}>
-                        <span className={styles.sectionLabel}>Speed</span>
-                        <span className={styles.sectionValue}>{speed.toFixed(1)}×</span>
+                        <span className={styles.sectionLabel}>Step seconds</span>
+                        <span className={styles.sectionValue}>{speed.toFixed(1)} s</span>
                     </div>
                     <input
                         type="range"
@@ -683,19 +704,22 @@ export function Simulation({
 
                 <div className={styles.sidebarDivider} />
 
-                {/* Enable controls toggle */}
+                {/* Hardware controls toggle */}
                 <div className={styles.sidebarSection}>
-                    <label className={styles.toggleRow}>
-                        <span className={styles.sectionLabel} style={{ marginBottom: 0 }}>Enable Controls</span>
-                        <div
+                    <div className={styles.toggleRow}>
+                        <span className={styles.sectionLabel} style={{ marginBottom: 0 }}>Use controls</span>
+                        <button
+                            type="button"
                             className={`${styles.toggleTrack} ${useControls ? styles.toggleOn : ""}`}
                             onClick={toggleUseControls}
                             role="switch"
                             aria-checked={useControls}
+                            aria-label="Use controls"
+                            disabled={running}
                         >
                             <div className={styles.toggleThumb} />
-                        </div>
-                    </label>
+                        </button>
+                    </div>
                 </div>
 
                 <div className={styles.sidebarDivider} />

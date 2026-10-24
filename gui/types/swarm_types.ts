@@ -8,6 +8,12 @@ export interface PerceptionConfig {
   correctionVectors: boolean;
   locked: boolean;
   latency: boolean;
+  // Detect spheros with the colour filter instead of the YOLO model. When on,
+  // the filter's blobs are what gets reported to the algorithms.
+  colorFilter: boolean;
+  // Brightness cutoff 0-255 used by the colour filter: pixels at or below this
+  // are background. Adjustable live while perception is running.
+  brightThresh: number;
 }
 
 export interface SpheroConstants {
@@ -50,13 +56,16 @@ export interface SpheroConstants {
   INITIAL_TRAITS: ("head" | "tail")[];
 }
 
-type SpheroConnectionState = "pending" | "connected" | "failed" | "not-attempted";
+type SpheroConnectionState = "pending" | "found" | "connected" | "failed" | "not-attempted";
 
 export interface SpheroStatus {
     id: string;
     connection: SpheroConnectionState;
     expectedPosition: [number, number];
     actualPosition: [number, number];
+    foundAt?: number;
+    batteryPercent?: number;
+    batteryVoltage?: number;
 }
 
 export interface SimulationSpheroSnapshot {

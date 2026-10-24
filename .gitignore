@@ -166,3 +166,7 @@ perception/annotated_test_frames/
 
 # weird mac thing
 *.DS_Store
+
+# Local desktop configurations
+desktop.ini
+controls/Data_Collection/roll_evaluation.csv
