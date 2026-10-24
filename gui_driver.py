@@ -189,8 +189,8 @@ def _send_controls_update(
                         "duration": duration, "inches_per_step": ROLL_STRAIGHT_INCH})
         
         algorithm.log(f"sphero: {sphero.id}")
-        error = sphero.get_error()
-        algorithm.log(f"x-error: {ROLL_STRAIGHT_INCH * error['x']}\ny-error: {ROLL_STRAIGHT_INCH * error['y']}\ndelta angle: {sphero.delta_angle}\ndistance: {distance} inches\nduration: {duration} seconds", indent=1)
+        error_x, error_y = sphero.get_error()
+        algorithm.log(f"x-error: {ROLL_STRAIGHT_INCH * error_x}\ny-error: {ROLL_STRAIGHT_INCH * error_y}\ndelta angle: {sphero.delta_angle}\ndistance: {distance} inches\nduration: {duration} seconds", indent=1)
 
     send_batch(sock, color_instructions)
     turn_outcomes = send_batch(sock, rotate_instructions)
