@@ -1,0 +1,1528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Swarm Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --color-paper: oklch(14% 0.012 250);
+    --color-paper-2: oklch(18% 0.014 250);
+    --color-paper-3: oklch(22% 0.014 250);
+    --color-rule: oklch(30% 0.012 250);
+    --color-neutral: oklch(58% 0.010 250);
+    --color-muted: oklch(74% 0.008 250);
+    --color-ink: oklch(94% 0.006 250);
+    --color-accent: oklch(75% 0.15 70);
+    --color-good: oklch(72% 0.14 150);
+    --color-danger: oklch(66% 0.15 25);
+    --color-plan: oklch(76% 0.09 215);
+    --font-display: "JetBrains Mono", ui-monospace, monospace;
+    --font-body: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--color-paper); color: var(--color-ink); }
+  body { font: 400 15px/1.5 var(--font-body); }
+  h1, h2, h3, p, ol, ul, dl, dd, figure { margin: 0; }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--color-plan); outline-offset: 2px; }
+  [hidden] { display: none !important; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding-inline: clamp(16px, 4vw, 32px); }
+  .skip { position: absolute; left: 8px; top: -48px; background: var(--color-plan); color: var(--color-paper); padding: 6px 10px; z-index: 20; }
+  .skip:focus { top: 8px; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .hint { color: var(--color-muted); font-size: 0.85rem; }
+  .muted { color: var(--color-neutral); }
+  .err-text { color: var(--color-danger); font-size: 0.85rem; overflow-wrap: anywhere; }
+  .warn { color: var(--color-accent); font-size: 0.85rem; border-left: 3px solid var(--color-accent); padding-left: 8px; margin-top: 8px; }
+  .sub { font: 600 0.72rem/1.2 var(--font-display); text-transform: uppercase; letter-spacing: 0.12em; color: var(--color-neutral); margin: 20px 0 8px; }
+  .field { display: grid; gap: 4px; min-width: 0; }
+  .field-label, .k { font: 500 0.66rem/1.2 var(--font-display); text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-neutral); }
+  .field.invalid input { border-color: var(--color-danger); }
+  input[type="number"], select {
+    background: var(--color-paper-2); border: 1px solid var(--color-rule); border-radius: 4px;
+    padding: 8px 10px; min-height: 40px; width: 100%; font-family: var(--font-display); font-size: 0.9rem;
+    font-variant-numeric: tabular-nums;
+  }
+  .field.narrow input { width: 110px; }
+  .toolbar, .btn-row, .run-row, .connect-row, .scan-form, .bridge-row, .manual-top {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px;
+  }
+  .check { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; min-height: 40px; }
+  .check input, .pick input { width: 18px; height: 18px; accent-color: var(--color-plan); flex: none; }
+
+  /* Buttons */
+  .btn {
+    font: 500 0.8rem/1.2 var(--font-display); letter-spacing: 0.02em; min-height: 40px; padding: 8px 14px;
+    border-radius: 4px; background: var(--color-paper-2); border: 1px solid var(--color-rule); color: var(--color-ink);
+  }
+  .btn:hover:not(:disabled) { border-color: var(--color-plan); }
+  .btn.primary { background: var(--color-plan); border-color: var(--color-plan); color: var(--color-paper); font-weight: 700; }
+  .btn.connect { font-size: 0.95rem; padding: 12px 22px; min-height: 48px; font-weight: 700; }
+  .btn.danger { color: var(--color-danger); border-color: oklch(42% 0.1 25); }
+  .btn.danger:hover:not(:disabled) { border-color: var(--color-danger); }
+  .btn.danger-solid { background: var(--color-danger); border-color: var(--color-danger); color: var(--color-paper); font-weight: 700; }
+  .btn.armed { background: var(--color-danger); border-color: var(--color-danger); color: var(--color-paper); font-weight: 700; }
+  .btn.small { min-height: 32px; padding: 4px 10px; font-size: 0.74rem; }
+  .btn.ghost { background: none; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn[aria-busy="true"] { cursor: progress; }
+
+  /* Top bar */
+  .topbar { position: sticky; top: 0; z-index: 10; background: var(--color-paper); border-bottom: 1px solid var(--color-rule); }
+  .topbar-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding-block: 14px 10px; }
+  h1 { font: 700 1.1rem/1 var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; }
+  .danger-group { display: flex; gap: 8px; flex-wrap: wrap; }
+  .strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 16px; padding-bottom: 10px; }
+  .cell { display: grid; gap: 2px; min-width: 0; }
+  .v { font: 700 1rem/1.25 var(--font-display); font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 6px; min-width: 0; }
+  .v.live { color: var(--color-accent); }
+
+  /* Dots and pulses */
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-neutral); flex: none; }
+  .dot.on { background: var(--color-good); }
+  .pulse-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--color-plan); display: inline-block; animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+  @keyframes sweep { from { width: 0; } to { width: 100%; } }
+
+  /* Steps */
+  main { padding-bottom: 8px; }
+  .step { border-top: 1px solid var(--color-rule); }
+  .step-toggle {
+    display: grid; grid-template-columns: 2.2rem minmax(0, 1fr) auto 1rem; align-items: center; gap: 4px 12px;
+    width: 100%; min-height: 56px; padding: 14px 0; background: none; border: 0; text-align: left;
+  }
+  .step-toggle:hover .step-title { color: var(--color-plan); }
+  .step-num { font: 700 1.5rem/1 var(--font-display); color: var(--color-neutral); font-variant-numeric: tabular-nums; }
+  .step-title { font: 700 0.9rem/1.2 var(--font-display); text-transform: uppercase; letter-spacing: 0.14em; }
+  .step-sum { font-size: 0.85rem; color: var(--color-muted); text-align: right; min-width: 0; overflow-wrap: anywhere; }
+  .chev { width: 0.5rem; height: 0.5rem; border-right: 2px solid var(--color-muted); border-bottom: 2px solid var(--color-muted); transform: rotate(45deg); margin-right: 4px; }
+  .step-toggle[aria-expanded="false"] .chev { transform: rotate(-45deg); }
+  .step-body { padding: 0 0 28px calc(2.2rem + 12px); }
+  .lede { max-width: 64ch; color: var(--color-muted); }
+
+  /* Buttons row inside steps */
+  .system { margin-top: 14px; }
+  .system summary { cursor: pointer; color: var(--color-muted); font: 500 0.72rem var(--font-display); text-transform: uppercase; letter-spacing: 0.1em; min-height: 32px; display: flex; align-items: center; }
+  .system-body { padding-top: 8px; display: grid; gap: 8px; }
+
+  /* Pis */
+  .pi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; margin-top: 14px; }
+  .pi-grid[aria-busy="true"] { opacity: 0.55; }
+  .pi-card { background: var(--color-paper-2); border: 1px solid var(--color-rule); border-radius: 4px; padding: 12px 14px; display: grid; gap: 10px; align-content: start; }
+  .pi-card.selected { border-color: var(--color-plan); }
+  .pi-card.offline { color: var(--color-muted); }
+  .pi-head { display: flex; align-items: center; gap: 8px; }
+  .pi-title { font: 700 1rem var(--font-display); }
+  .pi-state { margin-left: auto; font: 500 0.66rem var(--font-display); text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-neutral); }
+  .facts { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 12px; font: 0.8rem/1.4 var(--font-display); }
+  .facts dt { color: var(--color-neutral); }
+  .facts dd { overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+  .pick { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; min-height: 40px; }
+
+  /* Scan */
+  .scan-progress { margin-top: 14px; display: grid; gap: 6px; }
+  .track { height: 6px; background: var(--color-rule); border-radius: 3px; overflow: hidden; }
+  .track > span { display: block; height: 100%; width: 0; background: var(--color-plan); }
+  .scan-bar.run { animation: sweep linear forwards; }
+  .table-wrap { overflow-x: auto; margin-top: 14px; }
+  table { width: 100%; border-collapse: collapse; font: 0.84rem var(--font-display); font-variant-numeric: tabular-nums; }
+  th { text-align: left; font: 500 0.66rem var(--font-display); text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-neutral); padding: 8px; border-bottom: 1px solid var(--color-rule); }
+  td { padding: 8px; border-bottom: 1px solid var(--color-rule); white-space: nowrap; }
+  .signal { display: inline-flex; align-items: center; gap: 8px; }
+  .bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; }
+  .bars i { width: 4px; background: var(--color-rule); border-radius: 1px; }
+  .bars i:nth-child(1) { height: 5px; }
+  .bars i:nth-child(2) { height: 8px; }
+  .bars i:nth-child(3) { height: 11px; }
+  .bars i:nth-child(4) { height: 14px; }
+  .bars i.on { background: var(--color-plan); }
+
+  /* Assign board and live board lanes */
+  .board { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-top: 14px; align-items: start; }
+  .lane { display: grid; gap: 8px; align-content: start; min-height: 120px; min-width: 0; border-top: 2px solid var(--color-rule); padding-top: 10px; transition: background 0.15s; }
+  .lane.over { border-top-color: var(--color-plan); background: oklch(20% 0.03 215 / 0.35); }
+  .lane-none { border-top-style: dashed; }
+  .lane.offline .lane-title { color: var(--color-neutral); }
+  .lane-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .lane-title { font: 700 0.82rem var(--font-display); text-transform: uppercase; letter-spacing: 0.12em; }
+  .lane-count { font: 700 0.9rem var(--font-display); font-variant-numeric: tabular-nums; color: var(--color-muted); }
+  .lane-empty { font-size: 0.82rem; color: var(--color-neutral); padding: 12px 0; }
+  .ball { background: var(--color-paper-2); border: 1px solid var(--color-rule); border-radius: 4px; padding: 10px; display: grid; gap: 6px; min-width: 0; }
+  .ball[draggable="true"] { cursor: grab; }
+  .ball.selected { border-color: var(--color-plan); }
+  .ball.status-released { opacity: 0.55; }
+  .ball-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .ball-id { font: 700 0.9rem var(--font-display); overflow-wrap: anywhere; }
+  .ball-sig { font-size: 0.8rem; color: var(--color-muted); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .ball-meta { font: 0.8rem var(--font-display); color: var(--color-muted); }
+  .ball-pick { display: flex; justify-content: space-between; align-items: center; gap: 8px; width: 100%; min-height: 36px; padding: 2px 0; background: none; border: 0; text-align: left; }
+  .ball-pick:disabled { cursor: default; }
+  .ball-pick[aria-pressed="true"] .ball-id { color: var(--color-plan); }
+  .tag { font: 0.66rem var(--font-display); text-transform: uppercase; color: var(--color-accent); border: 1px solid var(--color-accent); padding: 1px 5px; border-radius: 3px; }
+  .connect-row { margin-top: 18px; }
+
+  /* Status pills */
+  .pill { font: 700 0.66rem/1 var(--font-display); text-transform: uppercase; letter-spacing: 0.08em; padding: 4px 7px; border: 1px solid currentColor; border-radius: 3px; color: var(--color-neutral); display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .pill[data-status="connecting"] { color: var(--color-accent); }
+  .pill[data-status="connecting"]::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pulse 1s ease-in-out infinite; }
+  .pill[data-status="connected"], .pill[data-state="running"] { color: var(--color-good); }
+  .pill[data-status="failed"] { color: var(--color-danger); }
+  .pill[data-state="unknown"] { color: var(--color-muted); }
+
+  /* Manual controls */
+  .manual { display: grid; gap: 10px; background: var(--color-paper-2); border: 1px solid var(--color-rule); border-radius: 4px; padding: 12px 14px; margin-top: 14px; }
+  .target { font: 700 0.9rem var(--font-display); }
+
+  /* Routines */
+  .routine-picker { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; margin-top: 14px; }
+  .routine { display: grid; gap: 6px; align-content: start; text-align: left; background: var(--color-paper-2); border: 1px solid var(--color-rule); border-radius: 4px; padding: 14px; min-height: 96px; }
+  .routine:hover:not(:disabled) { border-color: var(--color-plan); }
+  .routine[aria-pressed="true"] { border-color: var(--color-plan); box-shadow: inset 3px 0 0 var(--color-plan); }
+  .routine-name { font: 700 0.95rem var(--font-display); }
+  .routine-desc { color: var(--color-muted); font-size: 0.86rem; }
+  .routine-meta { font: 0.68rem var(--font-display); color: var(--color-neutral); text-transform: uppercase; letter-spacing: 0.06em; margin-top: auto; }
+  #routineDetail { margin-top: 18px; }
+  .routine-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 20px; align-items: start; }
+  .param-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+  .order { list-style: none; padding: 0; display: grid; gap: 6px; }
+  .order-row { display: flex; align-items: center; gap: 10px; background: var(--color-paper-2); border: 1px solid var(--color-rule); border-radius: 4px; padding: 6px 8px; cursor: grab; }
+  .ord-no { font: 700 0.8rem var(--font-display); color: var(--color-plan); width: 1.6rem; text-align: center; font-variant-numeric: tabular-nums; }
+  .order-id { font: 0.86rem var(--font-display); flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .order-btns { display: flex; gap: 4px; }
+  .plan { background: oklch(12% 0.01 250); border: 1px solid var(--color-rule); border-radius: 4px; padding: 12px; }
+  .plan-empty { padding: 24px 4px; }
+  #planWrap svg { display: block; width: 100%; height: auto; }
+  #planWrap .minor { stroke: oklch(21% 0.01 250); stroke-width: 1; }
+  #planWrap .major { stroke: oklch(32% 0.012 250); stroke-width: 1; }
+  #planWrap .sightline { stroke: var(--color-plan); stroke-dasharray: 3 4; stroke-width: 1; opacity: 0.7; }
+  #planWrap .scale { stroke: var(--color-muted); stroke-width: 1.5; }
+  #planWrap .scale-label { fill: var(--color-muted); font: 500 10px var(--font-display); }
+  #planWrap .you { fill: var(--color-plan); }
+  #planWrap .you-label { fill: var(--color-plan); font: 700 11px var(--font-display); letter-spacing: 0.12em; }
+  #planWrap .hdg { stroke: var(--color-ink); stroke-width: 1.5; }
+  #planWrap .hdg-head { fill: var(--color-ink); }
+  #planWrap .slot circle { stroke: var(--color-paper); stroke-width: 2; }
+  #planWrap .slot-no { font: 700 11px var(--font-display); }
+  #planWrap .slot-id { fill: var(--color-ink); font: 500 11px var(--font-display); }
+  .checklist { list-style: none; padding: 0; display: grid; gap: 6px; counter-reset: s; }
+  .checklist li { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; background: var(--color-paper-2); border: 1px solid var(--color-rule); border-radius: 4px; padding: 6px 12px; counter-increment: s; }
+  .checklist li::before { content: counter(s, decimal-leading-zero); font: 700 0.8rem var(--font-display); color: var(--color-neutral); }
+  .checklist li.done { border-color: oklch(40% 0.05 150); }
+  .checklist li.done .check-row span { color: var(--color-muted); }
+  .check-row { display: flex; align-items: center; gap: 10px; min-height: 40px; flex: 1 1 220px; min-width: 0; cursor: pointer; }
+  .step-tools { display: flex; gap: 6px; }
+  .run-row { margin-top: 18px; }
+  .progress-block { display: grid; gap: 8px; margin-top: 14px; }
+  .outcomes { list-style: none; padding: 0; display: grid; font: 0.84rem var(--font-display); }
+  .outcomes li { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--color-rule); padding: 5px 0; }
+  .outcomes li.bad { color: var(--color-danger); }
+
+  /* Bridge */
+  .slot-list { list-style: none; padding: 0; display: grid; gap: 4px; font-size: 0.9rem; }
+  .slot-list code { font: 0.86rem var(--font-display); }
+  .bridge-row { margin-top: 14px; align-items: flex-end; }
+
+  /* Log and toasts */
+  .log-sec { border-top: 1px solid var(--color-rule); padding-block: 28px 40px; }
+  .log-title { font: 700 0.9rem var(--font-display); text-transform: uppercase; letter-spacing: 0.14em; margin-bottom: 12px; }
+  .log { list-style: none; padding: 0; border: 1px solid var(--color-rule); border-radius: 4px; max-height: 360px; overflow: auto; background: var(--color-paper-2); }
+  .entry { padding: 8px 12px; border-bottom: 1px solid var(--color-rule); font: 0.8rem var(--font-display); }
+  .entry:last-child { border-bottom: 0; }
+  .entry-head { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+  .entry time, .entry .ms { color: var(--color-neutral); }
+  .entry .method { color: var(--color-muted); }
+  .entry .path { overflow-wrap: anywhere; flex: 1 1 auto; min-width: 0; }
+  .entry .badge { font-weight: 700; }
+  .entry.ok .badge { color: var(--color-good); }
+  .entry.err .badge { color: var(--color-danger); }
+  .entry details { margin-top: 4px; }
+  .entry summary { cursor: pointer; color: var(--color-muted); font-size: 0.74rem; }
+  .entry pre { margin: 6px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--color-muted); max-height: 260px; overflow: auto; }
+  .toasts { position: fixed; left: 16px; right: 16px; bottom: 16px; display: grid; gap: 8px; max-width: 440px; margin-left: auto; z-index: 30; }
+  .toast { display: flex; justify-content: space-between; align-items: center; gap: 12px; background: var(--color-paper-3); border: 1px solid var(--color-rule); border-left: 4px solid var(--color-danger); border-radius: 4px; padding: 10px 12px; font-size: 0.86rem; box-shadow: 0 8px 24px oklch(0% 0 0 / 0.45); }
+  .toast-msg { overflow-wrap: anywhere; min-width: 0; }
+
+  @media (max-width: 620px) {
+    .strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .step-toggle { grid-template-columns: 2rem minmax(0, 1fr) 1rem; }
+    .step-sum { grid-column: 2 / -1; grid-row: 2; text-align: left; }
+    .step-body { padding-left: 0; }
+    .routine-grid { grid-template-columns: minmax(0, 1fr); }
+    .btn.connect { width: 100%; }
+    .danger-group .btn { flex: 1 1 auto; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; }
+    .scan-bar.run { width: 100%; opacity: 0.35; }
+  }
+</style>
+</head>
+<body>
+<a href="#main" class="skip">Skip to content</a>
+
+<header class="topbar">
+  <div class="wrap">
+    <div class="topbar-row">
+      <h1>Swarm Control</h1>
+      <div class="danger-group">
+        <button type="button" class="btn danger-solid" id="stopAll">STOP ALL</button>
+        <button type="button" class="btn danger" id="disconnectAll">Disconnect all</button>
+      </div>
+    </div>
+    <div class="strip">
+      <div class="cell"><span class="k">Pis online</span><span class="v" id="sPis">–</span></div>
+      <div class="cell"><span class="k">Balls connected</span><span class="v" id="sBalls">–</span></div>
+      <div class="cell"><span class="k">Routine</span><span class="v" id="sRoutine">Idle</span></div>
+      <div class="cell"><span class="k">Coordinator</span><span class="v"><span class="dot on" id="sLink"></span><span id="sLinkText">Live</span></span></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap" id="main">
+
+  <section class="step" aria-labelledby="h-pis">
+    <h2 class="step-head"><button type="button" class="step-toggle" aria-expanded="true" aria-controls="b-pis">
+      <span class="step-num">1</span><span class="step-title" id="h-pis">Pis</span><span class="step-sum" id="sum-pis"></span><span class="chev" aria-hidden="true"></span>
+    </button></h2>
+    <div class="step-body" id="b-pis">
+      <div class="toolbar">
+        <button type="button" class="btn" id="findPis">Find Pis</button>
+        <span class="hint" id="findHint"></span>
+      </div>
+      <div class="pi-grid" id="piGrid"></div>
+      <details class="system">
+        <summary>System</summary>
+        <div class="system-body">
+          <p class="hint">Applies to every selected Pi.</p>
+          <div class="btn-row">
+            <button type="button" class="btn" data-sys="restart">Restart</button>
+            <button type="button" class="btn" data-sys="update">Update to main</button>
+            <button type="button" class="btn danger" data-sys="shutdown">Shut down</button>
+          </div>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <section class="step" aria-labelledby="h-scan">
+    <h2 class="step-head"><button type="button" class="step-toggle" aria-expanded="true" aria-controls="b-scan">
+      <span class="step-num">2</span><span class="step-title" id="h-scan">Scan</span><span class="step-sum" id="sum-scan"></span><span class="chev" aria-hidden="true"></span>
+    </button></h2>
+    <div class="step-body" id="b-scan">
+      <form class="scan-form" id="scanForm">
+        <label class="field narrow"><span class="field-label">Seconds</span><input id="scanSeconds" type="number" min="1" max="60" value="8" inputmode="numeric"></label>
+        <button type="submit" class="btn primary" id="scanBtn">Scan for Spheros</button>
+      </form>
+      <div class="scan-progress" id="scanProg" hidden>
+        <div class="track"><span class="scan-bar" id="scanBar"></span></div>
+        <p class="hint" id="scanHint"></p>
+      </div>
+      <div id="scanErrors"></div>
+      <p class="hint" id="scanEmpty" style="margin-top:14px">No scan yet. Scanning listens for Spheros on every selected Pi without connecting.</p>
+      <div class="table-wrap"><table id="scanTable"></table></div>
+    </div>
+  </section>
+
+  <section class="step" aria-labelledby="h-assign">
+    <h2 class="step-head"><button type="button" class="step-toggle" aria-expanded="true" aria-controls="b-assign">
+      <span class="step-num">3</span><span class="step-title" id="h-assign">Assign</span><span class="step-sum" id="sum-assign"></span><span class="chev" aria-hidden="true"></span>
+    </button></h2>
+    <div class="step-body" id="b-assign">
+      <div class="toolbar">
+        <button type="button" class="btn primary" id="autoBtn">Auto (best signal)</button>
+        <button type="button" class="btn" id="shuffleBtn">Shuffle</button>
+        <button type="button" class="btn" id="lastBtn">Use last layout</button>
+        <button type="button" class="btn ghost" id="clearBtn">Clear</button>
+      </div>
+      <p class="hint" id="assignHint" style="margin-top:10px"></p>
+      <div class="board" id="assignBoard"></div>
+      <div class="connect-row">
+        <button type="button" class="btn connect" id="connectBtn">Connect</button>
+        <span class="hint" id="connectHint"></span>
+      </div>
+    </div>
+  </section>
+
+  <section class="step" aria-labelledby="h-board">
+    <h2 class="step-head"><button type="button" class="step-toggle" aria-expanded="true" aria-controls="b-board">
+      <span class="step-num">4</span><span class="step-title" id="h-board">Board</span><span class="step-sum" id="sum-board"></span><span class="chev" aria-hidden="true"></span>
+    </button></h2>
+    <div class="step-body" id="b-board">
+      <div class="manual" id="manual">
+        <div class="manual-top">
+          <p class="target" id="manualTarget"></p>
+          <label class="check"><input type="checkbox" id="allBalls"> All balls</label>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn" data-cmd='{"action":"drive","body":{"speed":60,"heading":0,"duration_ms":1000}}'>Forward</button>
+          <button type="button" class="btn" data-cmd='{"action":"drive","body":{"speed":60,"heading":180,"duration_ms":1000}}'>Back</button>
+          <button type="button" class="btn" data-cmd='{"action":"drive","body":{"speed":60,"heading":270,"duration_ms":1000}}'>Left</button>
+          <button type="button" class="btn" data-cmd='{"action":"drive","body":{"speed":60,"heading":90,"duration_ms":1000}}'>Right</button>
+          <button type="button" class="btn danger" data-cmd='{"action":"stop"}'>Stop</button>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn" data-cmd='{"action":"led","body":{"r":255,"g":0,"b":0}}'>LED red</button>
+          <button type="button" class="btn" data-cmd='{"action":"led","body":{"r":0,"g":255,"b":0}}'>LED green</button>
+          <button type="button" class="btn" data-cmd='{"action":"led","body":{"r":0,"g":0,"b":255}}'>LED blue</button>
+          <button type="button" class="btn" data-cmd='{"action":"led","body":{"r":255,"g":255,"b":255}}'>LED white</button>
+          <button type="button" class="btn" data-cmd='{"action":"led","body":{"r":0,"g":0,"b":0}}'>LED off</button>
+          <button type="button" class="btn" data-cmd='{"action":"battery"}'>Battery</button>
+        </div>
+      </div>
+      <p class="hint" id="liveEmpty" style="margin-top:14px">Connect balls in step 3 to see the live board.</p>
+      <div class="board" id="liveBoard"></div>
+    </div>
+  </section>
+
+  <section class="step" aria-labelledby="h-run">
+    <h2 class="step-head"><button type="button" class="step-toggle" aria-expanded="true" aria-controls="b-run">
+      <span class="step-num">5</span><span class="step-title" id="h-run">Run a routine</span><span class="step-sum" id="sum-run"></span><span class="chev" aria-hidden="true"></span>
+    </button></h2>
+    <div class="step-body" id="b-run">
+      <div class="routine-picker" id="routinePicker"></div>
+      <div id="routineDetail" hidden>
+        <div class="routine-grid">
+          <div>
+            <h3 class="sub">Parameters</h3>
+            <div class="param-fields" id="paramFields"></div>
+            <h3 class="sub">Slot order</h3>
+            <ol class="order" id="orderList"></ol>
+            <p class="hint" id="orderHint" style="margin-top:6px"></p>
+          </div>
+          <div>
+            <h3 class="sub">Formation</h3>
+            <figure class="plan">
+              <div id="planWrap"></div>
+              <figcaption class="hint" id="planCap" style="margin-top:8px"></figcaption>
+            </figure>
+          </div>
+        </div>
+        <h3 class="sub">Setup</h3>
+        <ol class="checklist" id="checklist"></ol>
+        <div class="btn-row" id="setupTools" style="margin-top:10px" hidden></div>
+        <div class="run-row">
+          <button type="button" class="btn primary" id="runBtn">Run</button>
+          <button type="button" class="btn danger" id="runStop">Stop</button>
+          <span class="hint" id="runHint"></span>
+        </div>
+        <div class="progress-block" id="runProg" hidden>
+          <div class="track" id="runTrack" role="progressbar" aria-label="Routine progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="runBar"></span></div>
+          <p class="hint" id="runText"></p>
+          <ul class="outcomes" id="outcomes"></ul>
+          <p class="err-text" id="runErr"></p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="step" aria-labelledby="h-bridge">
+    <h2 class="step-head"><button type="button" class="step-toggle" aria-expanded="false" aria-controls="b-bridge">
+      <span class="step-num">6</span><span class="step-title" id="h-bridge">Algorithm bridge</span><span class="step-sum" id="sum-bridge">Advanced, off by default</span><span class="chev" aria-hidden="true"></span>
+    </button></h2>
+    <div class="step-body" id="b-bridge" hidden>
+      <p class="lede">Lets gui_driver.py drive the connected balls through this coordinator instead of Controls_Server.py.</p>
+      <h3 class="sub">Slot order</h3>
+      <ol class="slot-list" id="slotList"></ol>
+      <div class="bridge-row">
+        <label class="field narrow"><span class="field-label">Port</span><input id="bridgePort" type="number" min="1" max="65535" value="1235"></label>
+        <button type="button" class="btn primary" id="bridgeStart">Start bridge</button>
+        <button type="button" class="btn" id="bridgeStop">Stop bridge</button>
+        <span class="pill" id="bridgeState" data-state="unknown">Not checked yet</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="log-sec" aria-labelledby="h-log">
+    <h2 class="log-title" id="h-log">Activity</h2>
+    <ol class="log" id="log"></ol>
+  </section>
+</main>
+
+<div class="toasts" id="toasts"></div>
+
+<script>
+(() => {
+'use strict';
+
+const LOG_MAX = 200;
+const TOAST_MS = 8000;
+const ARM_MS = 4000;
+const STATUS_MS = 1000;
+const PROGRESS_MS = 500;
+const FORMATION_DEBOUNCE_MS = 250;
+const DRIVE_SPEED = 60;
+const DRIVE_MS = 1000;
+const NS = 'http://www.w3.org/2000/svg';
+const PLAN = { w: 480, h: 360, pad: 30, ballR: 12 };
+const IDENTIFY_RE = /identif|light/i;
+const AIM_RE = /\baim/i;
+
+const $ = id => document.getElementById(id);
+const enc = encodeURIComponent;
+const natural = (a, b) => String(a).localeCompare(String(b), undefined, { numeric: true });
+
+const state = {
+  pis: [], selected: [], loadedPis: false,
+  scan: null, scanById: {}, scanIds: new Set(), placement: {}, lastLayout: null,
+  live: false, status: null, selectedBall: null, battery: {}, busyRetry: new Set(),
+  routines: [], routine: null, params: {}, checks: {}, order: [],
+  formation: null, formationSeq: 0, formationTimer: null,
+  aimOn: false, progress: null, progressActive: false,
+  bridge: null, linkOk: true,
+};
+const timers = { status: null, progress: null };
+const inflight = { status: false, progress: false };
+let dragFrom = null;
+let liveSig = '';
+
+/* ---------- DOM helpers (textContent only; no data is ever parsed as HTML) ---------- */
+
+function h(tag, attrs, ...kids) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v === undefined || v === null || v === false) continue;
+    if (k === 'text') node.textContent = String(v);
+    else if (k === 'class') node.className = v;
+    else if (k === 'dataset') Object.assign(node.dataset, v);
+    else if (k.startsWith('on')) node.addEventListener(k.slice(2), v);
+    else node.setAttribute(k, v === true ? '' : String(v));
+  }
+  for (const kid of kids.flat(Infinity)) {
+    if (kid === undefined || kid === null || kid === false) continue;
+    node.append(kid instanceof Node ? kid : String(kid));
+  }
+  return node;
+}
+
+function sv(tag, attrs, ...kids) {
+  const node = document.createElementNS(NS, tag);
+  for (const [k, v] of Object.entries(attrs || {})) node.setAttribute(k, String(v));
+  node.append(...kids.map(kid => (kid instanceof Node ? kid : String(kid))));
+  return node;
+}
+
+const fact = (k, v) => [h('dt', { text: k }), h('dd', { text: v === null || v === undefined || v === '' ? '–' : String(v) })];
+const dbmToBars = v => (v >= -55 ? 4 : v >= -65 ? 3 : v >= -75 ? 2 : v >= -85 ? 1 : 0);
+
+function signalNode(v) {
+  if (v === null || v === undefined) return h('span', { class: 'muted', text: '–' });
+  const level = dbmToBars(v);
+  return h('span', { class: 'signal' },
+    h('span', { class: 'bars', 'aria-hidden': 'true' }, [1, 2, 3, 4].map(i => h('i', { class: i <= level ? 'on' : '' }))),
+    h('span', { text: `${v} dBm` }));
+}
+
+const sigFor = (id, pi) => {
+  const v = state.scanById[id]?.rssi_by_pi?.[String(pi)];
+  return v === undefined ? null : v;
+};
+
+function toast(message) {
+  const box = $('toasts');
+  const item = h('div', { class: 'toast', role: 'alert' },
+    h('span', { class: 'toast-msg', text: message }),
+    h('button', { type: 'button', class: 'btn small ghost', onclick: () => item.remove() }, 'Dismiss'));
+  box.append(item);
+  while (box.children.length > 4) box.firstElementChild.remove();
+  setTimeout(() => item.remove(), TOAST_MS);
+}
+
+function logEntry({ method, path, ok, ms, detail }) {
+  const list = $('log');
+  list.prepend(h('li', { class: `entry ${ok ? 'ok' : 'err'}` },
+    h('div', { class: 'entry-head' },
+      h('time', { text: new Date().toLocaleTimeString([], { hour12: false }) }),
+      h('span', { class: 'method', text: method }),
+      h('span', { class: 'path', text: path }),
+      h('span', { class: 'badge', text: ok ? 'OK' : 'ERR' }),
+      ms === undefined ? null : h('span', { class: 'ms', text: `${ms} ms` })),
+    h('details', null,
+      h('summary', { text: 'JSON' }),
+      h('pre', { text: JSON.stringify(detail, null, 2) }))));
+  while (list.children.length > LOG_MAX) list.lastElementChild.remove();
+}
+
+function setLink(up) {
+  if (up === state.linkOk) return;
+  state.linkOk = up;
+  $('sLink').classList.toggle('on', up);
+  $('sLinkText').textContent = up ? 'Live' : 'Unreachable';
+  logEntry({ method: 'UI', path: up ? 'coordinator reachable' : 'coordinator unreachable', ok: up, detail: {} });
+}
+
+/* ---------- API envelope helper ---------- */
+
+async function api(method, path, body, opts = {}) {
+  const started = performance.now();
+  const init = { method, headers: {} };
+  // The coordinator refuses any non-GET without application/json (CSRF guard), so always send it.
+  if (method !== 'GET') {
+    init.headers['Content-Type'] = 'application/json';
+    init.body = JSON.stringify(body ?? {});
+  }
+  let res;
+  try {
+    const resp = await fetch(path, init);
+    const json = await resp.json().catch(() => null);
+    const env = json && typeof json === 'object' ? json : null;
+    const ok = !!env && env.ok === true && resp.ok;
+    res = { ok, status: resp.status, data: env?.data, error: ok ? undefined : (env?.error || `HTTP ${resp.status}`) };
+  } catch (e) {
+    res = { ok: false, status: 0, error: `Coordinator unreachable (${e.message})` };
+  }
+  const ms = Math.round(performance.now() - started);
+  setLink(res.status !== 0);
+  if (!opts.quiet) {
+    logEntry({ method, path, ok: res.ok, ms, detail: { request: body ?? null, response: res.ok ? { ok: true, data: res.data } : { ok: false, error: res.error } } });
+    if (!res.ok) toast(`${method} ${path.split('?')[0]}: ${res.error}`);
+  }
+  return res;
+}
+
+/* ---------- Controls: busy and gating ---------- */
+
+function gate(btn, blocked) {
+  btn._gated = !!blocked;
+  btn.disabled = btn._gated || !!btn.dataset.busy;
+}
+
+async function withBusy(btn, fn, busyText) {
+  const label = btn.textContent;
+  btn.dataset.busy = '1';
+  btn.disabled = true;
+  btn.setAttribute('aria-busy', 'true');
+  if (busyText) btn.textContent = busyText;
+  try {
+    return await fn();
+  } finally {
+    delete btn.dataset.busy;
+    btn.removeAttribute('aria-busy');
+    btn.disabled = !!btn._gated;
+    if (busyText) btn.textContent = label;
+  }
+}
+
+function armable(btn, armedText, onConfirm) {
+  const label = btn.textContent;
+  let timer = null;
+  const disarm = () => {
+    clearTimeout(timer);
+    timer = null;
+    btn.textContent = label;
+    btn.classList.remove('armed');
+  };
+  btn.addEventListener('click', () => {
+    if (!timer) {
+      btn.textContent = armedText;
+      btn.classList.add('armed');
+      timer = setTimeout(disarm, ARM_MS);
+      return;
+    }
+    disarm();
+    onConfirm(btn);
+  });
+}
+
+function setStepOpen(bodyId, open) {
+  $(bodyId).hidden = !open;
+  document.querySelector(`[aria-controls="${bodyId}"]`).setAttribute('aria-expanded', String(open));
+}
+
+/* ---------- Pis (step 1) ---------- */
+
+function applyPis(data) {
+  state.pis = [...(data?.pis || [])].sort((a, b) => a.number - b.number);
+  state.selected = state.pis.filter(p => p.selected).map(p => p.number);
+  state.loadedPis = true;
+  renderPis();
+  renderAssign();
+  renderChrome();
+}
+
+function renderPis() {
+  const grid = $('piGrid');
+  if (!state.pis.length) {
+    grid.replaceChildren(h('p', { class: 'hint', text: state.loadedPis ? 'No Pis listed in coordinator/pis.json.' : 'Looking for Pis…' }));
+  } else {
+    grid.replaceChildren(...state.pis.map(piCard));
+  }
+  document.querySelectorAll('[data-sys]').forEach(b => gate(b, state.selected.length === 0));
+}
+
+function piCard(p) {
+  const on = !!p.online;
+  const picked = state.selected.includes(p.number);
+  const commit = typeof p.version === 'object' ? p.version?.commit : p.version;
+  const box = h('input', { type: 'checkbox', checked: picked, disabled: !on });
+  box.addEventListener('change', () => togglePi(p.number, box.checked, box));
+  return h('article', { class: `pi-card${on ? '' : ' offline'}${picked ? ' selected' : ''}`, 'aria-label': `Pi ${p.number}` },
+    h('header', { class: 'pi-head' },
+      h('span', { class: `dot${on ? ' on' : ''}`, 'aria-hidden': 'true' }),
+      h('h3', { class: 'pi-title', text: `Pi ${p.number}` }),
+      h('span', { class: 'pi-state', text: on ? 'online' : 'offline' })),
+    h('dl', { class: 'facts' },
+      fact('IP', p.ip),
+      fact('Host', p.hostname),
+      fact('Commit', commit ? String(commit).slice(0, 7) : null),
+      fact('Node', p.state),
+      fact('Balls', p.connected_count)),
+    h('label', { class: 'pick' }, box, h('span', { text: on ? 'Use this Pi' : 'Not reachable' })),
+    on ? null : h('p', { class: 'hint', text: 'Plug it in; it appears within ~30 s of boot.' }));
+}
+
+async function togglePi(n, on, box) {
+  box.disabled = true;
+  const next = on ? [...state.selected, n] : state.selected.filter(x => x !== n);
+  const r = await api('POST', '/api/pis/select', { numbers: [...new Set(next)].sort((a, b) => a - b) });
+  if (r.ok) applyPis(r.data);
+  else renderPis();
+}
+
+async function findPis(btn) {
+  $('findHint').replaceChildren(h('span', { class: 'pulse-dot', 'aria-hidden': 'true' }), ' Searching network…');
+  $('piGrid').setAttribute('aria-busy', 'true');
+  try {
+    const r = await withBusy(btn, () => api('GET', '/api/pis?refresh=1'), 'Searching network…');
+    if (r.ok) applyPis(r.data);
+  } finally {
+    $('findHint').textContent = '';
+    $('piGrid').removeAttribute('aria-busy');
+  }
+}
+
+async function systemAction(action, btn) {
+  await withBusy(btn, () => api('POST', `/api/system/${action}`, action === 'update' ? { branch: 'main' } : null));
+}
+
+async function loadPis() {
+  const r = await api('GET', '/api/pis');
+  if (r.ok) applyPis(r.data);
+}
+
+/* ---------- Scan (step 2) ---------- */
+
+async function runScan(btn) {
+  if (!state.selected.length) {
+    toast('Select at least one Pi in step 1 before scanning.');
+    return;
+  }
+  const secs = Math.min(60, Math.max(1, Math.round(Number($('scanSeconds').value)) || 8));
+  const bar = $('scanBar');
+  const n = state.selected.length;
+  $('scanProg').hidden = false;
+  $('scanHint').textContent = `Listening on ${n} Pi${n > 1 ? 's' : ''} for ${secs} s…`;
+  bar.style.animationDuration = `${secs}s`;
+  bar.classList.remove('run');
+  void bar.offsetWidth;
+  bar.classList.add('run');
+  const r = await withBusy(btn, () => api('POST', '/api/scan', { seconds: secs }), 'Scanning…');
+  bar.classList.remove('run');
+  $('scanProg').hidden = true;
+  if (r.ok) applyScan(r.data);
+}
+
+function applyScan(data) {
+  const robots = data?.robots || [];
+  state.scan = { robots, errors: data?.errors || {} };
+  state.scanById = Object.fromEntries(robots.map(r => [r.robot_id, r]));
+  state.scanIds = new Set(robots.map(r => r.robot_id));
+  const placement = { ...state.placement };
+  for (const r of robots) if (!Object.hasOwn(placement, r.robot_id)) placement[r.robot_id] = null;
+  state.placement = placement;
+  renderScan();
+  renderAssign();
+  renderChrome();
+}
+
+function renderScan() {
+  const sc = state.scan;
+  $('scanEmpty').hidden = !!sc;
+  $('scanErrors').replaceChildren(...Object.entries(sc?.errors || {}).map(([pi, msg]) => h('p', { class: 'warn', text: `Pi ${pi}: ${msg}` })));
+  const table = $('scanTable');
+  if (!sc) {
+    table.replaceChildren();
+    return;
+  }
+  const cols = [...new Set([...state.selected, ...sc.robots.flatMap(r => Object.keys(r.rssi_by_pi || {}).map(Number))])].sort((a, b) => a - b);
+  table.replaceChildren(
+    h('caption', { class: 'sr', text: 'Scan results' }),
+    h('thead', null, h('tr', null,
+      h('th', { text: 'Ball' }), ...cols.map(n => h('th', { text: `Pi ${n}` })), h('th', { text: 'Best' }))),
+    h('tbody', null, sc.robots.length
+      ? sc.robots.map(r => h('tr', null,
+        h('td', { class: 'mono', text: r.robot_id }),
+        ...cols.map(n => h('td', null, signalNode(r.rssi_by_pi?.[String(n)] ?? null))),
+        h('td', { text: r.best_pi ? `Pi ${r.best_pi}` : '–' })))
+      : h('tr', null, h('td', { colspan: cols.length + 2, class: 'hint', text: 'No Spheros heard. Check they are on and charged, then scan again.' }))));
+}
+
+/* ---------- Assign (step 3) ---------- */
+
+const ballIds = () => Object.keys(state.placement).sort(natural);
+const columnOf = id => {
+  const col = state.placement[id];
+  return col && state.selected.includes(Number(col)) ? String(col) : 'none';
+};
+
+function moveBall(id, col) {
+  state.placement = { ...state.placement, [id]: col === 'none' ? null : col };
+  renderAssign();
+  renderChrome();
+}
+
+function applyAssignment(asg) {
+  const next = Object.fromEntries(ballIds().map(id => [id, null]));
+  for (const [pi, ids] of Object.entries(asg || {})) for (const id of ids) next[id] = String(pi);
+  state.placement = next;
+  renderAssign();
+  renderChrome();
+}
+
+function clearAssignment() {
+  state.placement = Object.fromEntries(ballIds().map(id => [id, null]));
+  renderAssign();
+  renderChrome();
+}
+
+function renderAssign() {
+  const cols = [...state.selected.map(String), 'none'];
+  $('assignBoard').replaceChildren(...cols.map(assignLane));
+  renderAssignControls();
+}
+
+function assignLane(col) {
+  const none = col === 'none';
+  const ids = ballIds().filter(id => columnOf(id) === col);
+  const lane = h('section', { class: `lane${none ? ' lane-none' : ''}`, 'aria-label': none ? 'Unassigned balls' : `Pi ${col} balls` },
+    h('header', { class: 'lane-head' },
+      h('h3', { class: 'lane-title', text: none ? 'Unassigned' : `Pi ${col}` }),
+      h('span', { class: 'lane-count', text: String(ids.length) })),
+    ids.length ? ids.map(id => ballCard(id, col)) : h('p', { class: 'lane-empty', text: none ? 'Balls not on a Pi wait here.' : 'Drop balls here or use the buttons above.' }));
+  lane.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    lane.classList.add('over');
+  });
+  lane.addEventListener('dragleave', e => {
+    if (!lane.contains(e.relatedTarget)) lane.classList.remove('over');
+  });
+  lane.addEventListener('drop', e => {
+    e.preventDefault();
+    lane.classList.remove('over');
+    const id = e.dataTransfer.getData('text/plain');
+    if (Object.hasOwn(state.placement, id)) moveBall(id, col);
+  });
+  return lane;
+}
+
+function ballCard(id, col) {
+  const scan = state.scanById[id];
+  const sel = h('select', { 'aria-label': `Assign ${id}`, class: 'ball-select' },
+    h('option', { value: 'none', text: 'Unassigned' }),
+    ...state.selected.map(n => h('option', { value: String(n), text: `Pi ${n}` })));
+  sel.value = col;
+  sel.addEventListener('change', () => moveBall(id, sel.value));
+  let signal;
+  if (col !== 'none') signal = signalNode(sigFor(id, col));
+  else if (scan?.best_pi) signal = [signalNode(scan.rssi_by_pi?.[String(scan.best_pi)] ?? null), h('span', { class: 'muted', text: `best Pi ${scan.best_pi}` })];
+  else signal = h('span', { class: 'muted', text: 'no signal' });
+  return h('div', {
+    class: 'ball', draggable: 'true', dataset: { ball: id },
+    ondragstart: e => { e.dataTransfer.setData('text/plain', id); e.dataTransfer.effectAllowed = 'move'; },
+  },
+    h('div', { class: 'ball-top' },
+      h('span', { class: 'ball-id', text: id }),
+      state.scanIds.has(id) ? null : h('span', { class: 'tag', text: 'not seen in scan' })),
+    h('div', { class: 'ball-sig' }, signal),
+    sel);
+}
+
+async function autoAssign(mode, btn) {
+  const r = await withBusy(btn, () => api('POST', '/api/assign/auto', { mode }));
+  if (r.ok) applyAssignment(r.data?.assignment);
+}
+
+async function fetchLastLayout(btn) {
+  const call = () => api('GET', '/api/assignment/last');
+  const r = btn ? await withBusy(btn, call) : await call();
+  if (!r.ok) return false;
+  state.lastLayout = r.data?.assignment || null;
+  renderAssignControls();
+  return !!state.lastLayout;
+}
+
+function renderAssignControls() {
+  const ids = ballIds();
+  const placed = ids.filter(id => columnOf(id) !== 'none').length;
+  const unseen = ids.filter(id => !state.scanIds.has(id)).length;
+  gate($('lastBtn'), !state.lastLayout);
+  gate($('autoBtn'), !state.scan || !state.selected.length);
+  gate($('shuffleBtn'), !state.scan || !state.selected.length);
+  gate($('clearBtn'), !ids.length);
+  gate($('connectBtn'), !state.selected.length || !placed);
+  $('assignHint').textContent = !state.selected.length
+    ? 'Select at least one Pi in step 1.'
+    : !ids.length
+      ? 'Scan in step 2 to find balls, then auto-assign or drag them.'
+      : unseen ? `${unseen} ball${unseen > 1 ? 's' : ''} not seen in the latest scan (marked).` : '';
+  $('connectHint').textContent = !state.selected.length
+    ? 'No Pis selected.'
+    : !placed ? 'Put at least one ball on a Pi.'
+      : `${placed} ball${placed > 1 ? 's' : ''} on ${state.selected.length} Pi${state.selected.length > 1 ? 's' : ''}.`;
+}
+
+function assignmentPayload() {
+  const out = Object.fromEntries(state.selected.map(n => [String(n), []]));
+  for (const id of ballIds()) {
+    const col = columnOf(id);
+    if (col !== 'none') out[col].push(id);
+  }
+  return out;
+}
+
+async function postConnect(btn) {
+  const assignment = assignmentPayload();
+  const r = await withBusy(btn, () => api('POST', '/api/connect', { assignment }), 'Connecting…');
+  if (!r.ok) return;
+  state.lastLayout = assignment;
+  for (const [pi, v] of Object.entries(r.data?.per_pi || {})) {
+    if (v && v.ok === false) toast(`Pi ${pi} could not connect: ${v.error || 'unknown error'}`);
+  }
+  state.live = true;
+  setStepOpen('b-board', true);
+  renderAssign();
+  renderChrome();
+  syncTimers();
+  await tickStatus();
+}
+
+/* ---------- Live status and board (step 4) ---------- */
+
+const allRobots = () => Object.values(state.status?.pis || {}).flatMap(p => p.robots || []);
+const connectedIds = () => allRobots().filter(r => r.status === 'connected').map(r => r.robot_id).sort(natural);
+const connectedCount = () => (state.status
+  ? connectedIds().length
+  : state.pis.reduce((n, p) => n + (p.connected_count || 0), 0));
+
+function syncOrder() {
+  const conn = connectedIds();
+  const kept = state.order.filter(id => conn.includes(id));
+  const next = [...kept, ...conn.filter(id => !kept.includes(id))];
+  const changed = next.length !== state.order.length || next.some((id, i) => id !== state.order[i]);
+  state.order = next;
+  return changed;
+}
+
+async function tickStatus() {
+  if (inflight.status) return;
+  inflight.status = true;
+  try {
+    const r = await api('GET', '/api/status', null, { quiet: true });
+    if (!r.ok) return;
+    state.status = r.data;
+    if (syncOrder()) {
+      renderOrder();
+      scheduleFormation();
+    }
+    renderLive();
+    renderManual();
+    renderRunState();
+    renderBridge();
+    renderChrome();
+  } finally {
+    inflight.status = false;
+  }
+}
+
+function renderLive() {
+  if (state.selectedBall && !connectedIds().includes(state.selectedBall)) state.selectedBall = null;
+  const sig = JSON.stringify([state.status, state.selectedBall, [...state.busyRetry].sort(), state.battery]);
+  if (sig === liveSig) return;
+  liveSig = sig;
+  const pis = state.status?.pis || {};
+  $('liveEmpty').hidden = !!state.status;
+  $('liveBoard').replaceChildren(...Object.keys(pis).sort(natural).map(key => liveLane(key, pis[key])));
+}
+
+function liveLane(key, pi) {
+  const robots = [...(pi.robots || [])].sort((a, b) => natural(a.robot_id, b.robot_id));
+  const up = robots.filter(r => r.status === 'connected').length;
+  return h('section', { class: `lane${pi.online === false ? ' offline' : ''}`, 'aria-label': `Pi ${key} board` },
+    h('header', { class: 'lane-head' },
+      h('h3', { class: 'lane-title', text: `Pi ${key}` }),
+      h('span', { class: 'lane-count', text: `${up}/${robots.length} connected` })),
+    h('p', { class: 'hint', text: pi.online === false ? 'Offline' : `node ${pi.state || 'unknown'}` }),
+    robots.length ? robots.map(r => liveCard(r)) : h('p', { class: 'lane-empty', text: 'No balls assigned' }));
+}
+
+function liveCard(r) {
+  const id = r.robot_id;
+  const st = r.status || 'queued';
+  const picked = state.selectedBall === id;
+  const kids = [
+    h('button', {
+      type: 'button', class: 'ball-pick', 'aria-pressed': String(picked), disabled: st !== 'connected',
+      onclick: () => selectBall(id),
+    }, h('span', { class: 'ball-id', text: id }), h('span', { class: 'pill', dataset: { status: st }, text: st })),
+  ];
+  if (state.battery[id] !== undefined) kids.push(h('span', { class: 'ball-meta', text: `${state.battery[id]} V` }));
+  if (st === 'failed' && r.error) kids.push(h('p', { class: 'err-text', text: r.error }));
+  if (st === 'failed') {
+    kids.push(h('button', {
+      type: 'button', class: 'btn small', disabled: state.busyRetry.has(id),
+      onclick: e => retryBall(id, e.currentTarget),
+    }, 'Retry'));
+  }
+  return h('div', { class: `ball status-${st}${picked ? ' selected' : ''}` }, kids);
+}
+
+function selectBall(id) {
+  state.selectedBall = state.selectedBall === id ? null : id;
+  renderLive();
+  renderManual();
+}
+
+async function retryBall(id, btn) {
+  state.busyRetry.add(id);
+  renderLive();
+  try {
+    await postConnect(btn);
+  } finally {
+    state.busyRetry.delete(id);
+    renderLive();
+  }
+}
+
+function renderManual() {
+  const all = $('allBalls').checked;
+  const n = connectedIds().length;
+  const id = state.selectedBall;
+  $('manualTarget').textContent = all ? `All balls · ${n} connected` : id ? `Ball ${id}` : 'Pick a connected ball on the board';
+  const can = all ? n > 0 : !!id;
+  document.querySelectorAll('#manual button').forEach(b => gate(b, !can));
+}
+
+async function manual(action, body, btn) {
+  const all = $('allBalls').checked;
+  const id = state.selectedBall;
+  if (!all && !id) return;
+  const path = all ? `/api/all/${action}` : `/api/robots/${enc(id)}/${action}`;
+  const r = await withBusy(btn, () => api('POST', path, body));
+  if (!r.ok) return;
+  if (all) {
+    const results = Object.entries(r.data?.results || {});
+    const failed = results.filter(([, v]) => v && v.ok === false).map(([k]) => k);
+    if (failed.length) toast(`${action} failed on ${failed.join(', ')}`);
+    if (action === 'battery') results.forEach(([k, v]) => { if (v?.ok) state.battery[k] = v.data?.voltage ?? '–'; });
+  } else if (action === 'battery' && r.data) {
+    state.battery[id] = r.data.voltage;
+  }
+  if (action === 'battery') renderLive();
+}
+
+/* ---------- Routines (step 5) ---------- */
+
+async function loadRoutines() {
+  const r = await api('GET', '/api/routines');
+  if (!r.ok) return;
+  state.routines = r.data?.routines || [];
+  renderRoutinePicker();
+}
+
+function renderRoutinePicker() {
+  $('routinePicker').replaceChildren(...state.routines.map(r => h('button', {
+    type: 'button', class: 'routine', 'aria-pressed': String(state.routine?.key === r.key),
+    onclick: () => selectRoutine(r.key),
+  },
+    h('span', { class: 'routine-name', text: r.name }),
+    h('span', { class: 'routine-desc', text: r.description || '' }),
+    h('span', { class: 'routine-meta', text: `${r.min_robots}–${r.max_robots} balls · ${(r.setup_steps || []).length} setup steps` }))));
+}
+
+function routineName(key) {
+  return state.routines.find(r => r.key === key)?.name ?? key ?? 'Routine';
+}
+
+function selectRoutine(key) {
+  const r = state.routines.find(x => x.key === key);
+  if (!r) return;
+  state.routine = r;
+  if (!state.params[key]) state.params[key] = Object.fromEntries((r.params || []).map(p => [p.name, p.default]));
+  if (!state.checks[key]) state.checks[key] = [];
+  state.formation = null;
+  state.formationSeq += 1;
+  $('routineDetail').hidden = false;
+  renderRoutinePicker();
+  $('routinePicker').querySelector('[aria-pressed="true"]')?.focus();
+  renderParams();
+  renderChecklist();
+  renderOrder();
+  renderRoutineProgress();
+  renderPlan();
+  fetchFormation();
+  renderRunState();
+  renderChrome();
+}
+
+const paramValid = (p, v) => Number.isFinite(v) && (p.min == null || v >= p.min) && (p.max == null || v <= p.max);
+
+function renderParams() {
+  const r = state.routine;
+  const box = $('paramFields');
+  box.replaceChildren();
+  for (const p of r.params || []) {
+    const input = h('input', {
+      type: 'number', inputmode: 'decimal', step: 'any', min: p.min, max: p.max,
+      value: state.params[r.key]?.[p.name] ?? '',
+    });
+    input.addEventListener('input', () => {
+      state.params[r.key] = { ...state.params[r.key], [p.name]: input.valueAsNumber };
+      input.closest('.field').classList.toggle('invalid', !paramValid(p, input.valueAsNumber));
+      renderRunState();
+      scheduleFormation();
+    });
+    box.append(h('label', { class: 'field' },
+      h('span', { class: 'field-label', text: p.label || p.name }),
+      input,
+      h('span', { class: 'hint', text: `${p.min ?? '–'} to ${p.max ?? '–'}` })));
+  }
+  if (!(r.params || []).length) box.append(h('p', { class: 'hint', text: 'No parameters.' }));
+}
+
+function renderOrder(focusIndex) {
+  const ol = $('orderList');
+  ol.replaceChildren(...state.order.map((id, i) => h('li', {
+    class: 'order-row', draggable: 'true', dataset: { index: String(i) },
+    ondragstart: e => { dragFrom = i; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', String(i)); },
+    ondragover: e => e.preventDefault(),
+    ondrop: e => { e.preventDefault(); moveOrder(dragFrom, i); },
+  },
+    h('span', { class: 'ord-no', text: String(i + 1) }),
+    h('span', { class: 'order-id', text: id }),
+    h('span', { class: 'order-btns' },
+      h('button', { type: 'button', class: 'btn small', 'aria-label': `Move ${id} up`, disabled: i === 0, onclick: () => moveOrder(i, i - 1) }, '↑'),
+      h('button', { type: 'button', class: 'btn small', 'aria-label': `Move ${id} down`, disabled: i === state.order.length - 1, onclick: () => moveOrder(i, i + 1) }, '↓')))));
+  $('orderHint').textContent = state.order.length ? 'Drag a row or use the arrows to change slot order.' : 'No connected balls yet. Connect them in step 4.';
+  if (focusIndex !== undefined) ol.children[focusIndex]?.querySelector('button')?.focus();
+}
+
+function moveOrder(from, to) {
+  if (from === null || from === undefined || from === to || to < 0 || to >= state.order.length) return;
+  const next = [...state.order];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  state.order = next;
+  dragFrom = null;
+  renderOrder(to);
+  renderRunState();
+  renderBridge();
+  scheduleFormation();
+}
+
+function renderChecklist() {
+  const r = state.routine;
+  const checks = state.checks[r.key] || [];
+  let hasId = false;
+  let hasAim = false;
+  const items = (r.setup_steps || []).map((text, i) => {
+    const tools = [];
+    if (!hasId && IDENTIFY_RE.test(text)) { hasId = true; tools.push(identifyBtn()); }
+    if (!hasAim && AIM_RE.test(text)) { hasAim = true; tools.push(aimBtn()); }
+    const box = h('input', { type: 'checkbox', checked: !!checks[i] });
+    box.addEventListener('change', () => {
+      const next = [...(state.checks[r.key] || [])];
+      next[i] = box.checked;
+      state.checks[r.key] = next;
+      box.closest('li').classList.toggle('done', box.checked);
+      renderRunState();
+    });
+    return h('li', { class: checks[i] ? 'done' : '' },
+      h('label', { class: 'check-row' }, box, h('span', { text })),
+      tools.length ? h('div', { class: 'step-tools' }, tools) : null);
+  });
+  $('checklist').replaceChildren(...items);
+  const fallback = [];
+  if (!hasId) fallback.push(identifyBtn());
+  if (!hasAim) fallback.push(aimBtn());
+  $('setupTools').replaceChildren(...fallback);
+  $('setupTools').hidden = !fallback.length;
+  renderRunState();
+}
+
+const identifyBtn = () => h('button', { type: 'button', class: 'btn small', 'data-identify': '', onclick: e => identify(e.currentTarget) }, 'Identify');
+const aimBtn = () => h('button', { type: 'button', class: 'btn small', 'data-aim': '', onclick: e => aim(e.currentTarget) }, state.aimOn ? 'Aim done' : 'Aim on');
+
+async function identify(btn) {
+  const r = state.routine;
+  if (!r) return;
+  await withBusy(btn, () => api('POST', `/api/routines/${enc(r.key)}/identify`, { order: [...state.order] }));
+}
+
+async function aim(btn) {
+  const on = !state.aimOn;
+  const r = await withBusy(btn, () => api('POST', '/api/aim', { on }));
+  if (r.ok) {
+    state.aimOn = on;
+    document.querySelectorAll('[data-aim]').forEach(b => { b.textContent = state.aimOn ? 'Aim done' : 'Aim on'; });
+    renderRunState();
+  }
+}
+
+function scheduleFormation() {
+  clearTimeout(state.formationTimer);
+  state.formationTimer = setTimeout(fetchFormation, FORMATION_DEBOUNCE_MS);
+}
+
+async function fetchFormation() {
+  const r = state.routine;
+  if (!r) return;
+  if (!state.order.length) {
+    state.formation = null;
+    renderPlan();
+    return;
+  }
+  const seq = ++state.formationSeq;
+  const res = await api('POST', `/api/routines/${enc(r.key)}/formation`, { order: [...state.order], params: state.params[r.key] || {} });
+  if (seq !== state.formationSeq || state.routine?.key !== r.key) return;
+  state.formation = res.ok ? res.data : { error: res.error };
+  renderPlan();
+}
+
+function renderPlan() {
+  const f = state.formation;
+  const r = state.routine;
+  let node;
+  if (!state.order.length) node = h('p', { class: 'hint plan-empty', text: 'Connect balls in step 4 to see the formation.' });
+  else if (!f) node = h('p', { class: 'hint plan-empty', text: 'Working out the formation…' });
+  else if (f.error) node = h('p', { class: 'err-text plan-empty', text: `Formation unavailable: ${f.error}` });
+  else node = buildPlan(f.slots || []);
+  $('planWrap').replaceChildren(node);
+  $('planCap').textContent = f?.slots?.length && r
+    ? `${r.name}: ${f.slots.length} slots. Arrow shows heading; 0° points away from you. Scale bar in feet.`
+    : '';
+}
+
+const luminance = (r, g, b) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+
+function buildPlan(slots) {
+  const { w: W, h: H, pad: P, ballR: R } = PLAN;
+  const xs = slots.map(s => s.x_ft);
+  const ys = slots.map(s => s.y_ft);
+  const minX = Math.min(-2, ...xs);
+  const maxX = Math.max(2, ...xs);
+  const minY = Math.min(-1, ...ys);
+  const maxY = Math.max(4, ...ys);
+  const scale = Math.min((W - 2 * P) / (maxX - minX + 2), (H - 2 * P) / (maxY - minY + 2));
+  const cx = (minX + maxX) / 2;
+  const X = x => W / 2 + (x - cx) * scale;
+  const Y = y => H - P - (y - (minY - 1)) * scale;
+
+  const grid = sv('g', { class: 'grid' });
+  for (let x = Math.ceil(minX - 1); x <= Math.floor(maxX + 1); x += 1) {
+    grid.append(sv('line', { x1: X(x), y1: P, x2: X(x), y2: H - P, class: x % 5 === 0 ? 'major' : 'minor' }));
+  }
+  for (let y = Math.ceil(minY - 1); y <= Math.floor(maxY + 1); y += 1) {
+    grid.append(sv('line', { x1: P, y1: Y(y), x2: W - P, y2: Y(y), class: y % 5 === 0 ? 'major' : 'minor' }));
+  }
+
+  const ox = X(0);
+  const oy = Y(0);
+  const candidates = [1, 2, 5, 10, 20, 50];
+  const len = candidates.find(c => c * scale >= 60) ?? 50;
+  const bx1 = W - P - len * scale;
+  const by = H - 14;
+
+  const slotNodes = slots.map(s => {
+    const [r, g, b] = s.color || [150, 150, 150];
+    const x = X(s.x_ft);
+    const y = Y(s.y_ft);
+    const rad = (s.heading_deg || 0) * Math.PI / 180;
+    const dx = Math.sin(rad);
+    const dy = -Math.cos(rad);
+    const tx = x + dx * (R + 16);
+    const ty = y + dy * (R + 16);
+    const bx = tx - dx * 7;
+    const byy = ty - dy * 7;
+    const px = -dy * 4;
+    const py = dx * 4;
+    return sv('g', { class: 'slot' },
+      sv('line', { x1: x + dx * R, y1: y + dy * R, x2: bx, y2: byy, class: 'hdg' }),
+      sv('polygon', { points: `${tx},${ty} ${bx + px},${byy + py} ${bx - px},${byy - py}`, class: 'hdg-head' }),
+      sv('circle', { cx: x, cy: y, r: R, fill: `rgb(${r},${g},${b})` }),
+      sv('text', { x, y, 'text-anchor': 'middle', 'dominant-baseline': 'central', class: 'slot-no', fill: luminance(r, g, b) > 150 ? '#0e1116' : '#f4f6f9' }, s.slot),
+      sv('text', { x: x + R + 6, y: y + 4, class: 'slot-id' }, s.robot_id));
+  });
+
+  return sv('svg', { viewBox: `0 0 ${W} ${H}`, role: 'img', 'aria-label': `Formation plan with ${slots.length} balls, you at the bottom` },
+    sv('title', null, `Formation plan, ${slots.length} balls`),
+    grid,
+    sv('line', { x1: ox, y1: oy + 7, x2: ox, y2: H - P, class: 'sightline' }),
+    sv('polygon', { points: `${ox},${oy - 9} ${ox - 7},${oy + 5} ${ox + 7},${oy + 5}`, class: 'you' }),
+    sv('text', { x: ox, y: H - 4, 'text-anchor': 'middle', class: 'you-label' }, 'YOU'),
+    sv('line', { x1: bx1, y1: by, x2: W - P, y2: by, class: 'scale' }),
+    sv('line', { x1: bx1, y1: by - 4, x2: bx1, y2: by, class: 'scale' }),
+    sv('line', { x1: W - P, y1: by - 4, x2: W - P, y2: by, class: 'scale' }),
+    sv('text', { x: W - P, y: by - 7, 'text-anchor': 'end', class: 'scale-label' }, `${len} ft`),
+    ...slotNodes);
+}
+
+function runBlockers(r) {
+  const out = [];
+  if (state.progressActive) out.push('a routine is already running');
+  const steps = r.setup_steps || [];
+  const checks = state.checks[r.key] || [];
+  const left = steps.filter((_, i) => !checks[i]).length;
+  if (left) out.push(`${left} setup step${left === 1 ? '' : 's'} to tick`);
+  const n = state.order.length;
+  if (n < r.min_robots || n > r.max_robots) out.push(`needs ${r.min_robots}–${r.max_robots} balls (${n} in slot order)`);
+  for (const p of r.params || []) {
+    if (!paramValid(p, state.params[r.key]?.[p.name])) out.push(`${p.label || p.name} is out of range`);
+  }
+  return out;
+}
+
+function renderRunState() {
+  const r = state.routine;
+  const reasons = r ? runBlockers(r) : ['pick a routine first'];
+  gate($('runBtn'), reasons.length > 0);
+  $('runHint').textContent = reasons.length ? reasons.join(' · ') : 'Ready to run';
+  document.querySelectorAll('[data-identify]').forEach(b => gate(b, !state.order.length));
+  document.querySelectorAll('[data-aim]').forEach(b => gate(b, !connectedIds().length && !state.aimOn));
+}
+
+async function runRoutine(btn) {
+  const r = state.routine;
+  if (!r) return;
+  const res = await withBusy(btn, () => api('POST', `/api/routines/${enc(r.key)}/run`, { order: [...state.order], params: state.params[r.key] || {} }));
+  if (!res.ok) return;
+  state.progressActive = true;
+  state.progress = { running: true, key: r.key, batch_index: 0, batch_count: 0, last_outcomes: {}, error: null };
+  renderRoutineProgress();
+  renderRunState();
+  renderChrome();
+  syncTimers();
+  tickProgress();
+}
+
+async function tickProgress() {
+  if (inflight.progress) return;
+  inflight.progress = true;
+  try {
+    const r = await api('GET', '/api/routines/progress', null, { quiet: true });
+    if (!r.ok) return;
+    const wasRunning = state.progressActive;
+    state.progress = r.data;
+    state.progressActive = r.data?.running === true;
+    renderRoutineProgress();
+    renderRunState();
+    renderChrome();
+    if (wasRunning && !state.progressActive) {
+      logEntry({ method: 'UI', path: `routine ${r.data?.key ?? ''} finished`, ok: !r.data?.error, detail: r.data });
+      if (r.data?.error) toast(`Routine error: ${r.data.error}`);
+    }
+    syncTimers();
+  } finally {
+    inflight.progress = false;
+  }
+}
+
+function renderRoutineProgress() {
+  const p = state.progress;
+  const r = state.routine;
+  const relevant = !!(r && p && p.key === r.key && (p.running || p.batch_count));
+  $('runProg').hidden = !relevant;
+  if (!relevant) {
+    $('outcomes').replaceChildren();
+    $('runErr').textContent = '';
+    return;
+  }
+  const frac = p.batch_count ? Math.min(1, (p.batch_index || 0) / p.batch_count) : 0;
+  $('runBar').style.width = `${(frac * 100).toFixed(1)}%`;
+  $('runTrack').setAttribute('aria-valuenow', String(Math.round(frac * 100)));
+  $('runText').textContent = p.running
+    ? `Running · batch ${p.batch_index || 0} of ${p.batch_count}`
+    : `Finished · ${p.batch_count || 0} batches`;
+  $('runErr').textContent = p.error ? `Error: ${p.error}` : '';
+  const entries = Array.isArray(p.last_outcomes)
+    ? p.last_outcomes.map(x => [x.robot_id ?? x.id, x.outcome ?? x.status])
+    : Object.entries(p.last_outcomes || {});
+  $('outcomes').replaceChildren(...entries.map(([id, o]) => h('li', { class: o === 'complete' ? 'ok' : 'bad' },
+    h('span', { class: 'mono', text: id }),
+    h('span', { text: o === 'complete' ? '✓ complete' : `✗ ${o}` }))));
+}
+
+/* ---------- Algorithm bridge (step 6) ---------- */
+
+function renderBridge() {
+  const b = state.bridge;
+  $('slotList').replaceChildren(...(state.order.length
+    ? state.order.map((id, i) => h('li', null, h('code', { text: `spheroID ${i + 1} = ${id}` })))
+    : [h('li', { class: 'hint', text: 'No slot order yet. Connect balls in step 4.' })]));
+  const pill = $('bridgeState');
+  pill.dataset.state = b ? (b.running ? 'running' : 'stopped') : 'unknown';
+  pill.textContent = b ? (b.running ? `Running on port ${b.port}` : 'Stopped') : 'Not checked yet';
+  gate($('bridgeStart'), b?.running === true);
+  gate($('bridgeStop'), b?.running === false);
+}
+
+async function bridgeCall(action, btn) {
+  const port = Number($('bridgePort').value);
+  if (action === 'start' && !(Number.isInteger(port) && port > 0 && port < 65536)) {
+    toast('Port must be a whole number from 1 to 65535.');
+    return;
+  }
+  const r = await withBusy(btn, () => api('POST', `/api/bridge/${action}`, action === 'start' ? { port } : null));
+  if (r.ok) state.bridge = { running: !!r.data?.running, port: r.data?.port ?? port };
+  renderBridge();
+  renderChrome();
+}
+
+/* ---------- Header strip and step summaries ---------- */
+
+function renderChrome() {
+  const online = state.pis.filter(p => p.online).length;
+  const p = state.progress;
+  const ids = ballIds();
+  const placed = ids.filter(id => columnOf(id) !== 'none').length;
+  const failed = allRobots().filter(r => r.status === 'failed').length;
+
+  $('sPis').textContent = state.pis.length ? `${online} of ${state.pis.length}` : '–';
+  $('sBalls').textContent = String(connectedCount());
+  $('sRoutine').textContent = state.progressActive
+    ? `${routineName(p?.key)} ${p?.batch_index ?? 0}/${p?.batch_count ?? '?'}`
+    : 'Idle';
+  $('sRoutine').classList.toggle('live', state.progressActive);
+
+  $('sum-pis').textContent = `${online} of ${state.pis.length} online · ${state.selected.length} selected`;
+  $('sum-scan').textContent = state.scan ? `${state.scan.robots.length} balls found` : 'Not scanned yet';
+  $('sum-assign').textContent = ids.length ? `${placed} placed · ${ids.length - placed} unassigned` : 'No balls yet';
+  $('sum-board').textContent = state.live
+    ? `${connectedCount()} connected${failed ? ` · ${failed} failed` : ''}`
+    : 'Connect in step 3';
+  $('sum-run').textContent = state.routine ? state.routine.name : 'No routine picked';
+  $('sum-bridge').textContent = state.bridge
+    ? (state.bridge.running ? `Running on ${state.bridge.port}` : 'Stopped')
+    : 'Advanced, off by default';
+}
+
+/* ---------- Polling (paused while the tab is hidden) ---------- */
+
+function setTimer(name, on, fn, ms) {
+  if (on && !timers[name]) timers[name] = setInterval(fn, ms);
+  if (!on && timers[name]) {
+    clearInterval(timers[name]);
+    timers[name] = null;
+  }
+}
+
+function syncTimers() {
+  const visible = !document.hidden;
+  setTimer('status', visible && state.live, tickStatus, STATUS_MS);
+  setTimer('progress', visible && state.progressActive, tickProgress, PROGRESS_MS);
+}
+
+/* ---------- Wiring ---------- */
+
+async function stopAll(btn) {
+  await withBusy(btn, () => api('POST', '/api/stop-all'));
+  await tickProgress();
+  if (state.live) await tickStatus();
+}
+
+async function disconnectAll(btn) {
+  const r = await withBusy(btn, () => api('POST', '/api/release'));
+  if (!r.ok) return;
+  state.selectedBall = null;
+  if (state.live) await tickStatus();
+}
+
+function bindStatic() {
+  document.querySelectorAll('.step-toggle').forEach(btn => btn.addEventListener('click', () => {
+    setStepOpen(btn.getAttribute('aria-controls'), btn.getAttribute('aria-expanded') === 'false');
+  }));
+
+  $('findPis').addEventListener('click', e => findPis(e.currentTarget));
+  document.querySelectorAll('[data-sys]').forEach(btn => {
+    if (btn.dataset.sys === 'shutdown') armable(btn, 'Click again to shut down', b => systemAction('shutdown', b));
+    else btn.addEventListener('click', e => systemAction(btn.dataset.sys, e.currentTarget));
+  });
+
+  $('scanForm').addEventListener('submit', e => {
+    e.preventDefault();
+    runScan($('scanBtn'));
+  });
+
+  $('autoBtn').addEventListener('click', e => autoAssign('signal', e.currentTarget));
+  $('shuffleBtn').addEventListener('click', e => autoAssign('shuffle', e.currentTarget));
+  $('lastBtn').addEventListener('click', async e => {
+    if (await fetchLastLayout(e.currentTarget)) applyAssignment(state.lastLayout);
+  });
+  $('clearBtn').addEventListener('click', clearAssignment);
+  $('connectBtn').addEventListener('click', e => postConnect(e.currentTarget));
+
+  $('stopAll').addEventListener('click', e => stopAll(e.currentTarget));
+  armable($('disconnectAll'), 'Click again to disconnect', disconnectAll);
+
+  $('allBalls').addEventListener('change', renderManual);
+  $('manual').addEventListener('click', e => {
+    const btn = e.target.closest('button[data-cmd]');
+    if (!btn) return;
+    const cmd = JSON.parse(btn.dataset.cmd);
+    manual(cmd.action, cmd.body, btn);
+  });
+
+  $('runBtn').addEventListener('click', e => runRoutine(e.currentTarget));
+  $('runStop').addEventListener('click', e => stopAll(e.currentTarget));
+
+  $('bridgeStart').addEventListener('click', e => bridgeCall('start', e.currentTarget));
+  $('bridgeStop').addEventListener('click', e => bridgeCall('stop', e.currentTarget));
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      tickStatus();
+      tickProgress();
+    }
+    syncTimers();
+  });
+}
+
+// A reload while balls are already connected should show the live board, not an empty step 4.
+async function probeStatus() {
+  const r = await api('GET', '/api/status', null, { quiet: true });
+  if (!r.ok || !Object.keys(r.data?.pis || {}).length) return;
+  state.live = true;
+  state.status = r.data;
+  syncOrder();
+}
+
+function init() {
+  bindStatic();
+  renderPis();
+  renderAssign();
+  renderScan();
+  renderLive();
+  renderManual();
+  renderOrder();
+  renderBridge();
+  renderRunState();
+  renderChrome();
+  Promise.all([loadPis(), loadRoutines(), fetchLastLayout(null), tickProgress(), probeStatus()]).then(() => {
+    renderLive();
+    renderOrder();
+    renderRunState();
+    renderChrome();
+    syncTimers();
+  });
+}
+
+init();
+})();
+</script>
+</body>
+</html>
