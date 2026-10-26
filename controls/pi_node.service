@@ -1,0 +1,17 @@
+[Unit]
+Description=Sphero swarm Pi node (controls/pi_node.py)
+After=bluetooth.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__REPO__
+ExecStart=__UV__ run --no-sync python controls/pi_node.py
+Restart=always
+RestartSec=3
+KillSignal=SIGTERM
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target

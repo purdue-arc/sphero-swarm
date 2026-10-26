@@ -1,0 +1,11 @@
+{
+  "port": 5000,
+  "token": "change-me",
+  "subnet_sweep": true,
+  "pis": [
+    {"number": 1, "mac": "XX:XX:XX:XX:XX:XX", "last_ip": "192.168.11.135"},
+    {"number": 2, "mac": "XX:XX:XX:XX:XX:XX", "last_ip": null},
+    {"number": 3, "mac": "XX:XX:XX:XX:XX:XX", "last_ip": null},
+    {"number": 4, "mac": "XX:XX:XX:XX:XX:XX", "last_ip": null}
+  ]
+}
