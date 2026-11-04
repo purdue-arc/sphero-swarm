@@ -6,6 +6,7 @@ import time
 from queue import Queue, Empty
 import websockets
 from websocket_logging import IgnoreEmptyHandshakes
+from algorithms.constants import constants
 
 server_logger = logging.getLogger("sphero.algorithm.websocket")
 server_logger.addFilter(IgnoreEmptyHandshakes())
@@ -164,7 +165,7 @@ def build_state_payload(algorithm) -> dict:
     Payload structure:
     {
         "timestamp": float,
-        "grid": { "width": int, "height": int },
+        "grid": { "width": int, "height": int, "padding": float },
         "spheros": [
             {
                 "id": int,
@@ -212,6 +213,8 @@ def build_state_payload(algorithm) -> dict:
         "grid": {
             "width": algorithm.grid_width,
             "height": algorithm.grid_height,
+            # arena margin outside the outer nodes, in grid units (camera crop)
+            "padding": constants.GRID_PADDING,
         },
         "spheros": spheros_payload,
         "bonded_groups": bonded_groups_payload,

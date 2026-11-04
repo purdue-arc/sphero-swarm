@@ -89,7 +89,8 @@ export interface SimulationSpheroSnapshot {
 
 export interface SimulationSnapshot {
   timestamp: number;
-  grid: { width: number; height: number };
+  // padding: arena margin outside the outer nodes, in grid units
+  grid: { width: number; height: number; padding?: number };
   spheros: SimulationSpheroSnapshot[];
   bonded_groups: number[][];
 }

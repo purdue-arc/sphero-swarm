@@ -164,6 +164,9 @@ export function StreamViewer({
     ) ?? [];
     const gridWidth = Math.max(1, (latestSimulationSnapshot?.grid.width ?? 2) - 1);
     const gridHeight = Math.max(1, (latestSimulationSnapshot?.grid.height ?? 2) - 1);
+    // The feed is cropped to the AprilTags, which sit this many grid units
+    // outside the outer nodes, so the overlay's viewBox spans the padding too.
+    const gridPadding = latestSimulationSnapshot?.grid.padding ?? 4.0 / 12.67;
     const shouldShowCorrections = showCorrectionVectors && correctionSpheros.length > 0;
 
     return (
@@ -213,7 +216,7 @@ export function StreamViewer({
                             {shouldShowCorrections && (
                                 <svg
                                     className={styles.correctionOverlay}
-                                    viewBox={`0 0 ${gridWidth} ${gridHeight}`}
+                                    viewBox={`${-gridPadding} ${-gridPadding} ${gridWidth + 2 * gridPadding} ${gridHeight + 2 * gridPadding}`}
                                     preserveAspectRatio="none"
                                     aria-hidden="true"
                                 >
@@ -267,8 +270,8 @@ export function StreamViewer({
                                                     markerEnd="url(#projected-vector-arrow)"
                                                 />
                                                 <foreignObject
-                                                    x={Math.min(Math.max(projectedStartX, 0), gridWidth)}
-                                                    y={Math.min(Math.max(projectedStartY, 0), gridHeight)}
+                                                    x={Math.min(Math.max(projectedStartX, -gridPadding), gridWidth + gridPadding)}
+                                                    y={Math.min(Math.max(projectedStartY, -gridPadding), gridHeight + gridPadding)}
                                                     width={gridWidth * 0.24}
                                                     height={gridHeight * 0.12}
                                                     className={styles.angleObject}

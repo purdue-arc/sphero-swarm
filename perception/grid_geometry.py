@@ -11,6 +11,8 @@ import time
 # from that boundary.
 NODE_SPACING_INCHES = 12.67
 GRID_PADDING_INCHES = 4.0
+# The same padding in grid units (fraction of one node spacing).
+GRID_PADDING_NODES = GRID_PADDING_INCHES / NODE_SPACING_INCHES
 
 
 @dataclass(frozen=True)
@@ -37,16 +39,20 @@ class GridGeometry:
         return ((x0, y0), (x1, y1))
 
     def pixel_to_grid(self, pixel_x, pixel_y, top_left, bottom_right):
+        """Grid coordinates of a pixel.  A sphero in the padding between the
+        outer nodes and the tags reports a coordinate just outside
+        [0, n - 1], so error correction sees its real overshoot; only points
+        past the tags are clamped."""
         (x0, y0), (x1, y1) = self.node_bounds(top_left, bottom_right)
         x = (pixel_x - x0) * (self.width - 1) / max(1, x1 - x0)
         y = (pixel_y - y0) * (self.height - 1) / max(1, y1 - y0)
-        return (max(0.0, min(x, self.width - 1)),
-                max(0.0, min(y, self.height - 1)))
+        pad = GRID_PADDING_NODES
+        return (max(-pad, min(x, self.width - 1 + pad)),
+                max(-pad, min(y, self.height - 1 + pad)))
 
     def grid_to_pixel(self, x, y, top_left, bottom_right):
-        """Inverse mapping, retaining fractional grid coordinates."""
-        x0, y0 = top_left
-        x1, y1 = bottom_right
+        """Inverse of pixel_to_grid, retaining fractional grid coordinates."""
+        (x0, y0), (x1, y1) = self.node_bounds(top_left, bottom_right)
         return (x0 + x * (x1 - x0) / (self.width - 1),
                 y0 + y * (y1 - y0) / (self.height - 1))
 
