@@ -131,6 +131,9 @@
   <div>
     <label>Robot ID</label>
     <input id="robotId" value="SB-8262">
+    <label style="display:flex;align-items:center;gap:0.5rem;text-transform:none;letter-spacing:0;font-size:0.85rem;color:var(--color-ink)">
+      <input type="checkbox" id="allRobots" style="width:auto"> All robots (drive, stop, LED go to every connected ball at once)
+    </label>
   </div>
   <div>
     <label>Agent token (only needed for git-checkout)</label>
@@ -152,7 +155,7 @@
   <button onclick="drive(-60, 0, 1000)">Backward · 1s</button>
   <button onclick="drive(60, 90, 1000)">Right · 1s</button>
   <button onclick="drive(60, 180, 1000)">Turn around · 1s</button>
-  <button onclick="callAgent('POST', '/robots/' + robotId() + '/stop')">Stop</button>
+  <button onclick="sendRobotCommand('stop')">Stop</button>
 </div>
 <div class="section">
   <div class="row">
@@ -186,6 +189,43 @@
 
 <script>
 function robotId() { return document.getElementById('robotId').value.trim(); }
+// "All robots" fans out in the browser: ask the Pi which balls are
+// connected, then send each one the normal single-robot request at the
+// same moment. Works against any pi_agent.py version - no Pi change needed.
+async function sendRobotCommand(action, body) {
+  if (!document.getElementById('allRobots').checked) {
+    return callAgent('POST', `/robots/${robotId()}/${action}`, body);
+  }
+  const label = `ALL ${action}`;
+  let listing;
+  try {
+    listing = await (await fetch(baseUrl() + '/robots')).json();
+  } catch (e) {
+    logEntry(label, false, { error: 'could not list robots: ' + String(e) });
+    return;
+  }
+  const ids = ((listing.data && listing.data.robots) || [])
+    .filter(r => r.connected)
+    .map(r => r.robot_id);
+  if (ids.length === 0) {
+    logEntry(label, false, { error: 'the Pi reports no connected robots' });
+    return;
+  }
+  const results = await Promise.all(ids.map(async id => {
+    try {
+      const resp = await fetch(`${baseUrl()}/robots/${id}/${action}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      return [id, await resp.json().catch(() => ({ ok: false, error: 'non-JSON response' }))];
+    } catch (e) {
+      return [id, { ok: false, error: String(e) }];
+    }
+  }));
+  logEntry(`${label} (${ids.length} robots)`, results.every(([, d]) => d.ok === true),
+           Object.fromEntries(results));
+}
 function num(id) { return parseInt(document.getElementById(id).value, 10); }
 function baseUrl() { return document.getElementById('baseUrl').value.trim().replace(/\/$/, ''); }
 
@@ -214,11 +254,11 @@ async function callAgent(method, path, body, headers) {
 }
 
 function drive(speed, heading, duration_ms) {
-  callAgent('POST', `/robots/${robotId()}/drive`, { speed, heading, duration_ms });
+  sendRobotCommand('drive', { speed, heading, duration_ms });
 }
 
 function led(r, g, b) {
-  callAgent('POST', `/robots/${robotId()}/led`, { r, g, b });
+  sendRobotCommand('led', { r, g, b });
 }
 
 function gitCheckout() {
