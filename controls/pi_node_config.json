@@ -1,0 +1,7 @@
+{
+  "port": 5000,
+  "token": "change-me",
+  "connect_timeout_seconds": 30,
+  "max_scan_attempts": 20,
+  "scan_seconds": 8
+}
