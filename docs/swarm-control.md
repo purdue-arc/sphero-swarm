@@ -32,7 +32,7 @@ cat /sys/class/net/wlan0/address           # put this MAC in coordinator/pis.jso
 The install script writes `/etc/systemd/system/sphero-node.service` (`Restart=always`,
 starts after bluetooth + network) and a sudoers rule so the node can run `shutdown`
 without a password. It installs only flask/spherov2/bleak into the repo's `.venv` (the
-service runs `uv run --no-sync`, so the camera/ML stack is never pulled onto the Pi).
+service runs `.venv/bin/python` directly with unbuffered output, so the camera/ML stack is never pulled onto the Pi and `journalctl` shows logs live).
 The token lives in `~/.config/sphero-node.json` (outside the repo, so `/system/update`
 can't stash it away). All Pis must share one token because `coordinator/pis.json` holds
 a single `"token"` — copy it there. Re-running the script is safe and restarts the node

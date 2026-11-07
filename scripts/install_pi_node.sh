@@ -53,11 +53,24 @@ echo "uv:   $UV_BIN"
 
 # Install only what the node needs into the repo's .venv. A full `uv sync` would
 # pull the camera/ML stack (depthai, ultralytics, ...), which the Pi doesn't use
-# and may not build on arm64. The service runs with --no-sync for the same reason.
+# and may not build on arm64. The service runs .venv/bin/python directly.
 if [ ! -d "$REPO_ROOT/.venv" ]; then
     (cd "$REPO_ROOT" && "$UV_BIN" venv)
 fi
 (cd "$REPO_ROOT" && "$UV_BIN" pip install flask spherov2 bleak)
+if ! "$REPO_ROOT/.venv/bin/python" -c "import flask, spherov2, bleak"; then
+    echo "The node's dependencies don't import from $REPO_ROOT/.venv; fix that and re-run." >&2
+    exit 1
+fi
+
+# The node and the old controls/pi_agent.py both use port 5000. If pi_agent.py (or
+# anything else) is still running, the service would crash-loop on "address in use".
+sudo systemctl stop sphero-node 2>/dev/null || true
+if ss -ltn 'sport = :5000' | grep -q LISTEN; then
+    echo "Something is already listening on port 5000 - probably controls/pi_agent.py." >&2
+    echo "Stop it first (e.g. pkill -f pi_agent.py), then re-run this script." >&2
+    exit 1
+fi
 
 echo "Writing $UNIT_PATH"
 sed -e "s|__USER__|$TARGET_USER|g" -e "s|__REPO__|$REPO_ROOT|g" -e "s|__UV__|$UV_BIN|g" "$TEMPLATE" \
@@ -116,6 +129,23 @@ sudo systemctl daemon-reload
 # --now would leave the old code and old token in place.
 sudo systemctl enable sphero-node
 sudo systemctl restart sphero-node
+
+echo
+echo "Waiting for the node to answer on port 5000..."
+HEALTHY=""
+for _ in $(seq 1 20); do
+    if curl -fsS http://localhost:5000/health >/dev/null 2>&1; then
+        HEALTHY="yes"
+        break
+    fi
+    sleep 1
+done
+if [ -n "$HEALTHY" ]; then
+    echo "OK: sphero-node is running and answering /health. It will start on every boot."
+else
+    echo "WARNING: sphero-node did not answer within 20 s. Recent log:" >&2
+    sudo journalctl -u sphero-node -n 30 --no-pager >&2 || true
+fi
 
 echo
 echo "Network interfaces (MAC addresses):"

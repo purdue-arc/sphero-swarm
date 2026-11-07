@@ -1,13 +1,18 @@
 [Unit]
 Description=Sphero swarm Pi node (controls/pi_node.py)
 After=bluetooth.target network-online.target
-Wants=network-online.target
+Wants=bluetooth.target network-online.target
 
 [Service]
 Type=simple
 User=__USER__
 WorkingDirectory=__REPO__
-ExecStart=__UV__ run --no-sync python controls/pi_node.py
+# The repo's .venv directly (not `uv run`): one less moving part at boot, and the
+# install script only puts flask/spherov2/bleak in it, never the camera/ML stack.
+ExecStart=__REPO__/.venv/bin/python controls/pi_node.py
+# stdout is a pipe under systemd, so Python would block-buffer the node's prints
+# and journalctl would show connect progress late or not at all.
+Environment=PYTHONUNBUFFERED=1
 Restart=always
 RestartSec=3
 KillSignal=SIGTERM
