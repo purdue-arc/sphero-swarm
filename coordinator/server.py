@@ -68,6 +68,17 @@ class ApiError(Exception):
         self.status = status
 
 
+def _auto_select(selected: Optional[tuple[int, ...]], was_online: set[int],
+                 infos: dict[int, PiInfo]) -> tuple[int, ...]:
+    """Every Pi that is online is selected unless the operator unticked it. Before any
+    choice is made that means all online Pis; afterwards, Pis that have just come online
+    (e.g. plugged in after the coordinator booted) are added, and unticked ones stay out."""
+    online = {n for n, info in infos.items() if info.online}
+    if selected is None:
+        return tuple(sorted(online))
+    return tuple(sorted(set(selected) | (online - was_online)))
+
+
 class Session:
     """What the coordinator remembers between requests.
 
@@ -123,11 +134,14 @@ class Session:
             infos = self._discover_fn(self.config, self.config.get("subnet_sweep", True))
             new_config = save_last_ips(self.config_path, self.config, infos)
             with self.lock:
+                # On the first discovery nothing counts as "just came online", so a choice
+                # made before the Pis were first probed is kept as-is.
+                was_online = ({n for n, info in self.infos.items() if info.online} if self.discovered
+                              else {info.number for info in infos if info.online})
                 self.config = new_config
                 self.infos = {info.number: info for info in infos}
                 self.discovered = True
-                if self.selected is None:
-                    self.selected = tuple(info.number for info in infos if info.online)
+                self.selected = _auto_select(self.selected, was_online, self.infos)
 
     def selected_numbers(self) -> tuple[int, ...]:
         self.discover()

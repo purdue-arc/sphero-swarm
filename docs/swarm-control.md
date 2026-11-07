@@ -56,12 +56,16 @@ login, restarts if it dies, logs to `coordinator\coordinator.log`), saves the to
 `%USERPROFILE%\.config\sphero-coordinator.json` (outside the repo), and turns on Windows'
 OpenSSH server. It prints the exact command to run on the Mac.
 
-Every session, on the Mac (same Wi-Fi):
+Every session, from **any computer** on the lab Wi-Fi (Mac, Windows or Linux; needs only
+Python 3 and the built-in `ssh`), from the repo root:
 ```
-bash scripts/open_dashboard.sh <windows-user>@<mini-pc-ip>
+python3 dashboard.py        # Windows: py dashboard.py
 ```
-It asks for the Windows password, opens the tunnel, and opens `http://localhost:8000` in the
-browser. Every click runs on the mini-PC. Ctrl+C closes the tunnel.
+It reads the mini-PC's address and login from `coordinator/minipc.json`, asks for the mini-PC's
+Windows password, checks the coordinator and lists which Pis are online, then opens
+`http://localhost:8000` in the browser. Every click runs on the mini-PC. Ctrl+C closes it.
+All online Pis are selected automatically (including ones plugged in later); untick any you
+don't want in step 1.
 
 The coordinator's real token always comes from the token file (`--token-file`, default
 `~/.config/sphero-coordinator.json`); the `token` in `coordinator/pis.json` stays `change-me`

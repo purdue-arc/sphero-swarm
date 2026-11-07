@@ -1,7 +1,7 @@
 <#
 Installs the coordinator on the Windows mini-PC as a background task that starts at
 boot (no login needed), and turns on Windows' SSH server so a Mac can open the
-dashboard through an SSH tunnel (scripts/open_dashboard.sh).
+dashboard through an SSH tunnel (dashboard.py at the repo root).
 
 Run once, from the repo root, in an *Administrator* PowerShell:
     powershell -ExecutionPolicy Bypass -File scripts\install_coordinator_windows.ps1 -Token <pi-token>
@@ -94,7 +94,9 @@ else { Write-Warning "The coordinator did not answer within 60 s. Last lines of 
 $ips = Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike "127.*" -and $_.IPAddress -notlike "169.254.*" } |
     Select-Object -ExpandProperty IPAddress
 Write-Host ""
-Write-Host "From your Mac (on the same Wi-Fi), open the dashboard with:"
-foreach ($ip in $ips) { Write-Host "    bash scripts/open_dashboard.sh `"$env:USERNAME@$ip`"" }
+Write-Host "Put these in coordinator\minipc.json (and commit them), then from any computer on the lab Wi-Fi run:"
+Write-Host "    python3 dashboard.py     (Windows: py dashboard.py)"
+Write-Host "    host: $($ips -join ' or ')"
+Write-Host "    user: $env:USERNAME"
 Write-Host "It will ask for this Windows account's password."
 Write-Host "Tip: keep the mini-PC awake so the dashboard stays reachable:  powercfg /change standby-timeout-ac 0"

@@ -624,3 +624,31 @@ def test_infinite_numbers_are_400_not_500(env):
 
     assert drive.status_code == 400
     assert bridge.status_code == 400
+
+
+def test_all_online_pis_are_selected_by_default(env):
+    body = _json(env.client.get("/api/pis"))
+    selected = {pi["number"] for pi in body["data"]["pis"] if pi["selected"]}
+    assert selected == ONLINE
+
+
+def test_pi_that_comes_online_later_is_auto_selected_but_unticked_ones_stay_out(tmp_path):
+    online = {1}
+
+    def discover(config, sweep, probe=None):
+        return [PiInfo(number=pi["number"], mac=pi["mac"], ip=f"10.0.0.{pi['number']}",
+                       online=pi["number"] in online, hostname=f"pi{pi['number']}")
+                for pi in config["pis"]]
+
+    config_path = tmp_path / "pis.json"
+    config_path.write_text(json.dumps(CONFIG))
+    app = create_app(config_path, client_factory=lambda host, port: None, discover_fn=discover)
+    app.test_client_class = LocalClient
+    client = app.test_client()
+    selected = lambda body: {pi["number"] for pi in body["data"]["pis"] if pi["selected"]}
+
+    assert selected(_json(client.get("/api/pis"))) == {1}
+    online.update({2, 3})
+    assert selected(_json(client.get("/api/pis?refresh=1"))) == {1, 2, 3}
+    client.post("/api/pis/select", json={"numbers": [1, 3]})
+    assert selected(_json(client.get("/api/pis?refresh=1"))) == {1, 3}

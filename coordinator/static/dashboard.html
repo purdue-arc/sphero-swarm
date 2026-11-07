@@ -707,6 +707,9 @@ async function systemAction(action, btn) {
 async function loadPis() {
   const r = await api('GET', '/api/pis');
   if (r.ok) applyPis(r.data);
+  // Then look again in the background: Pis plugged in after the coordinator started show
+  // up (and are auto-selected) without anyone having to press Find Pis.
+  findPis($('findPis'));
 }
 
 /* ---------- Scan (step 2) ---------- */
