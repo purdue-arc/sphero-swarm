@@ -61,11 +61,15 @@ Register-ScheduledTask -TaskName $TaskName -Action $action -Trigger $trigger -Se
 Start-ScheduledTask -TaskName $TaskName
 Write-Host "Task '$TaskName' registered (starts at every boot)."
 
-# 4. Windows SSH server, so the Mac can tunnel to the dashboard.
-$cap = Get-WindowsCapability -Online -Name "OpenSSH.Server*"
-if ($cap.State -ne "Installed") {
-    Write-Host "Installing OpenSSH Server (one time, can take a minute)..."
-    Add-WindowsCapability -Online -Name $cap.Name | Out-Null
+# 4. Windows SSH server, so the Mac can tunnel to the dashboard. Skip the install if an
+#    sshd service already exists (e.g. installed via winget): Add-WindowsCapability goes
+#    through Windows Update and can stall for a very long time on managed machines.
+if (-not (Get-Service -Name sshd -ErrorAction SilentlyContinue)) {
+    Write-Host "Installing OpenSSH Server via winget..."
+    winget install --id Microsoft.OpenSSH.Preview -e --source winget --accept-source-agreements --accept-package-agreements
+    if (-not (Get-Service -Name sshd -ErrorAction SilentlyContinue)) {
+        throw "OpenSSH Server isn't installed. Install it (winget install --id Microsoft.OpenSSH.Preview -e) and re-run."
+    }
 }
 Set-Service -Name sshd -StartupType Automatic
 Start-Service sshd
