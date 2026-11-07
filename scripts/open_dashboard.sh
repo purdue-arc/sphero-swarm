@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Opens the mini-PC's dashboard on this Mac. Everything runs on the mini-PC; the Mac
 # only shows the page, through an SSH tunnel (the dashboard only accepts local
-# connections, and the tunnel makes the Mac count as local).
+# connections, and the tunnel makes the Mac count as local). It forwards to 127.0.0.1,
+# not localhost, because Windows resolves localhost to IPv6 first and the server is IPv4-only.
 #
 #   bash scripts/open_dashboard.sh <windows-user>@<mini-pc-ip>
 #
@@ -18,8 +19,8 @@ if curl -fsS "$URL/favicon.ico" >/dev/null 2>&1; then
 fi
 
 # -f asks for the password in the foreground, then moves the tunnel to the background.
-ssh -f -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -L "$PORT:localhost:$PORT" "$TARGET"
-SSH_PID="$(pgrep -f -- "-L $PORT:localhost:$PORT $TARGET" | head -n 1)"
+ssh -f -N -o ExitOnForwardFailure=yes -o ServerAliveInterval=15 -L "$PORT:127.0.0.1:$PORT" "$TARGET"
+SSH_PID="$(pgrep -f -- "-L $PORT:127.0.0.1:$PORT $TARGET" | head -n 1)"
 trap '[ -n "$SSH_PID" ] && kill "$SSH_PID" 2>/dev/null; echo; echo "Tunnel closed."' EXIT
 
 for _ in $(seq 1 20); do
