@@ -80,19 +80,21 @@ if (-not (Get-NetFirewallRule -Name "OpenSSH-Server-In-TCP" -ErrorAction Silentl
 Write-Host "SSH server is on."
 
 # 5. Check the coordinator answers.
-Write-Host "Waiting for the coordinator on http://localhost:8000 ..."
+Write-Host "Waiting for the coordinator on http://127.0.0.1:8000 ..."
 $ok = $false
-foreach ($i in 1..30) {
-    try { Invoke-WebRequest -UseBasicParsing -Uri "http://localhost:8000/favicon.ico" -TimeoutSec 2 | Out-Null; $ok = $true; break }
+# 127.0.0.1, not localhost: Windows tries IPv6 (::1) first, and the server only listens on IPv4.
+# 60 s: the first start after a fresh .venv is slow (bytecode compile + antivirus scan).
+foreach ($i in 1..60) {
+    try { Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:8000/favicon.ico" -TimeoutSec 2 | Out-Null; $ok = $true; break }
     catch { Start-Sleep -Seconds 1 }
 }
 if ($ok) { Write-Host "OK: the coordinator is running and will start on every boot." -ForegroundColor Green }
-else { Write-Warning "The coordinator did not answer within 30 s. Last lines of $Log :"; Get-Content $Log -Tail 30 -ErrorAction SilentlyContinue }
+else { Write-Warning "The coordinator did not answer within 60 s. Last lines of $Log :"; Get-Content $Log -Tail 30 -ErrorAction SilentlyContinue }
 
 $ips = Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike "127.*" -and $_.IPAddress -notlike "169.254.*" } |
     Select-Object -ExpandProperty IPAddress
 Write-Host ""
 Write-Host "From your Mac (on the same Wi-Fi), open the dashboard with:"
-foreach ($ip in $ips) { Write-Host "    bash scripts/open_dashboard.sh $env:USERNAME@$ip" }
+foreach ($ip in $ips) { Write-Host "    bash scripts/open_dashboard.sh `"$env:USERNAME@$ip`"" }
 Write-Host "It will ask for this Windows account's password."
 Write-Host "Tip: keep the mini-PC awake so the dashboard stays reachable:  powercfg /change standby-timeout-ac 0"
