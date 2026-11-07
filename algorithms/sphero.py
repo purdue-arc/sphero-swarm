@@ -123,5 +123,8 @@ class Sphero:
             return True
         return False
 
+    def get_error(self):
+        return [self.true_x - self.x, self.true_y - self.y] 
+
     def __str__(self):
         return f"pos: {self.x}, {self.y}, id: {self.id}, direction: {self.direction}, target pos: {self.target_x}, {self.target_y}"

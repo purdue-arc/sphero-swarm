@@ -51,7 +51,7 @@
       1
     ]
   },
-  "N_SPHEROS": 3,
+  "N_SPHEROS": 1,
   "GRID_WIDTH": 5,
   "GRID_HEIGHT": 5,
   "SIM_DIST": 50,
@@ -159,15 +159,9 @@
     [
       2,
       2
-    ],
-    [
-      3,
-      1
     ]
   ],
   "INITIAL_TRAITS": [
-    "tail",
-    "head",
-    "tail"
+    "head"
   ]
 }
