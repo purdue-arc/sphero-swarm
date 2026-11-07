@@ -11,7 +11,7 @@ import zmq
 
 port = 1235
 sock = None
-ROLL_STRAIGHT_INCH = 12.0
+ROLL_STRAIGHT_INCH = 10.0
 
 # durations = [round(number/12, 2) for number in range(1, 21)] # Type the durations you want to test here
 durations = [1] * 4
@@ -47,8 +47,9 @@ def _connect_controls(port: int) -> socket.socket:
 
 def get_coords():
     coords = _perception_request("coords")
+    print(coords)
     for sphero in coords.get("spheros", []):
-        if sphero["ID"] == test_sphero.id - 1:
+        if sphero["ID"] == test_sphero.id-1:
             x_pos = sphero["X"]
             y_pos = sphero["Y"]
             return (x_pos, y_pos)

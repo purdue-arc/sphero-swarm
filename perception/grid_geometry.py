@@ -9,7 +9,7 @@ import time
 # Adjacent navigation nodes are 12.67 inches apart.  The AprilTags mark the
 # outside of the arena, while the first and last grid nodes sit four inches in
 # from that boundary.
-NODE_SPACING_INCHES = 12.67
+NODE_SPACING_INCHES = 10
 GRID_PADDING_INCHES = 4.0
 # The same padding in grid units (fraction of one node spacing).
 GRID_PADDING_NODES = GRID_PADDING_INCHES / NODE_SPACING_INCHES
