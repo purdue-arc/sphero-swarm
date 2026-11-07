@@ -135,6 +135,9 @@
   th { text-align: left; font: 500 0.66rem var(--font-display); text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-neutral); padding: 8px; border-bottom: 1px solid var(--color-rule); }
   td { padding: 8px; border-bottom: 1px solid var(--color-rule); white-space: nowrap; }
   .signal { display: inline-flex; align-items: center; gap: 8px; }
+  .use-col { width: 2.2rem; }
+  .use-col input { width: 1rem; height: 1rem; accent-color: var(--color-plan); cursor: pointer; }
+  tr.row-off td:not(.use-col) { opacity: 0.45; }
   .bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 14px; }
   .bars i { width: 4px; background: var(--color-rule); border-radius: 1px; }
   .bars i:nth-child(1) { height: 5px; }
@@ -325,6 +328,7 @@
       </div>
       <div id="scanErrors"></div>
       <p class="hint" id="scanEmpty" style="margin-top:14px">No scan yet. Scanning listens for Spheros on every selected Pi without connecting.</p>
+      <p class="hint" id="scanPick" hidden></p>
       <div class="table-wrap"><table id="scanTable"></table></div>
     </div>
   </section>
@@ -469,7 +473,7 @@ const natural = (a, b) => String(a).localeCompare(String(b), undefined, { numeri
 
 const state = {
   pis: [], selected: [], loadedPis: false,
-  scan: null, scanById: {}, scanIds: new Set(), placement: {}, lastLayout: null,
+  scan: null, scanById: {}, scanIds: new Set(), useBalls: new Set(), placement: {}, lastLayout: null,
   live: false, status: null, selectedBall: null, battery: {}, busyRetry: new Set(),
   routines: [], routine: null, params: {}, checks: {}, order: [],
   formation: null, formationSeq: 0, formationTimer: null,
@@ -732,6 +736,7 @@ function applyScan(data) {
   state.scan = { robots, errors: data?.errors || {} };
   state.scanById = Object.fromEntries(robots.map(r => [r.robot_id, r]));
   state.scanIds = new Set(robots.map(r => r.robot_id));
+  state.useBalls = new Set(state.scanIds);
   const placement = { ...state.placement };
   for (const r of robots) if (!Object.hasOwn(placement, r.robot_id)) placement[r.robot_id] = null;
   state.placement = placement;
@@ -750,16 +755,41 @@ function renderScan() {
     return;
   }
   const cols = [...new Set([...state.selected, ...sc.robots.flatMap(r => Object.keys(r.rssi_by_pi || {}).map(Number))])].sort((a, b) => a - b);
+  const all = sc.robots.length > 0 && state.useBalls.size === sc.robots.length;
+  const allBox = h('input', {
+    type: 'checkbox', 'aria-label': 'Use every ball', checked: all,
+    onchange: e => setUseBalls(e.currentTarget.checked ? sc.robots.map(r => r.robot_id) : []),
+  });
+  allBox.indeterminate = state.useBalls.size > 0 && !all;
   table.replaceChildren(
     h('caption', { class: 'sr', text: 'Scan results' }),
     h('thead', null, h('tr', null,
+      h('th', { class: 'use-col' }, allBox),
       h('th', { text: 'Ball' }), ...cols.map(n => h('th', { text: `Pi ${n}` })), h('th', { text: 'Best' }))),
     h('tbody', null, sc.robots.length
-      ? sc.robots.map(r => h('tr', null,
+      ? sc.robots.map(r => h('tr', { class: state.useBalls.has(r.robot_id) ? null : 'row-off' },
+        h('td', { class: 'use-col' }, h('input', {
+          type: 'checkbox', 'aria-label': `Use ${r.robot_id}`, checked: state.useBalls.has(r.robot_id),
+          onchange: e => toggleUseBall(r.robot_id, e.currentTarget.checked),
+        })),
         h('td', { class: 'mono', text: r.robot_id }),
         ...cols.map(n => h('td', null, signalNode(r.rssi_by_pi?.[String(n)] ?? null))),
         h('td', { text: r.best_pi ? `Pi ${r.best_pi}` : '–' })))
-      : h('tr', null, h('td', { colspan: cols.length + 2, class: 'hint', text: 'No Spheros heard. Check they are on and charged, then scan again.' }))));
+      : h('tr', null, h('td', { colspan: cols.length + 3, class: 'hint', text: 'No Spheros heard. Check they are on and charged, then scan again.' }))));
+  $('scanPick').hidden = !sc.robots.length;
+  $('scanPick').textContent = `${state.useBalls.size} of ${sc.robots.length} ticked. Auto and Shuffle spread only the ticked balls across the selected Pis.`;
+}
+
+function setUseBalls(ids) {
+  state.useBalls = new Set(ids);
+  renderScan();
+  renderAssignControls();
+}
+
+function toggleUseBall(id, on) {
+  const next = new Set(state.useBalls);
+  if (on) next.add(id); else next.delete(id);
+  setUseBalls([...next]);
 }
 
 /* ---------- Assign (step 3) ---------- */
@@ -844,7 +874,8 @@ function ballCard(id, col) {
 }
 
 async function autoAssign(mode, btn) {
-  const r = await withBusy(btn, () => api('POST', '/api/assign/auto', { mode }));
+  const robots = [...state.useBalls].sort(natural);
+  const r = await withBusy(btn, () => api('POST', '/api/assign/auto', { mode, robots }));
   if (r.ok) applyAssignment(r.data?.assignment);
 }
 
@@ -862,15 +893,17 @@ function renderAssignControls() {
   const placed = ids.filter(id => columnOf(id) !== 'none').length;
   const unseen = ids.filter(id => !state.scanIds.has(id)).length;
   gate($('lastBtn'), !state.lastLayout);
-  gate($('autoBtn'), !state.scan || !state.selected.length);
-  gate($('shuffleBtn'), !state.scan || !state.selected.length);
+  const noneTicked = !state.useBalls.size;
+  gate($('autoBtn'), !state.scan || !state.selected.length || noneTicked);
+  gate($('shuffleBtn'), !state.scan || !state.selected.length || noneTicked);
   gate($('clearBtn'), !ids.length);
   gate($('connectBtn'), !state.selected.length || !placed);
   $('assignHint').textContent = !state.selected.length
     ? 'Select at least one Pi in step 1.'
     : !ids.length
       ? 'Scan in step 2 to find balls, then auto-assign or drag them.'
-      : unseen ? `${unseen} ball${unseen > 1 ? 's' : ''} not seen in the latest scan (marked).` : '';
+      : state.scan && !state.useBalls.size ? 'Tick at least one ball in step 2 to auto-assign.'
+        : unseen ? `${unseen} ball${unseen > 1 ? 's' : ''} not seen in the latest scan (marked).` : '';
   $('connectHint').textContent = !state.selected.length
     ? 'No Pis selected.'
     : !placed ? 'Put at least one ball on a Pi.'
