@@ -171,3 +171,4 @@ perception/annotated_test_frames/
 desktop.ini
 controls/Data_Collection/roll_evaluation.csv
 coordinator/last_assignment.json
+coordinator/coordinator.log

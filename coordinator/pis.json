@@ -3,9 +3,9 @@
   "token": "change-me",
   "subnet_sweep": true,
   "pis": [
-    {"number": 1, "mac": "XX:XX:XX:XX:XX:XX", "last_ip": "192.168.11.135"},
-    {"number": 2, "mac": "XX:XX:XX:XX:XX:XX", "last_ip": null},
-    {"number": 3, "mac": "XX:XX:XX:XX:XX:XX", "last_ip": null},
-    {"number": 4, "mac": "XX:XX:XX:XX:XX:XX", "last_ip": null}
+    {"number": 1, "mac": "88:a2:9e:a6:64:df", "last_ip": "192.168.11.135"},
+    {"number": 2, "mac": "2c:cf:67:c1:3b:92", "last_ip": "192.168.11.143"},
+    {"number": 3, "mac": "2c:cf:67:c1:3d:93", "last_ip": "192.168.11.66"},
+    {"number": 4, "mac": "2c:cf:67:c1:3c:f7", "last_ip": "192.168.11.131"}
   ]
 }

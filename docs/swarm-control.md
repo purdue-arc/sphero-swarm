@@ -42,6 +42,31 @@ and systemd starts it again.
 
 Logs: `journalctl -u sphero-node -f`. Stop: `sudo systemctl stop sphero-node` (graceful).
 
+## Mini-PC does the work, a Mac shows the dashboard
+
+The coordinator (and later the control server and `gui_driver.py`) runs on the Windows
+mini-PC; a Mac only displays the dashboard through an SSH tunnel.
+
+One time, on the mini-PC, in an **Administrator** PowerShell from the repo root:
+```
+powershell -ExecutionPolicy Bypass -File scripts\install_coordinator_windows.ps1 -Token <pi-token>
+```
+This registers a `SpheroCoordinator` scheduled task (starts 30 s after boot as SYSTEM, no
+login, restarts if it dies, logs to `coordinator\coordinator.log`), saves the token to
+`%USERPROFILE%\.config\sphero-coordinator.json` (outside the repo), and turns on Windows'
+OpenSSH server. It prints the exact command to run on the Mac.
+
+Every session, on the Mac (same Wi-Fi):
+```
+bash scripts/open_dashboard.sh <windows-user>@<mini-pc-ip>
+```
+It asks for the Windows password, opens the tunnel, and opens `http://localhost:8000` in the
+browser. Every click runs on the mini-PC. Ctrl+C closes the tunnel.
+
+The coordinator's real token always comes from the token file (`--token-file`, default
+`~/.config/sphero-coordinator.json`); the `token` in `coordinator/pis.json` stays `change-me`
+so the committed file never holds a secret.
+
 ---
 
 ## Contract 1 — Pi node HTTP API (`controls/pi_node.py`, port 5000)

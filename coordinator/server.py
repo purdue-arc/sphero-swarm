@@ -40,6 +40,9 @@ PLACEHOLDER_HTML = (
     "<p>dashboard.html is not built yet. The API is up at /api/pis.</p>"
 )
 DEFAULT_WEB_PORT = 8000
+# The real Pi token lives here, outside the repo, so pis.json (which this server
+# rewrites with fresh IPs, and which is committed) never holds it.
+DEFAULT_TOKEN_FILE = Path.home() / ".config" / "sphero-coordinator.json"
 DEFAULT_BRIDGE_PORT = 1235
 DEFAULT_PI_PORT = 5000
 SCAN_DEFAULT_SECONDS = 8
@@ -73,9 +76,11 @@ class Session:
     replaced whole rather than mutated, so readers never see half an update.
     """
 
-    def __init__(self, config: dict, config_path: Path, client_factory: Callable, discover_fn: Callable):
+    def __init__(self, config: dict, config_path: Path, client_factory: Callable, discover_fn: Callable,
+                 token_override: Optional[str] = None):
         self.lock = threading.RLock()
         self.config = config
+        self.token_override = token_override
         self.config_path = config_path
         self.infos: dict[int, PiInfo] = {}
         self.discovered = False
@@ -99,7 +104,7 @@ class Session:
         return self.config.get("port", DEFAULT_PI_PORT)
 
     def token(self) -> str:
-        return self.config["token"]
+        return self.token_override or self.config["token"]
 
     def pi_numbers(self) -> tuple[int, ...]:
         return tuple(pi["number"] for pi in self.config["pis"])
@@ -230,10 +235,19 @@ def _idle_progress() -> dict:
             "last_outcomes": {}, "error": None, "cancelled": False}
 
 
+def read_token_file(path: Optional[Path]) -> Optional[str]:
+    """The token from a {"token": "..."} file, or None if there is no usable file."""
+    if path is None or not Path(path).is_file():
+        return None
+    token = json.loads(Path(path).read_text()).get("token")
+    return str(token) if token else None
+
+
 def create_app(config_path, client_factory: Callable = PiClient, discover_fn: Callable = discover,
-               web_port: int = DEFAULT_WEB_PORT) -> Flask:
+               web_port: int = DEFAULT_WEB_PORT, token_file: Optional[Path] = None) -> Flask:
     path = Path(config_path)
-    session = Session(json.loads(path.read_text()), path, client_factory, discover_fn)
+    session = Session(json.loads(path.read_text()), path, client_factory, discover_fn,
+                      token_override=read_token_file(token_file))
     app = Flask(__name__)
     app.extensions["sphero_session"] = session
     _register_errors(app)
@@ -800,9 +814,16 @@ def main(argv: Optional[list[str]] = None) -> None:
     parser.add_argument("--port", type=int, default=DEFAULT_WEB_PORT)
     parser.add_argument("--no-browser", action="store_true", help="do not open the dashboard in a browser")
     parser.add_argument("--config", type=Path, default=COORDINATOR_DIR / "pis.json")
+    parser.add_argument("--token-file", type=Path, default=DEFAULT_TOKEN_FILE,
+                        help="JSON file holding {\"token\": ...}; overrides the token in --config")
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO)
-    app = create_app(args.config, web_port=args.port)
+    app = create_app(args.config, web_port=args.port, token_file=args.token_file)
+    if app.extensions["sphero_session"].token_override:
+        logging.info("Pi token read from %s", args.token_file)
+    else:
+        logging.warning("No token file at %s; Restart/Update/Shut down will be refused by the Pis "
+                        "unless %s holds the real token", args.token_file, args.config)
     if not args.no_browser:
         threading.Timer(1.0, webbrowser.open, args=[f"http://localhost:{args.port}/"]).start()
     app.run(host="127.0.0.1", port=args.port, threaded=True)

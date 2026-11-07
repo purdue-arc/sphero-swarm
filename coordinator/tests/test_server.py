@@ -357,6 +357,33 @@ def test_system_action_forwards_the_configured_token(env):
     assert ("10.0.0.1", "system", "restart", "change-me", None) in env.log
 
 
+def test_token_file_overrides_the_token_in_pis_json(tmp_path):
+    log = []
+    pis = {"10.0.0.1": FakePi("10.0.0.1", log)}
+    config_path = tmp_path / "pis.json"
+    config_path.write_text(json.dumps(CONFIG))
+    token_file = tmp_path / "sphero-coordinator.json"
+    token_file.write_text(json.dumps({"token": "real-secret"}))
+    app = create_app(config_path, client_factory=lambda host, port: pis[host], discover_fn=_discover,
+                     token_file=token_file)
+    app.test_client_class = LocalClient
+    client = app.test_client()
+    client.post("/api/pis/select", json={"numbers": [1]})
+
+    client.post("/api/system/restart")
+
+    assert ("10.0.0.1", "system", "restart", "real-secret", None) in log
+    assert "real-secret" not in config_path.read_text()
+
+
+def test_missing_token_file_falls_back_to_pis_json(tmp_path):
+    config_path = tmp_path / "pis.json"
+    config_path.write_text(json.dumps(CONFIG))
+    app = create_app(config_path, client_factory=lambda host, port: None, discover_fn=_discover,
+                     token_file=tmp_path / "missing.json")
+    assert app.extensions["sphero_session"].token() == "change-me"
+
+
 def test_system_unknown_action_is_404(env):
     assert env.client.post("/api/system/reboot").status_code == 404
 
