@@ -8,13 +8,22 @@ from gui_driver import _perception_request
 import math
 import time
 import zmq
+import numpy as np
 
 port = 1235
 sock = None
 ROLL_STRAIGHT_INCH = 10.0
+df = pd.DataFrame(columns=["durations", "distances", "speeds"])
+plt.xlabel("duration")
+plt.ylabel("distance (in)")
+plt.ion()
 
 # durations = [round(number/12, 2) for number in range(1, 21)] # Type the durations you want to test here
-durations = [1] * 4
+reps = 10
+durations = []
+for duration in np.linspace(0.1, 1.5, num=15):
+    durations += [round(float(duration), 2)] * reps
+
 speed = 66
 distances = []
 test_num = 1
@@ -54,16 +63,19 @@ def get_coords():
             y_pos = sphero["Y"]
             return (x_pos, y_pos)
     return (-999, -999)
-
+count = 0
 for duration in durations:
+    count+=1
 
     if sock is None:
         sock = _connect_controls(port)
+        # sock.send(pickle.dumps([Instruction(test_sphero.id, 1, speed, 1.5)]))
+        # time.sleep(5)
     if sock is not None:
         start_x, start_y = get_coords()
         print(f"start X:{start_x}, start Y:{start_y}")
         
-        input("Enter to roll")
+        
         sock.send(pickle.dumps([Instruction(test_sphero.id, 1, speed, duration)]))
         sock.recv(1024)
         
@@ -73,21 +85,19 @@ for duration in durations:
             
         distance = ROLL_STRAIGHT_INCH * math.hypot((end_x - start_x), (end_y - start_y))
         print(f"distance: {distance}")
-        input("Enter to rotate")
         sock.send(pickle.dumps([Instruction(test_sphero.id, 2, 180.0, 0.5)]))
+        time.sleep(1.2)
 
     # user_input = input("Distance Rolled (in.): ")
     # a = input("Enter to continue")
         distances.append(distance)
+        new_data = pd.DataFrame({"durations": [duration], "distances": [distance], "speeds": [speed]}, index=[count])
+        # df = pd.concat([df, new_data])
+        new_data.to_csv("distance_mapping/distance_mapping_test_data/test_01.csv", mode='a', header=(True if count == 1 else False))
+        plt.scatter(durations[:count], distances)
+        plt.pause(0.001)           # Tiny pause required to yield control to the GUI
 
 sock.close()
-df = pd.DataFrame()
-df["durations"] = durations
-df["distances"] = distances
-df["speeds"] = [speed for _ in distances]
-df.to_csv("distance_mapping_test_data/test_01.csv", mode='w')
 
-plt.plot(durations, distances)
-plt.xlabel("duration")
-plt.ylabel("distance (in)")
+plt.ioff()
 plt.show()
