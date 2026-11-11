@@ -1,0 +1,8 @@
+{
+  "pi_hosts": [
+    "sphero-pi-01.local",
+    "sphero-pi-02.local",
+    "sphero-pi-03.local",
+    "sphero-pi-04.local"
+  ]
+}
