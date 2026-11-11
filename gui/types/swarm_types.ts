@@ -78,7 +78,7 @@ export interface SimulationSpheroSnapshot {
   color: string | [number, number, number];
   direction: number;
   correction_debug?: {
-    status: "uninitialized" | "stale_measurement" | "below_motion_threshold" | "at_target" | "corrected";
+    status: "uninitialized" | "stale_measurement" | "below_motion_threshold" | "heading_fallback" | "at_target" | "corrected";
     previous_vector: {
       start: [number, number];
       end: [number, number];

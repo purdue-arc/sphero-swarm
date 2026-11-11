@@ -29,6 +29,10 @@ class Sphero:
         self.previous_direction = previous_direction
         self.direction = direction
         self.delta_angle = 0
+        # Grid heading of the calibrated forward direction, as on main (+Y).
+        # Successful turns update this estimate when measured travel is too small.
+        self.heading_angle = 90.0
+        self.heading_valid = True
 
         # bonding rules. CHANGE THIS if you need to change the bonding rules
         self.bonding_directions = bonding_directions #the default: spheros can bond in all 8 directions.

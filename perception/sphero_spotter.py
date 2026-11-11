@@ -26,7 +26,7 @@ from input_streams import WebcamStream, VideoFileStream
 import blob_merge
 import color_id
 from grid_geometry import ConfiguredGrid
-from roll_evaluation import RollEvaluation
+from roll_evaluation import RollEvaluation, validate_targets
 
 # Brightness-mode tuning. Lives in constants.json under "PERCEPTION" so it can
 # be changed without editing code or passing a wall of flags; the values below
@@ -295,21 +295,7 @@ def listener():
                     if last_warp_matrix is None or not detecting:
                         raise ValueError("Calibrated, active perception is required")
                     targets = command["targets"]
-                    if not isinstance(targets, list) or not targets:
-                        raise ValueError("Targets must be a nonempty list")
-                    for target in targets:
-                        if (not isinstance(target["id"], int) or
-                                not 0 <= target["id"] < N_SPHEROS or
-                                target["algorithm_id"] != target["id"] + 1 or
-                                not isinstance(target["trial_id"], str) or
-                                not target["trial_id"]):
-                            raise ValueError("Invalid target identity")
-                        if not all(math.isfinite(float(target[k])) for k in ("x", "y", "speed", "distance", "duration")):
-                            raise ValueError("Invalid target measurement")
-                        if not (0 <= target["x"] <= arena_grid.geometry.width - 1 and
-                                0 <= target["y"] <= arena_grid.geometry.height - 1 and
-                                target["duration"] >= 0):
-                            raise ValueError("Target outside arena or invalid duration")
+                    validate_targets(targets, N_SPHEROS, arena_grid.geometry.width, arena_grid.geometry.height)
                     evaluation_commands.put(command)
                     socket.send_json({"ok": True})
                 elif action == "roll_complete":

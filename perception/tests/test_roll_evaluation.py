@@ -3,7 +3,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from perception.roll_evaluation import RollEvaluation
+from perception.roll_evaluation import RollEvaluation, validate_targets
 
 
 class RollEvaluationTests(unittest.TestCase):
@@ -68,6 +68,15 @@ class RollEvaluationTests(unittest.TestCase):
     def test_wrong_trial_completion_is_ignored(self):
         self.evaluation.complete("old", {"1": "complete"}, 1)
         self.assertEqual(self.evaluation.snapshot()[0]["status"], "rolling")
+
+    def test_target_api_accepts_first_and_last_one_based_ids(self):
+        for ident in (1, 3):
+            validate_targets([dict(self.target, id=ident, algorithm_id=ident)], 3, 5, 5)
+
+    def test_target_api_rejects_zero_out_of_range_and_mismatched_ids(self):
+        for ident, algorithm_id in ((0, 1), (4, 4), (1, 2)):
+            with self.subTest(ident=ident, algorithm_id=algorithm_id), self.assertRaises(ValueError):
+                validate_targets([dict(self.target, id=ident, algorithm_id=algorithm_id)], 3, 5, 5)
 
 
 if __name__ == "__main__":

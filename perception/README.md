@@ -80,7 +80,7 @@ This section summarizes the purpose, key components, and connections between the
 
 Start perception and detect all four AprilTags to calibrate the arena. Confirm
 the grid aligns with physical grid nodes and the detection IDs match the Sphero
-tags in the GUI. Algorithm ID 1 maps to perception ID 0, and so on. Enable
+tags in the GUI. Algorithm and perception IDs both start at 1. Enable
 controls and step the algorithm to run a trial. Use one robot at a time initially,
 then repeat distances and directions for each robot at the regression's speed.
 
@@ -93,6 +93,13 @@ Roll accuracy table shows the predicted time, measured error, and pass/fail
 they are not drawn into the detection image or pixel mask.
 
 The driver waits for endpoint measurements before issuing the next move.
+In hardware mode it retains the same targets for up to three roll attempts,
+then pauses if arrival cannot be confirmed. Resume retries those targets;
+reset discards them. GUI grid positions advance only after fresh measurements
+confirm arrival. Edited paths use the same confirmation flow.
+Initial aiming must align calibrated forward with grid +Y, as on main. When
+travel is too small to estimate direction, the controller uses that initial
+heading or the heading estimated from the last successful turn.
 Trials time out after 10 seconds of waiting for a stable endpoint. Missing/stale
 detections cannot become endpoints. Disconnected robots, failed turns/rolls,
 identity edits, missing start positions, and timeouts receive explicit statuses.
@@ -112,5 +119,6 @@ startup: `SETTLE_SECONDS`, `JITTER_GRID`, `TOLERANCE_GRID`, and `TIMEOUT_SECONDS
 All must be positive. Keep timeout below the driver's 12-second evaluation wait.
 Restart both the driver and controls server after updating: the driver uses
 framed batches with completion replies. Legacy controls clients still receive
-the existing queue acknowledgement. If calibrated perception is unavailable,
-the driver reports that evaluation is unavailable and still executes movement.
+the existing queue acknowledgement. Hardware movement requires calibrated
+perception and endpoint evaluation; if either is unavailable, the driver pauses
+with the target retained. Simulation-only mode does not require perception.

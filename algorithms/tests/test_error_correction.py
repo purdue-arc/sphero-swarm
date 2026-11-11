@@ -45,16 +45,16 @@ class ErrorCorrectionTests(unittest.TestCase):
             now=timestamp,
         )
 
-    def test_first_measurement_initializes_anchor_without_turning(self):
+    def test_first_measurement_uses_calibrated_heading(self):
         self.sphero.target_x = 1
         self.set_position(0.25, 0.5, 100.0)
 
         angle = self.algorithm.calculate_angle_change(self.sphero, now=100.0)
 
-        self.assertEqual(angle, 0)
+        self.assertEqual(angle, -124)
         self.assertEqual(self.sphero.prev_true_x, 0.25)
         self.assertEqual(self.sphero.prev_true_y, 0.5)
-        self.assertEqual(self.sphero.correction_debug["status"], "below_motion_threshold")
+        self.assertEqual(self.sphero.correction_debug["status"], "heading_fallback")
 
     def test_signed_angle_uses_degrees(self):
         self.set_position(0, 0, 100.0)
@@ -72,14 +72,13 @@ class ErrorCorrectionTests(unittest.TestCase):
         self.sphero.target_y = 0
         self.assertEqual(self.algorithm.calculate_angle_change(self.sphero, now=100.1), -90)
 
-    def test_no_planned_movement_skips_turn_and_preserves_anchor(self):
+    def test_stationary_plan_corrects_physical_drift(self):
         self.set_position(0, 0, 100.0)
         self.set_position(1, 0, 100.1)
 
-        self.assertEqual(self.algorithm.calculate_angle_change(self.sphero, now=100.1), 0)
-        self.assertEqual(self.sphero.prev_true_x, 0)
-        self.assertEqual(self.sphero.prev_true_y, 0)
-        self.assertEqual(self.sphero.correction_debug["status"], "no_planned_movement")
+        self.assertEqual(self.algorithm.calculate_angle_change(self.sphero, now=100.1), 180)
+        self.assertEqual(self.sphero.prev_true_x, 1)
+        self.assertGreater(self.algorithm.calculate_speed(self.sphero, now=100.1), 0)
 
     def test_opposite_direction_returns_180_degrees(self):
         self.set_position(0, 0, 100.0)
@@ -95,7 +94,7 @@ class ErrorCorrectionTests(unittest.TestCase):
         self.sphero.target_x = 1
 
         self.set_position(0.04, 0, 100.1)
-        self.assertEqual(self.algorithm.calculate_angle_change(self.sphero, now=100.1), 0)
+        self.assertEqual(self.algorithm.calculate_angle_change(self.sphero, now=100.1), -90)
         self.assertEqual(self.sphero.prev_true_x, 0)
 
         self.set_position(0.11, 0, 100.2)
@@ -121,16 +120,16 @@ class ErrorCorrectionTests(unittest.TestCase):
         self.assertEqual(self.algorithm.calculate_speed(self.sphero, now=102.0), 0)
         self.assertEqual(self.sphero.correction_debug["status"], "stale_measurement")
 
-    def test_reassigned_track_resets_motion_anchor(self):
+    def test_reassigned_track_resets_motion_anchor_and_uses_heading(self):
         self.set_position(0, 0, 100.0, generation=0)
         self.set_position(1, 1, 100.1, generation=1)
         self.sphero.target_x = 2
         self.sphero.target_y = 1
 
-        self.assertEqual(self.algorithm.calculate_angle_change(self.sphero, now=100.1), 0)
+        self.assertEqual(self.algorithm.calculate_angle_change(self.sphero, now=100.1), -90)
         self.assertEqual(self.sphero.prev_true_x, 1)
         self.assertEqual(self.sphero.prev_true_y, 1)
-        self.assertEqual(self.sphero.correction_debug["status"], "below_motion_threshold")
+        self.assertEqual(self.sphero.correction_debug["status"], "heading_fallback")
 
     def test_speed_is_clamped_to_sphero_range(self):
         self.set_position(0, 0, 100.0)

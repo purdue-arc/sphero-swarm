@@ -119,27 +119,6 @@ class Algorithm:
         actual_distance = hypot(actual_dx, actual_dy)
         target_distance = hypot(target_dx, target_dy)
 
-        # Skip correction when this cycle has no planned movement.
-        if sphero.target_x == sphero.x and sphero.target_y == sphero.y:
-            self._set_correction_debug(
-                sphero,
-                "no_planned_movement",
-                actual_distance=actual_distance,
-                target_distance=target_distance,
-                measurement_age=measurement_age,
-            )
-            return 0
-
-        if actual_distance < constants.MIN_ACTUAL_MOVEMENT:
-            self._set_correction_debug(
-                sphero,
-                "below_motion_threshold",
-                actual_distance=actual_distance,
-                target_distance=target_distance,
-                measurement_age=measurement_age,
-            )
-            return 0
-
         if target_distance <= constants.TARGET_TOLERANCE:
             self._set_correction_debug(
                 sphero,
@@ -152,20 +131,26 @@ class Algorithm:
             sphero.prev_true_y = sphero.true_y
             return 0
 
-        cross = actual_dx * target_dy - actual_dy * target_dx
-        dot = actual_dx * target_dx + actual_dy * target_dy
-        angle_change = int(round(degrees(atan2(cross, dot))))
+        if actual_distance >= constants.MIN_ACTUAL_MOVEMENT:
+            sphero.heading_angle = degrees(atan2(actual_dy, actual_dx))
+            sphero.prev_true_x = sphero.true_x
+            sphero.prev_true_y = sphero.true_y
+            status = "corrected"
+        else:
+            status = "heading_fallback"
+        target_angle = degrees(atan2(target_dy, target_dx))
+        angle_change = int(round((target_angle - sphero.heading_angle + 180) % 360 - 180))
+        if angle_change == -180:
+            angle_change = 180
 
         self._set_correction_debug(
             sphero,
-            "corrected",
+            status,
             angle_change=angle_change,
             actual_distance=actual_distance,
             target_distance=target_distance,
             measurement_age=measurement_age,
         )
-        sphero.prev_true_x = sphero.true_x
-        sphero.prev_true_y = sphero.true_y
         return angle_change
         
     def calculate_speed(self, sphero, now=None):

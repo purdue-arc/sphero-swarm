@@ -4,6 +4,24 @@ import math
 from pathlib import Path
 
 
+def validate_targets(targets, robot_count, width, height):
+    """Validate the shared one-based robot IDs before accepting roll trials."""
+    if not isinstance(targets, list) or not targets:
+        raise ValueError("Targets must be a nonempty list")
+    for target in targets:
+        if (not isinstance(target["id"], int)
+                or not 1 <= target["id"] <= robot_count
+                or target["algorithm_id"] != target["id"]
+                or not isinstance(target["trial_id"], str)
+                or not target["trial_id"]):
+            raise ValueError("Invalid target identity")
+        if not all(math.isfinite(float(target[k])) for k in ("x", "y", "speed", "distance", "duration")):
+            raise ValueError("Invalid target measurement")
+        if not (0 <= target["x"] <= width - 1 and 0 <= target["y"] <= height - 1
+                and target["duration"] >= 0):
+            raise ValueError("Target outside arena or invalid duration")
+
+
 class RollEvaluation:
     def __init__(self, log_path, settle_seconds=0.75, jitter=0.03,
                  tolerance=0.1, timeout=10.0, inches_per_step=12.67):

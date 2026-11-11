@@ -14,6 +14,7 @@ function formatAngle(angle: number) {
 function formatCorrectionStatus(status: string) {
     switch (status) {
         case "below_motion_threshold": return "low motion";
+        case "heading_fallback": return "estimated heading";
         case "at_target": return "at target";
         case "stale_measurement": return "stale";
         case "uninitialized": return "waiting";
