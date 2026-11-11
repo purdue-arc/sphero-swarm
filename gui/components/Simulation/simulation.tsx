@@ -26,10 +26,32 @@ const GROUP_PALETTE: { color: string; glow: string }[] = [
 
 const WS_URL = "ws://localhost:6769";
 const VIEW_SIZE = 500;
-const PADDING = 40;
+// Keeps the arena border stroke from being clipped at the view edge.
+const VIEW_INSET = 2;
+// Arena margin outside the outer nodes, in grid units: 4in of padding over
+// 12.67in node spacing. The server sends the live value in snapshot.grid.padding.
+const DEFAULT_GRID_PADDING = 4.0 / 12.67;
 const NODE_RADIUS = 6;
 const BALL_RADIUS = 8;
 const MOVE_SPEED = 100; // pixels/sec
+
+// Lay the grid out like the camera's cropped view: the arena (AprilTag
+// boundary) fills the view at true proportions, nodes `padding` in from it.
+function gridLayout(gw: number, gh: number, padding: number) {
+    const spanX = gw - 1 + 2 * padding;
+    const spanY = gh - 1 + 2 * padding;
+    const scale = (VIEW_SIZE - 2 * VIEW_INSET) / Math.max(spanX, spanY, 1e-6);
+    const arenaW = spanX * scale;
+    const arenaH = spanY * scale;
+    const arenaX = (VIEW_SIZE - arenaW) / 2;
+    const arenaY = (VIEW_SIZE - arenaH) / 2;
+    return {
+        scale,
+        arena: { x: arenaX, y: arenaY, width: arenaW, height: arenaH },
+        originX: arenaX + padding * scale,
+        originY: arenaY + padding * scale,
+    };
+}
 
 function toCssColor(input: string | [number, number, number] | undefined, fallback: string): string {
     if (typeof input === "string" && input.trim().length > 0) {
@@ -70,7 +92,7 @@ export function Simulation({
     useAlgorithmColors: boolean,
     onUseAlgorithmColorsChange: (value: boolean) => void,
 }) {
-    const [gridSize, setGridSize] = useState({ width: constants.GRID_WIDTH, height: constants.GRID_HEIGHT });
+    const [gridSize, setGridSize] = useState({ width: constants.GRID_WIDTH, height: constants.GRID_HEIGHT, padding: DEFAULT_GRID_PADDING });
     const [connected, setConnected] = useState(false);
     const [paused, setPaused] = useState(false);    
     const [running, setRunning] = useState(initialRunning);
@@ -87,10 +109,10 @@ export function Simulation({
     const bondMoveCountRef = useRef<Map<string, number>>(new Map());
     const lastAppliedTimestampRef = useRef<number | null>(null);
 
-    const gridRef = useRef({ width: 10, height: 10 });
+    const gridRef = useRef({ width: 10, height: 10, padding: DEFAULT_GRID_PADDING });
 
     const [renderState, setRenderState] = useState<{ balls: Ball[]; bonds: [number, number][] }>({ balls: [], bonds: [] });
-    const { width: COLS, height: ROWS } = gridSize;
+    const { width: COLS, height: ROWS, padding: PAD } = gridSize;
 
     const wsRef = useRef<WebSocket | null>(null);
     const svgRef = useRef<SVGSVGElement | null>(null);
@@ -125,12 +147,11 @@ export function Simulation({
         }
     }, []);
 
-    const getNodePos = useCallback((index: number, gw: number, gh: number) => {
-        const xStep = (VIEW_SIZE - PADDING * 2) / (gw - 1);
-        const yStep = (VIEW_SIZE - PADDING * 2) / (gh - 1);
+    const getNodePos = useCallback((index: number, gw: number, gh: number, padding: number) => {
+        const { scale, originX, originY } = gridLayout(gw, gh, padding);
         const col = index % gw;
         const row = Math.floor(index / gw);
-        return { x: PADDING + col * xStep, y: PADDING + row * yStep };
+        return { x: originX + col * scale, y: originY + row * scale };
     }, []);
 
     const applyPayload = useCallback((payload: SimulationSnapshot) => {
@@ -139,8 +160,10 @@ export function Simulation({
 
         const gw = payload.grid.width;
         const gh = payload.grid.height;
-        gridRef.current = { width: gw, height: gh };
-        setGridSize({ width: gw, height: gh });
+        const padding = payload.grid.padding ?? DEFAULT_GRID_PADDING;
+        gridRef.current = { width: gw, height: gh, padding };
+        setGridSize(prev => (prev.width === gw && prev.height === gh && prev.padding === padding
+            ? prev : { width: gw, height: gh, padding }));
 
         const newGroupColor = new Map<number, number>();
         payload.bonded_groups.forEach((group, groupIdx) => {
@@ -237,20 +260,19 @@ export function Simulation({
         const x = ((clientX - rect.left) / rect.width) * VIEW_SIZE;
         const y = ((clientY - rect.top) / rect.height) * VIEW_SIZE;
 
-        const xStep = (VIEW_SIZE - PADDING * 2) / (COLS - 1);
-        const yStep = (VIEW_SIZE - PADDING * 2) / (ROWS - 1);
+        const { scale, originX, originY } = gridLayout(COLS, ROWS, PAD);
 
-        const col = Math.round((x - PADDING) / xStep);
-        const row = Math.round((y - PADDING) / yStep);
+        const col = Math.round((x - originX) / scale);
+        const row = Math.round((y - originY) / scale);
 
         if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return null;
 
         const idx = nodeIndex(col, row, COLS);
-        const pos = getNodePos(idx, COLS, ROWS);
-        const threshold = Math.max(12, Math.min(xStep, yStep) * 0.45);
+        const pos = getNodePos(idx, COLS, ROWS, PAD);
+        const threshold = Math.max(12, scale * 0.45);
 
         return Math.hypot(pos.x - x, pos.y - y) <= threshold ? idx : null;
-    }, [COLS, ROWS, getNodePos, nodeIndex]);
+    }, [COLS, ROWS, PAD, getNodePos, nodeIndex]);
 
     const appendPathNode = useCallback((idx: number) => {
         setEditPath(prev => {
@@ -368,8 +390,9 @@ export function Simulation({
 
             for (const ball of ballsRef.current.values()) {
                 if (ball.progress >= 1) continue;
-                const from = getNodePos(ball.currentNode, gridRef.current.width, gridRef.current.height);
-                const to = getNodePos(ball.targetNode, gridRef.current.width, gridRef.current.height);
+                const { width: gw, height: gh, padding } = gridRef.current;
+                const from = getNodePos(ball.currentNode, gw, gh, padding);
+                const to = getNodePos(ball.targetNode, gw, gh, padding);
                 const dx = to.x - from.x;
                 const dy = to.y - from.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
@@ -400,8 +423,8 @@ export function Simulation({
     const renderedBallsById = new Map(balls.map(ball => [ball.id, ball]));
 
     function ballPos(ball: Ball) {
-        const from = getNodePos(ball.currentNode, COLS, ROWS);
-        const to = getNodePos(ball.targetNode, COLS, ROWS);
+        const from = getNodePos(ball.currentNode, COLS, ROWS, PAD);
+        const to = getNodePos(ball.targetNode, COLS, ROWS, PAD);
         const t = ball.progress;
         return { cx: from.x + (to.x - from.x) * t, cy: from.y + (to.y - from.y) * t };
     }
@@ -528,16 +551,23 @@ export function Simulation({
                     </filter>
                 </defs>
 
+                {/* Arena boundary: the edge of the camera's AprilTag crop */}
+                {(() => {
+                    const { arena } = gridLayout(COLS, ROWS, PAD);
+                    return <rect x={arena.x} y={arena.y} width={arena.width} height={arena.height}
+                        rx={4} className={styles.arenaBorder} />;
+                })()}
+
                 {Array.from({ length: ROWS }).map((_, r) =>
                     Array.from({ length: COLS }).map((_, c) => {
                         const i = r * COLS + c;
-                        const from = getNodePos(i, COLS, ROWS);
+                        const from = getNodePos(i, COLS, ROWS, PAD);
                         return (
                             <g key={`edges-${i}`}>
                                 {([[r, c + 1], [r + 1, c], [r + 1, c + 1], [r + 1, c - 1]] as [number, number][])
                                     .map(([rr, cc], idx) => {
                                         if (rr >= ROWS || cc < 0 || cc >= COLS) return null;
-                                        const to = getNodePos(rr * COLS + cc, COLS, ROWS);
+                                        const to = getNodePos(rr * COLS + cc, COLS, ROWS, PAD);
                                         return (
                                             <line key={idx}
                                                 x1={from.x} y1={from.y} x2={to.x} y2={to.y}
@@ -551,7 +581,7 @@ export function Simulation({
                 )}
 
                 {Array.from({ length: ROWS * COLS }).map((_, i) => {
-                    const { x, y } = getNodePos(i, COLS, ROWS);
+                    const { x, y } = getNodePos(i, COLS, ROWS, PAD);
                     const inEditPath = currentEditPath.includes(i);
                     return (
                         <circle key={`node-${i}`} cx={x} cy={y} r={NODE_RADIUS}
@@ -564,7 +594,7 @@ export function Simulation({
                     <polyline
                         points={currentEditPath
                             .map(idx => {
-                                const { x, y } = getNodePos(idx, COLS, ROWS);
+                                const { x, y } = getNodePos(idx, COLS, ROWS, PAD);
                                 return `${x},${y}`;
                             })
                             .join(" ")}
@@ -573,7 +603,7 @@ export function Simulation({
                 )}
 
                 {editBall && currentEditPath.map((idx, i) => {
-                    const { x, y } = getNodePos(idx, COLS, ROWS);
+                    const { x, y } = getNodePos(idx, COLS, ROWS, PAD);
                     return (
                         <circle
                             key={`edit-path-node-${idx}-${i}`}

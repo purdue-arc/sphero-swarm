@@ -5,6 +5,7 @@ from unittest.mock import Mock
 from tempfile import TemporaryDirectory
 from pathlib import Path
 from perception.roll_evaluation import RollEvaluation
+from perception.grid_geometry import NODE_SPACING_INCHES, GRID_PADDING_INCHES
 
 from algorithms.algorithm import Algorithm
 from algorithms.constants import constants
@@ -14,6 +15,11 @@ with patch("threading.Thread.start"):
 
 
 class MovementStrategyTests(unittest.TestCase):
+    def test_movement_and_perception_use_the_same_physical_grid(self):
+        self.assertEqual(constants.NODE_SPACING_INCHES, NODE_SPACING_INCHES)
+        self.assertEqual(gui_driver.ROLL_STRAIGHT_INCH, NODE_SPACING_INCHES)
+        self.assertEqual(constants.GRID_PADDING_INCHES, GRID_PADDING_INCHES)
+
     def setUp(self):
         self.sphero = Sphero(1, 0, 0)
         self.algorithm = Algorithm(5, 5, [self.sphero])

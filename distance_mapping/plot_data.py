@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-df = pd.read_csv("distance_mapping/distance_mapping.csv")
+df = pd.read_csv("distance_mapping/distance_mapping_test_data/test_01.csv")
 
 durations = np.array(df['durations'])
 distances = np.array(df['distances'])
@@ -15,7 +15,8 @@ print(slope)
 print(intercept)
 
 plt.scatter(durations, distances, color="blue")
+plt.title("Linear Regression of Sphero Distance Traveled vs. Duration")
 plt.plot(durations, best_fit_distances, color="orange")
-plt.xlabel("Duration")
+plt.xlabel("Duration (s)")
 plt.ylabel("Distance (in)")
 plt.show()

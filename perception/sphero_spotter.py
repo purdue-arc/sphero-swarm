@@ -645,8 +645,9 @@ def draw_roll_targets(frame, positions):
         color = colors[trial["id"] % len(colors)]
         target = pixel((trial["x"], trial["y"]))
         cv2.drawMarker(frame, target, color, cv2.MARKER_CROSS, 18, 2)
-        axes = (max(1, round(roll_evaluation.tolerance * bounds[1][0] / (geometry.width - 1))),
-                max(1, round(roll_evaluation.tolerance * bounds[1][1] / (geometry.height - 1))))
+        (nx0, ny0), (nx1, ny1) = geometry.node_bounds(*bounds)
+        axes = (max(1, round(roll_evaluation.tolerance * (nx1 - nx0) / (geometry.width - 1))),
+                max(1, round(roll_evaluation.tolerance * (ny1 - ny0) / (geometry.height - 1))))
         cv2.ellipse(frame, target, axes, 0, 0, 360, color, 1)
         actual = trial["endpoint"] or positions.get(trial["id"])
         if actual is not None:

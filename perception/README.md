@@ -109,7 +109,7 @@ visible until that robot's next trial or perception restarts.
 
 Results append to `controls/Data_Collection/roll_evaluation.csv`. Coordinates
 and signed along/perpendicular errors use grid units; endpoint distance is also
-reported in inches using the driver's `ROLL_STRAIGHT_INCH` scale (12.67 by
+reported in inches using the driver's `ROLL_STRAIGHT_INCH` scale (10 by
 default). Check that scale against your arena before interpreting inch errors.
 Along error is positive for overshoot; perpendicular error reports heading drift.
 Use the CSV to compare mean/worst endpoint error and pass percentage per robot.

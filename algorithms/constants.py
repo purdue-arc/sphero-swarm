@@ -26,6 +26,12 @@ class Constants:
         }
         self.EPSILON = 0.01
 
+        # Physical arena layout; must match perception/grid_geometry.py.
+        # The camera crop (AprilTag boundary) sits GRID_PADDING_INCHES outside
+        # the outermost grid nodes.
+        self.NODE_SPACING_INCHES = 10.0
+        self.GRID_PADDING_INCHES = 4.0
+
         # Colors
         self.BLUE = (0, 0, 255)
         self.RED = (255, 0, 0)
@@ -134,12 +140,22 @@ class Constants:
             self.INITIAL_TRAITS[0] = "head"
 
     @property
+    def GRID_PADDING(self) -> float:
+        """Arena padding outside the outer nodes, in grid units."""
+        return self.GRID_PADDING_INCHES / self.NODE_SPACING_INCHES
+
+    @property
+    def SIM_PADDING(self) -> int:
+        """Arena padding in simulation pixels."""
+        return round(self.GRID_PADDING * self.SIM_DIST)
+
+    @property
     def SIM_WIDTH(self) -> int:
-        return (self.GRID_WIDTH - 1) * self.SIM_DIST
+        return (self.GRID_WIDTH - 1) * self.SIM_DIST + 2 * self.SIM_PADDING
 
     @property
     def SIM_HEIGHT(self) -> int:
-        return (self.GRID_HEIGHT - 1) * self.SIM_DIST
+        return (self.GRID_HEIGHT - 1) * self.SIM_DIST + 2 * self.SIM_PADDING
 
 
 constants = Constants()

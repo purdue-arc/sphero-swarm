@@ -11,9 +11,23 @@ from math import hypot, atan, asin, cos, sin, pi
 
  '''
 
+def grid_to_sim(x, y):
+    """
+    Convert grid coordinates to window pixels. The window is the whole arena
+    (the camera's AprilTag crop), so the grid nodes sit SIM_PADDING inside it.
+
+    Args:
+        x, y: (float) grid coordinates, may be fractional or in the padding
+
+    Returns:
+        (float, float): pixel position in the window
+    """
+    return (constants.SIM_PADDING + x * constants.SIM_DIST,
+            constants.SIM_PADDING + y * constants.SIM_DIST)
+
 def draw_grid(surface):
     """
-    Draw the grid lines
+    Draw the arena border and the grid lines, including cell diagonals
 
     Args:
         surface: (pygame.display) the pygame surface
@@ -21,16 +35,20 @@ def draw_grid(surface):
     Returns:
         None
     """
-    for x in range(0, constants.SIM_WIDTH, constants.SIM_DIST):
-        pygame.draw.line(surface=surface, color=constants.BLACK, start_pos=(x, 0), end_pos=(x, constants.SIM_HEIGHT))
-  
-    for y in range(0, constants.SIM_HEIGHT, constants.SIM_DIST):
-        pygame.draw.line(surface=surface, color=constants.BLACK, start_pos=(0, y), end_pos=(constants.SIM_WIDTH, y))
-    
-    for x in range(0, constants.SIM_WIDTH, constants.SIM_DIST):
-        for y in range(0, constants.SIM_HEIGHT, constants.SIM_DIST):
-            pygame.draw.line(surface, constants.BLACK, (x, y), (x + constants.SIM_DIST, y + constants.SIM_DIST))
-            pygame.draw.line(surface, constants.BLACK, (x + constants.SIM_DIST, y), (x, y + constants.SIM_DIST))
+    pygame.draw.rect(surface, constants.GRAY, (0, 0, constants.SIM_WIDTH, constants.SIM_HEIGHT), width=1)
+
+    last_x = constants.GRID_WIDTH - 1
+    last_y = constants.GRID_HEIGHT - 1
+    for x in range(constants.GRID_WIDTH):
+        pygame.draw.line(surface, constants.BLACK, grid_to_sim(x, 0), grid_to_sim(x, last_y))
+
+    for y in range(constants.GRID_HEIGHT):
+        pygame.draw.line(surface, constants.BLACK, grid_to_sim(0, y), grid_to_sim(last_x, y))
+
+    for x in range(last_x):
+        for y in range(last_y):
+            pygame.draw.line(surface, constants.BLACK, grid_to_sim(x, y), grid_to_sim(x + 1, y + 1))
+            pygame.draw.line(surface, constants.BLACK, grid_to_sim(x + 1, y), grid_to_sim(x, y + 1))
     
 def draw_pause_button(surface, color, rect, paused):
     pygame.draw.rect(surface, color, rect)
@@ -162,7 +180,7 @@ def draw_sphero(surface, sphero):
     Returns:
         None
     """
-    pygame.draw.circle(surface, sphero.color, (sphero.x * constants.SIM_DIST, sphero.y * constants.SIM_DIST), constants.SPHERO_SIM_RADIUS)
+    pygame.draw.circle(surface, sphero.color, grid_to_sim(sphero.x, sphero.y), constants.SPHERO_SIM_RADIUS)
 
 spheros = []
 

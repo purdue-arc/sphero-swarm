@@ -11,7 +11,7 @@ from controls.Instruction import Instruction
 from controls.protocol import send_batch
 from gui_server import get_next_command, send_algorithm_state
 
-ROLL_STRAIGHT_INCH = 12.67
+ROLL_STRAIGHT_INCH = Constants().NODE_SPACING_INCHES  # inches per grid step
 
 def _perception_request(message):
     """Short-lived socket keeps a missing perception process from blocking rolls."""
