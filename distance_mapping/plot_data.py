@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-df = pd.read_csv("distance_mapping/distance_mapping.csv")
+df = pd.read_csv("distance_mapping/distance_mapping_test_data/test_01.csv")
 
 durations = np.array(df['durations'])
 distances = np.array(df['distances'])

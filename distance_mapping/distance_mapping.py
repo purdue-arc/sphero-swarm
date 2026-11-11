@@ -19,9 +19,9 @@ plt.ylabel("distance (in)")
 plt.ion()
 
 # durations = [round(number/12, 2) for number in range(1, 21)] # Type the durations you want to test here
-reps = 10
+reps = 9
 durations = []
-for duration in np.linspace(0.1, 1.5, num=15):
+for duration in np.linspace(1.0, 1.5, num=6):
     durations += [round(float(duration), 2)] * reps
 
 speed = 66
@@ -85,7 +85,7 @@ for duration in durations:
             
         distance = ROLL_STRAIGHT_INCH * math.hypot((end_x - start_x), (end_y - start_y))
         print(f"distance: {distance}")
-        sock.send(pickle.dumps([Instruction(test_sphero.id, 2, 180.0, 0.5)]))
+        sock.send(pickle.dumps([Instruction(test_sphero.id, 2, (-180.0 if count % 2 == 0 else 180.0), 0.5)]))
         time.sleep(1.2)
 
     # user_input = input("Distance Rolled (in.): ")
