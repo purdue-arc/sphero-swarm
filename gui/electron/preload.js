@@ -29,6 +29,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.invoke("stop-controls"),
   refreshControls: () =>
     ipcRenderer.invoke("refresh-controls"),
+  coordinatorRequest: (path, method, body) =>
+    ipcRenderer.invoke("coordinator-request", path, method, body),
   appRenderComplete: () =>
     ipcRenderer.invoke("app-render-complete"),
   signalAppReady: () =>

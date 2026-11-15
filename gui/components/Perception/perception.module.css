@@ -134,6 +134,12 @@
     box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
 }
 
+.calibrationActive {
+    color: #fff;
+    background: rgba(16, 185, 129, 0.2);
+    border-color: #10b981;
+}
+
 /* ── Main 2-col grid ─────────────────────────── */
 /* Feed gets the full page width; the status cards sit under it as a row, so
    the camera view is as large as the window allows. */

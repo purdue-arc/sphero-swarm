@@ -4,7 +4,20 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     padding: 1.75rem;
     backdrop-filter: blur(10px);
-    margin: 50px;
+    margin: 1.5rem 0;
+}
+
+.controlsLayout {
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    height: 100%;
+    overflow: auto;
+    padding: 0.9rem;
+}
+
+.controlsLayout .spheroSection {
+    margin: 0 0 0.8rem;
 }
 
 .rehomeButton {
@@ -33,6 +46,165 @@
     align-items: center;
     gap: 0.75rem;
 }
+
+.connectionMessage {
+    margin: 1rem 0 0;
+    color: #cbd5e1;
+    font-size: 0.9rem;
+}
+
+.piGrid {
+    display: grid;
+    min-width: 0;
+    grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
+    gap: 0.9rem;
+}
+
+.piCard {
+    min-width: 0;
+    padding: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.035);
+}
+
+.piHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: #f8fafc;
+    font-size: 1rem;
+}
+
+.piState {
+    padding: 0.25rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.piOnline { background: rgba(16, 185, 129, 0.14); color: #34d399; }
+.piOffline { background: rgba(239, 68, 68, 0.14); color: #f87171; }
+
+.piAddress {
+    overflow: hidden;
+    margin-top: 0.45rem;
+    color: #94a3b8;
+    font-size: 0.8rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.piRobotsLabel {
+    margin-top: 1rem;
+    color: #94a3b8;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.piRobotList {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin: 0.55rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.piRobotList li {
+    padding: 0.3rem 0.5rem;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    border-radius: 6px;
+    background: rgba(16, 185, 129, 0.1);
+    color: #a7f3d0;
+    font-family: 'Courier New', monospace;
+    font-size: 0.78rem;
+}
+
+.piEmpty {
+    margin: 0.55rem 0 0;
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+.spheroTableWrap {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+}
+
+.spheroTable {
+    width: 100%;
+    min-width: 660px;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.spheroTable th,
+.spheroTable td {
+    padding: 0.8rem 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    white-space: nowrap;
+}
+
+.spheroTable th {
+    background: rgba(255, 255, 255, 0.045);
+    color: #94a3b8;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+
+.spheroTable td {
+    color: #cbd5e1;
+    font-size: 0.85rem;
+}
+
+.spheroTable tbody tr:last-child td { border-bottom: 0; }
+.spheroTable tbody tr:hover { background: rgba(255, 255, 255, 0.025); }
+.tableIndex { color: #64748b !important; font-variant-numeric: tabular-nums; }
+.tableRobot { color: #f8fafc !important; font-family: 'Courier New', monospace; font-weight: 700; }
+
+.tableStatus {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.28rem 0.6rem;
+    border: 1px solid transparent;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.tableStatus_connected { color: #34d399; background: rgba(16, 185, 129, 0.12); border-color: rgba(16, 185, 129, 0.25); }
+.tableStatus_pending { color: #fbbf24; background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.25); }
+.tableStatus_found { color: #c4b5fd; background: rgba(167, 139, 250, 0.12); border-color: rgba(167, 139, 250, 0.25); }
+.tableStatus_failed { color: #f87171; background: rgba(239, 68, 68, 0.12); border-color: rgba(239, 68, 68, 0.25); }
+.tableStatus_not-attempted { color: #9ca3af; background: rgba(107, 114, 128, 0.12); border-color: rgba(107, 114, 128, 0.25); }
+
+.tableAction {
+    padding: 0.38rem 0.65rem;
+    border: 1px solid rgba(248, 113, 113, 0.28);
+    border-radius: 6px;
+    background: rgba(239, 68, 68, 0.1);
+    color: #fca5a5;
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.tableAction:hover:not(:disabled) { background: rgba(239, 68, 68, 0.2); }
+.tableAction:disabled { opacity: 0.5; cursor: not-allowed; }
+.tableDash { color: #64748b; }
 
 .refreshButton {
     all: unset;

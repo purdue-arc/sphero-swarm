@@ -30,6 +30,7 @@ declare global {
       saveConstants: (form: SpheroConstants) => Promise<Reply>;
       getPerceptionTuning: () => Promise<Record<string, number | boolean>>;
       savePerceptionTuning: (values: Record<string, number | boolean>) => Promise<unknown>;
+      coordinatorRequest: <T = unknown>(path: string, method?: 'GET' | 'POST', body?: unknown) => Promise<T>;
     };
   }
 }
@@ -111,7 +112,7 @@ function App() {
         simulationSpeed={stepSeconds} setSimulationSpeed={setStepSeconds}
         useControls={useControls} setUseControls={setUseControls}
         useAlgorithmColors={useAlgorithmColors} setUseAlgorithmColors={setUseAlgorithmColors} />}
-      {currentView === 'dashboard' && <Runner constants={constants} spheros={spheros}
+      {currentView === 'dashboard' && <Runner constants={constants} spheros={spheros} setSpheros={setSpheros}
         perceptionStatus={perceptionStatus} setPerceptionStatus={setPerceptionStatus}
         latestSimulationSnapshot={latestSimulationSnapshot} onSimulationSnapshot={setLatestSimulationSnapshot}
         speed={stepSeconds} onSpeedChange={setStepSeconds} useControls={useControls}

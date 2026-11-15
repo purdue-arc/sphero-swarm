@@ -420,8 +420,20 @@ def _register_pi_routes(app: Flask, session: Session) -> None:
 
     @app.post("/api/release")
     def release_all():
-        numbers = session.online_numbers()
-        per_pi = fan_out(numbers, lambda n: call_pi(session, n, lambda c: c.release()))
+        requested = _body().get("robots")
+        if requested is None:
+            numbers = session.online_numbers()
+            per_pi = fan_out(numbers, lambda n: call_pi(session, n, lambda c: c.release()))
+            return _ok({"per_pi": per_pi})
+
+        robot_ids = _robot_id_list(requested, "robots")
+        owners = refresh_robots(session)
+        by_pi: dict[int, list[str]] = {}
+        for robot_id in robot_ids:
+            owner = owners.get(robot_id)
+            if owner is not None:
+                by_pi.setdefault(owner, []).append(robot_id)
+        per_pi = fan_out(list(by_pi), lambda n: call_pi(session, n, lambda c: c.release(by_pi[n])))
         return _ok({"per_pi": per_pi})
 
     @app.post("/api/system/<action>")

@@ -3,9 +3,78 @@ import path from "path";
 import { existsSync } from "fs";
 import { fileURLToPath } from "url";
 import { spawn, spawnSync } from "child_process";
+import type { ChildProcess } from "child_process";
+import net from "net";
+import { readFile } from "fs/promises";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+let coordinatorTunnel: ChildProcess | null = null;
+let coordinatorTunnelStarting: Promise<void> | null = null;
+let coordinatorTunnelRetryAfter = 0;
+
+function localPortOpen(port: number): Promise<boolean> {
+  return new Promise(resolve => {
+    const socket = net.createConnection({ host: "127.0.0.1", port });
+    const finish = (open: boolean) => { socket.destroy(); resolve(open); };
+    socket.setTimeout(500);
+    socket.once("connect", () => finish(true));
+    socket.once("timeout", () => finish(false));
+    socket.once("error", () => finish(false));
+  });
+}
+
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function ensureCoordinatorTunnel(port: number): Promise<void> {
+  if (await localPortOpen(port)) return;
+  if (Date.now() < coordinatorTunnelRetryAfter) {
+    throw new Error("SSH tunnel recently failed; waiting before retrying. Check SSH authentication in the GUI launch terminal.");
+  }
+  if (coordinatorTunnelStarting) return coordinatorTunnelStarting;
+
+  coordinatorTunnelStarting = (async () => {
+    const repoRoot = path.resolve(__dirname, "../../");
+    const configPath = path.join(repoRoot, "coordinator", "minipc.json");
+    const config = JSON.parse(await readFile(configPath, "utf8"));
+    if (!config.host || !config.user) throw new Error(`Set host and user in ${configPath}`);
+
+    let spawnError: Error | null = null;
+    let exitCode: number | null = null;
+    const child = spawn("ssh", [
+      "-N",
+      "-o", "ExitOnForwardFailure=yes",
+      "-o", "ServerAliveInterval=15",
+      "-o", "ServerAliveCountMax=3",
+      "-L", `${port}:127.0.0.1:${port}`,
+      "-l", String(config.user),
+      String(config.host),
+    ], { stdio: "inherit", windowsHide: false });
+    coordinatorTunnel = child;
+    child.once("error", error => { spawnError = error; });
+    child.once("exit", code => { exitCode = code ?? 1; if (coordinatorTunnel === child) coordinatorTunnel = null; });
+
+    const deadline = Date.now() + 120_000;
+    while (Date.now() < deadline) {
+      if (await localPortOpen(port)) return;
+      if (spawnError) throw new Error(`Could not start SSH: ${spawnError.message}`);
+      if (exitCode !== null) throw new Error(`SSH tunnel exited (${exitCode}). Check the host, username, and SSH authentication.`);
+      await delay(300);
+    }
+    child.kill();
+    coordinatorTunnel = null;
+    throw new Error("SSH tunnel timed out. Enter the SSH password in the terminal that launched the GUI, or configure SSH key access.");
+  })();
+
+  try { await coordinatorTunnelStarting; }
+  catch (error) { coordinatorTunnelRetryAfter = Date.now() + 20_000; throw error; }
+  finally { coordinatorTunnelStarting = null; }
+}
+
+function stopCoordinatorTunnel() {
+  coordinatorTunnel?.kill();
+  coordinatorTunnel = null;
+}
 
 type UvCommand = {
   executable: string;
@@ -416,6 +485,36 @@ ipcMain.handle("refresh-controls", async () => {
 ipcMain.handle("get-service-status", () => ({
   controls: Boolean(controlsProcess), perception: Boolean(spheroProcess), algorithm: Boolean(algorithmProcess),
 }));
+ipcMain.handle("coordinator-request", async (_event, apiPath: string, method = "GET", body?: unknown) => {
+  const allowedPaths = new Set([
+    "/api/pis", "/api/pis?refresh=1", "/api/pis/select", "/api/status",
+    "/api/scan", "/api/assign/auto", "/api/connect", "/api/release",
+  ]);
+  if (typeof apiPath !== "string" || !allowedPaths.has(apiPath)) {
+    throw new Error("Invalid coordinator API path");
+  }
+  if (method !== "GET" && method !== "POST") throw new Error("Unsupported coordinator method");
+
+  const repoRoot = path.resolve(__dirname, "../../");
+  const configPath = path.join(repoRoot, "coordinator", "minipc.json");
+  let port = 8000;
+  try {
+    const config = JSON.parse(await readFile(configPath, "utf8"));
+    port = Number(config.dashboard_port) || port;
+  } catch { /* Use the coordinator's default web port. */ }
+
+  await ensureCoordinatorTunnel(port);
+
+  const response = await fetch(`http://127.0.0.1:${port}${apiPath}`, {
+    method,
+    headers: method === "POST" ? { "Content-Type": "application/json" } : undefined,
+    body: method === "POST" ? JSON.stringify(body ?? {}) : undefined,
+    signal: AbortSignal.timeout(apiPath === "/api/scan" ? 45_000 : 125_000),
+  });
+  const result = await response.json();
+  if (!response.ok || !result.ok) throw new Error(result.error || `Coordinator returned HTTP ${response.status}`);
+  return result.data;
+});
 ipcMain.handle("restart-perception", async (_event, config) => {
   stopSpheroSpotter(true);
   await new Promise(resolve => setTimeout(resolve, 350));
@@ -616,11 +715,13 @@ app.on("before-quit", (event) => {
   void stopControlsGracefully().finally(() => {
     stopSpheroSpotter(true);
     stopAlgorithm();
+    stopCoordinatorTunnel();
     app.quit();
   });
 });
 
 app.on("will-quit", () => {
+  stopCoordinatorTunnel();
   stopControls(true);
   stopSpheroSpotter(true);
   stopAlgorithm();

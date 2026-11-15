@@ -63,9 +63,9 @@ export function SpheroConnectionList({
                             </span>
                         </div>
                         <div className={styles.positionRow}>
-                            <span className={styles.positionLabel}>Charge:</span>
+                            <span className={styles.positionLabel}>Assigned Pi:</span>
                             <span className={styles.positionValue}>
-                                {sphero.connection === "connected" && sphero.batteryPercent !== undefined ? `${sphero.batteryPercent}%` : "—"}
+                                {sphero.piNumber !== undefined ? `Pi ${sphero.piNumber}` : "—"}
                             </span>
                         </div>
                         <div className={styles.positionRow}>

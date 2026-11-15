@@ -65,6 +65,16 @@ export interface SpheroStatus {
     foundAt?: number;
     batteryPercent?: number;
     batteryVoltage?: number;
+    piNumber?: number;
+}
+
+export interface CoordinatorPi {
+  number: number;
+  ip: string | null;
+  hostname?: string | null;
+  online: boolean;
+  selected?: boolean;
+  connected_count?: number;
 }
 
 export interface SimulationSpheroSnapshot {

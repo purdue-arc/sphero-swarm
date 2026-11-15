@@ -162,6 +162,10 @@ last_valid_frame = None
 last_apriltag_count = 0
 zmq_bound = False
 last_latency = None
+calibration_mode = False
+# A detection within this many grid-coordinate units of a grid line is shown
+# with a white box during the pre-demo calibration check.
+CALIBRATION_LINE_MARGIN = 0.12
 
 def draw_grid(frame, top_left, bottom_right):
     if not args.grid:
@@ -169,6 +173,30 @@ def draw_grid(frame, top_left, bottom_right):
     for start, end in arena_grid.geometry.lines(top_left, bottom_right):
         cv2.line(frame, start, end, (0, 255, 0), 1)
     return frame
+
+def is_near_grid_line(gx, gy, margin=CALIBRATION_LINE_MARGIN):
+    """Whether a grid position is close to any displayed grid segment."""
+    geometry = arena_grid.geometry
+    point = (gx, gy)
+    segments = []
+    segments.extend(((float(x), 0.0), (float(x), float(geometry.height - 1)))
+                    for x in range(geometry.width))
+    segments.extend(((0.0, float(y)), (float(geometry.width - 1), float(y)))
+                    for y in range(geometry.height))
+    for x in range(geometry.width - 1):
+        for y in range(geometry.height - 1):
+            segments.extend((((float(x), float(y)), (float(x + 1), float(y + 1))),
+                             ((float(x), float(y + 1)), (float(x + 1), float(y)))))
+
+    for start, end in segments:
+        dx, dy = end[0] - start[0], end[1] - start[1]
+        length_sq = dx * dx + dy * dy
+        t = max(0.0, min(1.0, ((point[0] - start[0]) * dx +
+                               (point[1] - start[1]) * dy) / length_sq))
+        nearest = (start[0] + t * dx, start[1] + t * dy)
+        if math.hypot(point[0] - nearest[0], point[1] - nearest[1]) <= margin:
+            return True
+    return False
 
 def process_apriltags(frame, force_process=False):
     """Return (display_frame, field_frame).
@@ -669,7 +697,7 @@ def draw_roll_targets(frame, positions):
 def process_frame_async():
     """Background thread for YOLO inference"""
     global frozen, next_display_id, lost_spheros, arena_w_px, arena_h_px
-    global evaluation_snapshot
+    global evaluation_snapshot, calibration_mode
     while not stop_processing.is_set():
         try:
             while not evaluation_commands.empty():
@@ -693,6 +721,20 @@ def process_frame_async():
                     print(f"[sphero_spotter] Tuning updated: {applied}")
                 elif cmd.get("action") == "start_detection":
                     start_detection()
+                elif cmd.get("action") == "set_calibration_mode":
+                    calibration_mode = bool(cmd.get("enabled", False))
+                    print(f"[sphero_spotter] Calibration mode: {calibration_mode}")
+                elif cmd.get("action") == "reset_ids":
+                    # Keep detector tracker IDs intact; rebuild only the GUI's
+                    # display-ID assignments from detections in the next frame.
+                    id_map.clear()
+                    lost_spheros.clear()
+                    spheros.clear()
+                    colour_profiles.clear()
+                    colour_wait.clear()
+                    next_display_id = 0
+                    frozen = False
+                    print("[sphero_spotter] Display IDs reset; rescanning detections")
                 elif cmd.get("action") == "assign_id":
                     try:
                         current_id = int(cmd["current_id"])
@@ -862,11 +904,16 @@ def process_frame_async():
                 lost_spheros.pop(disp_id, None)
 
                 class_name = class_name_for(cls_id)
-                cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 2)
-                cv2.circle(frame, (int(cx), int(cy)), 3, (0, 255, 0), -1)
+                if calibration_mode:
+                    gx, gy = pixel_to_grid_coords(cx, cy)
+                    box_color = (255, 255, 255) if is_near_grid_line(gx, gy) else (0, 0, 255)
+                else:
+                    box_color = (0, 255, 0)
+                cv2.rectangle(frame, (int(x1), int(y1)), (int(x2), int(y2)), box_color, 2)
+                cv2.circle(frame, (int(cx), int(cy)), 3, box_color, -1)
                 label = f"{disp_id} {class_name} | Center: ({int(cx)}, {int(cy)})"
                 cv2.putText(frame, label, (int(x1), int(y1) - 6),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2, cv2.LINE_AA)
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, box_color, 2, cv2.LINE_AA)
                 if args.debug:
                     print(f"ID {disp_id} | {class_name} | Center: ({int(cx)}, {int(cy)})")
 
@@ -918,6 +965,7 @@ def process_frame_async():
                     "tuning": {k: getattr(tune, k) for k in PERCEPTION_DEFAULTS},
                     "mask_streaming": mask_view is not None,
                     "detecting": detecting,
+                    "calibration_mode": calibration_mode,
                     "roll_trials": evaluation_snapshot,
                 })
 

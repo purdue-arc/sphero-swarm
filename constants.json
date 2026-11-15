@@ -147,18 +147,12 @@
     ]
   ],
   "SPHERO_TAGS": [
-    "SB-387B",
-    "SB-ADA3",
-    "SB-B11D"
+    "SB-1730"
   ],
   "INITIAL_POSITIONS": [
     [
       1,
       1
-    ],
-    [
-      2,
-      2
     ]
   ],
   "INITIAL_TRAITS": [

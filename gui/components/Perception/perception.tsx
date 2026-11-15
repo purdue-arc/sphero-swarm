@@ -43,6 +43,7 @@ interface Telemetry {
     id_mode: string;
     apriltag_count: number;
     perspective_calibrated: boolean;
+    calibration_mode?: boolean;
     zmq_bound: boolean;
     spheros: SpheroDetection[];
     latency: LatencyInfo | null;
@@ -264,6 +265,25 @@ export function Perception({
                         {spotterStatus === "started"  ? "Running"  :
                          spotterStatus === "starting" ? "Starting" : "Stopped"}
                     </span>
+                    <button
+                        className={`${s.btn} ${telemetry?.calibration_mode ? s.calibrationActive : ""}`}
+                        onClick={() => sendCommand({
+                            action: "set_calibration_mode",
+                            enabled: !telemetry?.calibration_mode,
+                        })}
+                        disabled={!isRunning}
+                        title="White boxes are close to a grid line; red boxes are outside the margin"
+                    >
+                        {telemetry?.calibration_mode ? "Calibration on" : "Calibration off"}
+                    </button>
+                    <button
+                        className={s.btn}
+                        onClick={() => sendCommand({ action: "reset_ids" })}
+                        disabled={!isRunning}
+                        title="Clear display IDs and assign them again from the next visible detections"
+                    >
+                        Rescan IDs
+                    </button>
                     {telemetry?.detecting === false && (
                         <button
                             className={`${s.btn} ${s.btnPrimary}`}

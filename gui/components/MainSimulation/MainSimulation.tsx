@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
-import { faArrowRotateRight, faBrain, faCamera, faCrosshairs, faGear, faGripVertical, faPlay, faPlus, faRobot, faStop, faTrash } from '@fortawesome/free-solid-svg-icons'
+import { faArrowRotateRight, faBrain, faCamera, faCrosshairs, faGear, faGripVertical, faPlay, faPlus, faStop, faTrash } from '@fortawesome/free-solid-svg-icons'
 import { StreamViewer } from '../StreamViewer/streamViewer'
-import { useSpheroConnection } from '../SpheroConnection/useSpheroConnection'
+import { Controls } from '../Controls/Controls'
 import type { PerceptionConfig, SimulationSnapshot, SpheroConstants, SpheroStatus } from '../../types/swarm_types'
 import s from './MainSimulation.module.css'
 
@@ -102,10 +102,6 @@ function useAnimatedPositions(snapshot: SimulationSnapshot | null, running: bool
   return positions
 }
 
-function foundTime(timestamp?: number) {
-  return timestamp ? new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' }) : '—'
-}
-
 function fitPositions(positions: [number, number][], width: number, height: number): [number, number][] {
   const occupied = new Set<string>()
   return positions.map(([oldX, oldY]) => {
@@ -142,7 +138,6 @@ export function MainSimulation(p: Props) {
   const saveError = useRef<Error | null>(null)
   const runStartedAt = useRef(0)
 
-  const connection = useSpheroConnection(p.spheros, p.setSpheros)
   const { setAlgorithmRunning, setPerceptionStatus, perceptionStatus } = p
   const refreshServices = useCallback(async () => {
     const status = await window.electronAPI.getServiceStatus()
@@ -234,7 +229,7 @@ export function MainSimulation(p: Props) {
     tags[index] = nextTag
     changeSettings({ ...draft, SPHERO_TAGS: tags })
   }
-  const canChangeId = (index: number) => !p.algorithmRunning && !busy && connection.connectState !== 'connecting'
+  const canChangeId = (index: number) => !p.algorithmRunning && !busy && !p.spheros.some(ball => ball.connection === 'pending' || ball.connection === 'found')
     && !p.spheros.some(ball => ball.id === draft.SPHERO_TAGS[index]
       && (ball.connection === 'connected' || ball.connection === 'pending' || ball.connection === 'found'))
   const swapIds = (from: number, to: number) => {
@@ -298,29 +293,6 @@ export function MainSimulation(p: Props) {
     catch (error) { setMessage(error instanceof Error ? error.message : String(error)) }
     finally { setBusy(false) }
   }
-  const connectAll = () => act(async () => {
-    await flushSettings()
-    const result = await window.electronAPI.startControls()
-    if (result.status === 'failed') throw new Error('Controls service failed to start')
-    connection.startConnection()
-  })
-  const restartControls = () => act(async () => {
-    if (p.algorithmRunning) {
-      await window.electronAPI.restartAlgorithm()
-      p.setAlgorithmRunning(false)
-      p.setLatestSimulationSnapshot(null)
-    }
-    const result = await window.electronAPI.refreshControls()
-    if (result.status !== 'started') throw new Error('Controls service failed to restart')
-    connection.resetConnection()
-  })
-  const disconnectBall = (tag: string) => act(async () => {
-    if (p.algorithmRunning) { await sendSocket(6769, { type: 'reset' }); p.setAlgorithmRunning(false) }
-    await sendSocket(6768, { type: 'disconnect', ball: tag })
-    p.setSpheros(previous => previous.map(ball => ball.id === tag ? { ...ball, connection: 'not-attempted', foundAt: undefined, batteryPercent: undefined } : ball))
-  })
-  const retryBall = (tag: string) => { connection.retryConnection(tag) }
-
   const startAlgorithm = () => act(async () => {
     await flushSettings()
     const status = await window.electronAPI.getServiceStatus()
@@ -479,22 +451,7 @@ export function MainSimulation(p: Props) {
         </div>
       </section>
 
-      <section className={`${s.panel} ${s.controlsPanel}`} aria-label="Controls">
-        <div className={s.panelHead}><span className={s.panelIcon}><FontAwesomeIcon icon={faRobot} /></span><h2>Controls</h2></div>
-        <div className={s.panelBody}>
-          <div className={s.controlSummary}><strong>{connectedCount}<span> / {p.spheros.length}</span></strong><span>Spheros connected</span><i className={services.controls ? s.statusGood : s.statusMuted}>{services.controls ? 'SERVICE ONLINE' : 'SERVICE OFFLINE'}</i></div>
-          <div className={s.buttonRow}><button className={s.primary} disabled={busy || connection.connectState !== 'idle'} onClick={() => void connectAll()}><FontAwesomeIcon icon={faPlay} /> Connect all</button>
-            <button className={s.subtle} disabled={busy || connectedCount === 0} onClick={() => void restartControls()}>Disconnect all</button>
-            <button className={s.iconButton} disabled={busy} onClick={() => void restartControls()} title="Restart controls service" aria-label="Restart controls service"><FontAwesomeIcon icon={faArrowRotateRight} /></button></div>
-          <div className={s.tableWrap}><table className={s.connectionTable}><thead><tr><th>ID</th><th>Sphero</th><th>Status</th><th>Found</th><th>Charge</th><th>Action</th></tr></thead>
-            <tbody>{p.spheros.map((ball, index) => <tr key={ball.id}><td className={s.mutedId}>{String(index + 1).padStart(2, '0')}</td><td className={s.mono}>{ball.id}</td>
-              <td><span className={`${s.connectionBadge} ${s[ball.connection] ?? ''}`}><i />{ball.connection === 'not-attempted' ? 'Ready' : ball.connection === 'pending' ? 'Scanning' : ball.connection === 'found' ? 'Found' : ball.connection === 'connected' ? 'Connected' : 'Failed'}</span></td>
-              <td className={s.foundTime}>{ball.foundAt ? <time dateTime={new Date(ball.foundAt).toISOString()} title={new Date(ball.foundAt).toLocaleString()}>{foundTime(ball.foundAt)}</time> : '—'}</td>
-              <td className={s.foundTime}>{ball.connection === 'connected' && ball.batteryPercent !== undefined ? `${ball.batteryPercent}%` : '—'}</td>
-              <td>{ball.connection === 'connected' ? <button className={s.tableAction} disabled={busy} onClick={() => void disconnectBall(ball.id)}>Disconnect</button>
-                : ball.connection === 'failed' || (ball.connection === 'not-attempted' && connection.connectState !== 'idle') ? <button className={s.tableAction} disabled={busy || !services.controls} onClick={() => retryBall(ball.id)}>Retry</button> : <span className={s.emptyAction}>—</span>}</td></tr>)}</tbody></table></div>
-        </div>
-      </section>
+      <Controls constants={p.constants} spheros={p.spheros} setSpheros={p.setSpheros} beforeConnect={flushSettings} tableView />
 
       <section className={`${s.panel} ${s.algorithmPanel}`} aria-label="Algorithms">
         <div className={s.panelHead}><span className={s.panelIcon}><FontAwesomeIcon icon={faBrain} /></span><h2>Algorithms</h2></div>

@@ -45,9 +45,9 @@ export function SpheroConnectionStats({
                 };
             case "failed":
                 return {
-                    label: "Retry Balls Below",
+                    label: "Retry Connection",
                     icon: faRotateRight,
-                    disabled: true,
+                    disabled: false,
                 };
         }
     };

@@ -1,5 +1,6 @@
 import styles from "./runner.module.css";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import type { Dispatch, SetStateAction } from "react";
 import {
     faCircle,
     faVideo,
@@ -7,6 +8,7 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import { StreamViewer } from "../StreamViewer/streamViewer";
 import { Simulation } from "../Simulation/simulation";
+import { Controls } from "../Controls/Controls";
 import type {
     SpheroConstants,
     SpheroStatus,
@@ -16,6 +18,7 @@ import type {
 export function Runner({
     constants,
     spheros,
+    setSpheros,
     perceptionStatus,
     setPerceptionStatus,
     latestSimulationSnapshot,
@@ -29,6 +32,7 @@ export function Runner({
 }: {
     constants: SpheroConstants;
     spheros: SpheroStatus[];
+    setSpheros: Dispatch<SetStateAction<SpheroStatus[]>>;
     perceptionStatus: "stopped" | "starting" | "started";
     setPerceptionStatus: (status: "stopped" | "starting" | "started") => void;
     latestSimulationSnapshot: SimulationSnapshot | null;
@@ -94,7 +98,7 @@ export function Runner({
                 </div>
             </div>
 
-            
+            <Controls constants={constants} spheros={spheros} setSpheros={setSpheros} tableView />
         </div>
     );
 }
