@@ -172,3 +172,6 @@ desktop.ini
 controls/Data_Collection/roll_evaluation.csv
 coordinator/last_assignment.json
 coordinator/coordinator.log
+
+# Local configuration
+/constants.json
