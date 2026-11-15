@@ -15,7 +15,7 @@ import {
     faCrosshairs,
 } from "@fortawesome/free-solid-svg-icons";
 import { StreamViewer } from "../StreamViewer/streamViewer";
-import type { PerceptionConfig } from "../../types/swarm_types";
+import type { PerceptionConfig, SimulationSnapshot } from "../../types/swarm_types";
 import s from "./perception.module.css";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -90,12 +90,14 @@ export function Perception({
     config,
     setConfig,
     spheroTags = [],
+    latestSimulationSnapshot,
 }: {
     spotterStatus: "stopped" | "starting" | "started";
     setSpotterStatus: Dispatch<SetStateAction<"stopped" | "starting" | "started">>;
     config: PerceptionConfig;
     setConfig: Dispatch<SetStateAction<PerceptionConfig>>;
     spheroTags?: string[];
+    latestSimulationSnapshot: SimulationSnapshot | null;
 }) {
     const [telemetry, setTelemetry] = useState<Telemetry | null>(null);
     const [feedView, setFeedView] = useState<"camera" | "mask">("camera");
@@ -340,6 +342,8 @@ export function Perception({
                                     serverStatus={spotterStatus}
                                     setServerStatus={setSpotterStatus}
                                     sizing="aspect"
+                                    latestSimulationSnapshot={latestSimulationSnapshot}
+                                    showCorrectionVectors={config.correctionVectors}
                                 />
                                 <StreamViewer
                                     key="mask"
@@ -364,6 +368,8 @@ export function Perception({
                                 serverStatus={spotterStatus}
                                 setServerStatus={setSpotterStatus}
                                 sizing="aspect"
+                                latestSimulationSnapshot={latestSimulationSnapshot}
+                                showCorrectionVectors={config.correctionVectors}
                             />
                         )}
                     </div>
@@ -667,6 +673,15 @@ export function Perception({
                                         disabled={false}
                                     />
                                     <span>Grid overlay</span>
+                                </label>
+                                <label className={s.toggleItem}>
+                                    <input
+                                        type="checkbox"
+                                        checked={config.correctionVectors}
+                                        onChange={e => updateConfig("correctionVectors", e.target.checked)}
+                                        disabled={false}
+                                    />
+                                    <span>Correction vectors</span>
                                 </label>
                                 <label className={`${s.toggleItem} ${isRunning ? s.disabled : ""}`}>
                                     <input

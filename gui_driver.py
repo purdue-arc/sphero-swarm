@@ -13,7 +13,7 @@ from controls.protocol import send_batch
 import math
 from gui_server import get_next_command, send_algorithm_state
 
-ROLL_STRAIGHT_INCH = 12.67
+ROLL_STRAIGHT_INCH = Constants().NODE_SPACING_INCHES  # inches per grid step
 
 def _perception_request(message):
     """Short-lived socket keeps a missing perception process from blocking rolls."""
@@ -23,7 +23,10 @@ def _perception_request(message):
     sock.setsockopt(zmq.SNDTIMEO, 1000)
     try:
         sock.connect("tcp://127.0.0.1:5555")
-        sock.send_json(message)
+        if isinstance(message, str):
+            sock.send_string(message)  # plain commands, e.g. "coords"
+        else:
+            sock.send_json(message)
         return sock.recv_json()
     except zmq.ZMQError:
         return None
@@ -164,16 +167,15 @@ def _send_controls_update(
         color_instructions.append(
             Instruction(sphero.id, 0, r, g, b)
         )
-
-        direction_change = sphero.get_direction_change()
             
-        delta_angle = nextVectorDirection(sphero)
         rotate_instructions.append(
-            Instruction(sphero.id, 2, delta_angle, constants.TURN_DURATION)
+            Instruction(sphero.id, 2, sphero.delta_angle, constants.TURN_DURATION)
         )
 
 
-        distance = ROLL_STRAIGHT_INCH * math.hypot((sphero.y - sphero.target_y), (sphero.x - sphero.target_x))
+        # Error correction: roll from where perception last saw the sphero
+        # (true_x/true_y), not where the grid assumes it ended up
+        distance = ROLL_STRAIGHT_INCH * math.hypot((sphero.true_y - sphero.target_y), (sphero.true_x - sphero.target_x))
         if distance == 0:
             continue
         duration = max(0.0, algorithm.get_roll_duration(distance))
@@ -191,7 +193,7 @@ def _send_controls_update(
         algorithm.log(
             f"x-error: {ROLL_STRAIGHT_INCH * error_x}\n"
             f"y-error: {ROLL_STRAIGHT_INCH * error_y}\n"
-            f"delta angle: {delta_angle}\ndistance: {distance} inches\n"
+            f"delta angle: {sphero.delta_angle}\ndistance: {distance} inches\n"
             f"duration: {duration} seconds",
             indent=1,
         )
@@ -236,7 +238,7 @@ def _connect_controls(port: int) -> socket.socket:
 def main_server():
     constants = Constants()
     algorithm = _build_algorithm(constants)
-
+    
     running = False
     paused = False
     use_controls = False
@@ -353,6 +355,10 @@ def main_server():
                     print("NEW EDIT BALL MOVE")
 
             elif running and not paused and time.monotonic() >= next_step_at:
+                # None when perception isn't running: spheros are then assumed
+                # to be where the grid has them
+                algorithm.set_true_positions(_perception_request("coords"))
+                
                 for sphero in algorithm.find_all_spheros():
                     sphero.x = sphero.target_x
                     sphero.y = sphero.target_y

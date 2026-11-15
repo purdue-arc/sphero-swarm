@@ -1,4 +1,5 @@
 import styles from "./runner.module.css";
+import type { Dispatch, SetStateAction } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
     faCircle,
@@ -30,7 +31,7 @@ export function Runner({
     constants: SpheroConstants;
     spheros: SpheroStatus[];
     perceptionStatus: "stopped" | "starting" | "started";
-    setPerceptionStatus: (status: "stopped" | "starting" | "started") => void;
+    setPerceptionStatus: Dispatch<SetStateAction<"stopped" | "starting" | "started">>;
     latestSimulationSnapshot: SimulationSnapshot | null;
     onSimulationSnapshot: (payload: SimulationSnapshot) => void;
     speed: number;
@@ -65,6 +66,8 @@ export function Runner({
                             port={6767}
                             serverStatus={perceptionStatus}
                             setServerStatus={setPerceptionStatus}
+                            latestSimulationSnapshot={latestSimulationSnapshot}
+                            showCorrectionVectors
                         />
                     </div>
                 </div>

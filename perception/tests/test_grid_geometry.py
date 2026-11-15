@@ -7,6 +7,7 @@ from unittest.mock import patch
 from perception.grid_geometry import (
     ConfiguredGrid,
     GRID_PADDING_INCHES,
+    GRID_PADDING_NODES,
     GridGeometry,
     NODE_SPACING_INCHES,
 )
@@ -70,8 +71,21 @@ class GridGeometryTests(unittest.TestCase):
                 gx, gy = grid.pixel_to_grid(column[0][0], row[0][1], *bounds)
                 self.assertAlmostEqual(gx, x, delta=0.01)
                 self.assertAlmostEqual(gy, y, delta=0.01)
-        self.assertEqual(grid.pixel_to_grid(-50, -30, *bounds), (0, 0))
-        self.assertEqual(grid.pixel_to_grid(999, 999, *bounds), (5, 3))
+        pad = GRID_PADDING_NODES
+        self.assertEqual(grid.pixel_to_grid(-50, -30, *bounds), (-pad, -pad))
+        self.assertEqual(grid.pixel_to_grid(999, 999, *bounds), (5 + pad, 3 + pad))
+
+    def test_padding_positions_are_reported(self):
+        grid = GridGeometry(5, 5)
+        bounds = ((0, 0), (1000, 1000))
+        # The tag edge is a full padding outside the first/last nodes.
+        self.assertAlmostEqual(grid.pixel_to_grid(0, 1000, *bounds)[0], -GRID_PADDING_NODES)
+        self.assertAlmostEqual(grid.pixel_to_grid(0, 1000, *bounds)[1], 4 + GRID_PADDING_NODES)
+        for point in [(0, 0), (4, 4), (-0.2, 2.5), (4.1, -0.1)]:
+            px = grid.grid_to_pixel(*point, *bounds)
+            back = grid.pixel_to_grid(*px, *bounds)
+            self.assertAlmostEqual(back[0], point[0])
+            self.assertAlmostEqual(back[1], point[1])
 
     def test_live_settings_changes_and_partial_saves(self):
         with tempfile.TemporaryDirectory() as folder, patch(

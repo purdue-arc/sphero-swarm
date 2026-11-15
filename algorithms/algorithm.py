@@ -1,4 +1,6 @@
 import random
+
+import numpy as np
 from .constants import constants
 from .sphero import Sphero
 from .bonded_group import BondedGroup
@@ -45,8 +47,82 @@ class Algorithm:
         Passing indent argument applies \t times its value to each line 
         '''
 
-        self.log_lines.append(f'\n{'\t'*indent + line}')
-        print(f'[ {line.replace('\n', '\n(')}')
+        self.log_lines.append('\n' + '\t' * indent + line)
+        log_line = line.replace('\n', '\n(')
+        print(f"[ {log_line}")
+              
+        # Returns necessary change in angle to point in new direction
+    def calculate_angle_change(self, sphero):
+        previous_vector_start = [sphero.prev_true_x, sphero.prev_true_y]
+        previous_vector_end = [sphero.true_x, sphero.true_y]
+        projected_vector_start = [sphero.true_x, sphero.true_y]
+        projected_vector_end = [sphero.target_x, sphero.target_y]
+
+        # if this sphero doesn't move on this cycle, then return early.
+        if (sphero.target_x == sphero.x and sphero.target_y == sphero.y):
+            sphero.correction_debug = {
+                "previous_vector": {
+                    "start": previous_vector_start,
+                    "end": previous_vector_end,
+                },
+                "projected_vector": {
+                    "start": projected_vector_start,
+                    "end": projected_vector_end,
+                },
+                "angle_change": 0,
+            }
+            return 0  # no movement → no turn
+
+        # arctan2 gives radians; everything below (and the turn instruction) is in degrees
+        prev_angle = np.degrees(np.arctan2(sphero.true_y - sphero.prev_true_y, sphero.true_x - sphero.prev_true_x)) # Current position
+        target_angle = np.degrees(np.arctan2(sphero.target_y - sphero.true_y, sphero.target_x - sphero.true_x)) # Next position
+
+        # Compute smallest angle difference
+        theta = target_angle - prev_angle
+
+        # Normalize to [-180, 180]
+        theta = (theta + 180) % 360 - 180
+
+        sphero.correction_debug = {
+            "previous_vector": {
+                "start": previous_vector_start,
+                "end": previous_vector_end,
+            },
+            "projected_vector": {
+                "start": projected_vector_start,
+                "end": projected_vector_end,
+            },
+            "angle_change": int(round(theta)),
+        }
+
+        # Update prev true position only if we know the sphero moved
+        sphero.prev_true_x = sphero.true_x
+        sphero.prev_true_y = sphero.true_y
+
+        return int(round(theta))
+        
+    def calculate_speed(self, sphero):
+        distance = hypot(sphero.target_x - sphero.true_x, sphero.target_y - sphero.true_y)
+        return int(constants.SPHERO_SPEED * distance)
+        
+        
+    def set_true_positions(self, data):
+        '''
+        Updates each sphero's true position from perception's "coords" reply,
+        {"spheros": [{"ID": __, "X": __, "Y": __}]} in grid units. Perception
+        numbers spheros from 0, the algorithm from 1. A sphero perception didn't
+        report (or no reply at all, data=None) is taken to be where the grid has it.
+        '''
+        id_to_sphero = {sphero.id: sphero for sphero in self.find_all_spheros()}
+        for sphero in id_to_sphero.values():
+            sphero.true_x = sphero.x
+            sphero.true_y = sphero.y
+        for entry in (data or {}).get("spheros", []):
+            sphero = id_to_sphero.get(entry["ID"] + 1)
+            if sphero:
+                # update real position
+                sphero.true_x = entry["X"]
+                sphero.true_y = entry["Y"]
 
 
     def find_all_spheros(self) -> list[Sphero]:
@@ -265,7 +341,14 @@ class Algorithm:
         self.edge_grid = [[0 for _ in range(constants.GRID_HEIGHT * 2)] for _ in range(constants.GRID_WIDTH * 2)]
         # all groups are moved. only thing left to do is flip the grids to get ready for the next iteration.
         self.current_grid = self.next_grid.copy()
-        self.next_grid = [ [0 for _ in range(self.grid_height)] for _ in range(self.grid_width)] 
+        self.next_grid = [ [0 for _ in range(self.grid_height)] for _ in range(self.grid_width)]
+        
+        for group in self.bonded_groups:
+            for sphero in group.spheros:
+                sphero.delta_angle = self.calculate_angle_change(sphero)
+                sphero.speed = self.calculate_speed(sphero)
+        
+        
         print('yea we moved!\n')
 
     def find_group_move(self, group: BondedGroup) -> int:
@@ -408,4 +491,4 @@ class Algorithm:
         gets the roll duration (seconds) of the sphero using the distance (inches)
         '''
         
-        return (distance - constants.SPHERO_SPEED_INTERCEPT) / constants.SPHERO_SPEED_SLOPE
+        return (-1.79375048e-06*distance**4 + 1.05751213e-04*distance**3 -1.66337509e-03*distance**2 + 4.98387249e-02*distance + 9.02541531e-02) * 0.85

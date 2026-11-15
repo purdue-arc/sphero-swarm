@@ -36,7 +36,7 @@ declare global {
 
 const DEFAULT_PERCEPTION: PerceptionConfig = {
   inputSource: 'oakd', videoPath: '', model: './models/bestv3.pt', conf: 0.25,
-  imgsz: 640, grid: false, locked: false, latency: false, colorFilter: true, brightThresh: 130,
+  imgsz: 640, grid: false, correctionVectors: true, locked: false, latency: false, colorFilter: true, brightThresh: 130,
 }
 
 function App() {
@@ -120,7 +120,8 @@ function App() {
       {currentView === 'configuration' && <Config constants={constants} onUpdate={updateConstants} algorithmRunning={algorithmRunning} />}
       {currentView === 'controls' && <Controls constants={constants} spheros={spheros} setSpheros={setSpheros} algorithmRunning={algorithmRunning} onAlgorithmStopped={() => setAlgorithmRunning(false)} />}
       {currentView === 'perception' && <Perception spotterStatus={perceptionStatus} setSpotterStatus={setPerceptionStatus}
-        config={perceptionConfig} setConfig={setPerceptionConfig} spheroTags={constants.SPHERO_TAGS} />}
+        config={perceptionConfig} setConfig={setPerceptionConfig} spheroTags={constants.SPHERO_TAGS}
+        latestSimulationSnapshot={latestSimulationSnapshot} />}
       {currentView === 'simulation' && <Simulation {...simulationProps} initialRunning={algorithmRunning} onRunningChange={setAlgorithmRunning} />}
       {currentView === 'algorithms' && <Simulation {...simulationProps} initialRunning={algorithmRunning} onRunningChange={setAlgorithmRunning} />}
       {currentView === 'about' && <div className={styles.legacyPanel}><h1>About Sphero Swarm</h1><p>Swarm control and simulation workspace.</p></div>}

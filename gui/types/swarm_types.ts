@@ -5,6 +5,7 @@ export interface PerceptionConfig {
   conf: number;
   imgsz: number;
   grid: boolean;
+  correctionVectors: boolean;
   locked: boolean;
   latency: boolean;
   // Detect spheros with the colour filter instead of the YOLO model. When on,
@@ -73,11 +74,23 @@ export interface SimulationSpheroSnapshot {
   y: number;
   color: string | [number, number, number];
   direction: number;
+  correction_debug?: {
+    previous_vector: {
+      start: [number, number];
+      end: [number, number];
+    };
+    projected_vector: {
+      start: [number, number];
+      end: [number, number];
+    };
+    angle_change: number;
+  } | null;
 }
 
 export interface SimulationSnapshot {
   timestamp: number;
-  grid: { width: number; height: number };
+  // padding: arena margin outside the outer nodes, in grid units
+  grid: { width: number; height: number; padding?: number };
   spheros: SimulationSpheroSnapshot[];
   bonded_groups: number[][];
 }

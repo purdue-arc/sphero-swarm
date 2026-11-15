@@ -2,6 +2,14 @@ import { useEffect, useState, useRef } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faCircle, faVideoSlash } from "@fortawesome/free-solid-svg-icons";
 import styles from "./streamViewer.module.css";
+import type { SimulationSnapshot } from "../../types/swarm_types";
+
+type StreamStatus = "stopped" | "starting" | "started";
+
+function formatAngle(angle: number) {
+    const rounded = Math.round(angle);
+    return `${rounded > 0 ? "+" : ""}${rounded}°`;
+}
 
 // Tallest the feed may get in "aspect" sizing, so it always fits the window
 const MAX_FEED_VH = 62;
@@ -13,10 +21,12 @@ export function StreamViewer({
     setServerStatus,
     sizing = "fill",
     showStats = true,
+    latestSimulationSnapshot,
+    showCorrectionVectors = false,
 }: {
     port: number;
     serverStatus: string;
-    setServerStatus: (status: "stopped" | "starting" | "started") => void;
+    setServerStatus: (status: StreamStatus) => void;
     /**
      * "fill"   — fill whatever box the parent gives it (fixed-height panels).
      * "aspect" — size to the stream's own aspect ratio, as wide as the parent
@@ -24,6 +34,8 @@ export function StreamViewer({
      */
     sizing?: "fill" | "aspect";
     showStats?: boolean;
+    latestSimulationSnapshot?: SimulationSnapshot | null;
+    showCorrectionVectors?: boolean;
 }) {
     const [imageSrc, setImageSrc] = useState<string>("");
     const [frameCount, setFrameCount] = useState<number>(0);
@@ -147,6 +159,16 @@ export function StreamViewer({
         margin: "0 auto",
     } as const;
 
+    const correctionSpheros = latestSimulationSnapshot?.spheros.filter(
+        sphero => sphero.correction_debug !== undefined && sphero.correction_debug !== null
+    ) ?? [];
+    const gridWidth = Math.max(1, (latestSimulationSnapshot?.grid.width ?? 2) - 1);
+    const gridHeight = Math.max(1, (latestSimulationSnapshot?.grid.height ?? 2) - 1);
+    // The feed is cropped to the AprilTags, which sit this many grid units
+    // outside the outer nodes, so the overlay's viewBox spans the padding too.
+    const gridPadding = latestSimulationSnapshot?.grid.padding ?? 4.0 / 12.67;
+    const shouldShowCorrections = showCorrectionVectors && correctionSpheros.length > 0;
+
     return (
         <div className={styles.streamViewer}>
             <div
@@ -178,18 +200,92 @@ export function StreamViewer({
                     </div>
                 ) : (
                     <>
-                        <img
-                            src={imageSrc}
-                            alt="Camera feed"
-                            onLoad={e => {
-                                const img = e.currentTarget;
-                                if (!img.naturalWidth || !img.naturalHeight) return;
-                                const dims = `${img.naturalWidth}×${img.naturalHeight}`;
-                                setResolution(prev => (prev === dims ? prev : dims));
-                                const a = img.naturalWidth / img.naturalHeight;
-                                setAspect(prev => (prev !== null && Math.abs(prev - a) < 0.001 ? prev : a));
-                            }}
-                        />
+                        <div className={styles.frameSurface}>
+                            <img
+                                src={imageSrc}
+                                alt="Camera feed"
+                                onLoad={e => {
+                                    const img = e.currentTarget;
+                                    if (!img.naturalWidth || !img.naturalHeight) return;
+                                    const dims = `${img.naturalWidth}×${img.naturalHeight}`;
+                                    setResolution(prev => (prev === dims ? prev : dims));
+                                    const a = img.naturalWidth / img.naturalHeight;
+                                    setAspect(prev => (prev !== null && Math.abs(prev - a) < 0.001 ? prev : a));
+                                }}
+                            />
+                            {shouldShowCorrections && (
+                                <svg
+                                    className={styles.correctionOverlay}
+                                    viewBox={`${-gridPadding} ${-gridPadding} ${gridWidth + 2 * gridPadding} ${gridHeight + 2 * gridPadding}`}
+                                    preserveAspectRatio="none"
+                                    aria-hidden="true"
+                                >
+                                    <defs>
+                                        <marker
+                                            id="previous-vector-arrow"
+                                            viewBox="0 0 10 10"
+                                            refX="8"
+                                            refY="5"
+                                            markerWidth="8"
+                                            markerHeight="8"
+                                            orient="auto-start-reverse"
+                                        >
+                                            <path d="M 0 0 L 10 5 L 0 10 z" className={styles.previousMarker} />
+                                        </marker>
+                                        <marker
+                                            id="projected-vector-arrow"
+                                            viewBox="0 0 10 10"
+                                            refX="8"
+                                            refY="5"
+                                            markerWidth="8"
+                                            markerHeight="8"
+                                            orient="auto-start-reverse"
+                                        >
+                                            <path d="M 0 0 L 10 5 L 0 10 z" className={styles.projectedMarker} />
+                                        </marker>
+                                    </defs>
+                                    {correctionSpheros.map((sphero) => {
+                                        const debug = sphero.correction_debug!;
+                                        const [prevStartX, prevStartY] = debug.previous_vector.start;
+                                        const [prevEndX, prevEndY] = debug.previous_vector.end;
+                                        const [projectedStartX, projectedStartY] = debug.projected_vector.start;
+                                        const [projectedEndX, projectedEndY] = debug.projected_vector.end;
+
+                                        return (
+                                            <g key={sphero.id}>
+                                                <line
+                                                    x1={prevStartX}
+                                                    y1={prevStartY}
+                                                    x2={prevEndX}
+                                                    y2={prevEndY}
+                                                    className={styles.previousVector}
+                                                    markerEnd="url(#previous-vector-arrow)"
+                                                />
+                                                <line
+                                                    x1={projectedStartX}
+                                                    y1={projectedStartY}
+                                                    x2={projectedEndX}
+                                                    y2={projectedEndY}
+                                                    className={styles.projectedVector}
+                                                    markerEnd="url(#projected-vector-arrow)"
+                                                />
+                                                <foreignObject
+                                                    x={Math.min(Math.max(projectedStartX, -gridPadding), gridWidth + gridPadding)}
+                                                    y={Math.min(Math.max(projectedStartY, -gridPadding), gridHeight + gridPadding)}
+                                                    width={gridWidth * 0.24}
+                                                    height={gridHeight * 0.12}
+                                                    className={styles.angleObject}
+                                                >
+                                                    <div className={styles.angleLabel}>
+                                                        S{sphero.id} Δθ {formatAngle(debug.angle_change)}
+                                                    </div>
+                                                </foreignObject>
+                                            </g>
+                                        );
+                                    })}
+                                </svg>
+                            )}
+                        </div>
 
                         {/* Live indicator */}
                         <div className={`${styles.statusOverlay} ${styles.active}`}>
