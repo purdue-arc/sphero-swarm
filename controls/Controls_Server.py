@@ -690,4 +690,4 @@ if __name__ == "__main__":
         asyncio.run(start_web_server())
     else:
         #test_controls()
-        run_server(['SB-B11D'])
+        run_server(['SB-1840'])

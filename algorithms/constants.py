@@ -29,7 +29,7 @@ class Constants:
         # Physical arena layout; must match perception/grid_geometry.py.
         # The camera crop (AprilTag boundary) sits GRID_PADDING_INCHES outside
         # the outermost grid nodes.
-        self.NODE_SPACING_INCHES = 12.67
+        self.MAT_WIDTH = 2
         self.GRID_PADDING_INCHES = 4.0
 
         # Colors
@@ -48,8 +48,9 @@ class Constants:
 
         # Runtime-configurable robot and arena values
         self.N_SPHEROS = 2
-        self.GRID_WIDTH = 4
-        self.GRID_HEIGHT = 4
+        self.GRID_WIDTH = 8
+        self.GRID_HEIGHT = 8
+        self.NODE_SPACING_INCHES = 12.67 * 2 * self.MAT_WIDTH/self.GRID_WIDTH
         self.SPHERO_SPEED = 66
         self.SPHERO_DIAGONAL_SPEED = 76
         self.SPHERO_SPEED_SLOPE = 20.973
@@ -58,6 +59,7 @@ class Constants:
         self.ROLL_DURATION = 0.8
         self.TURN_DURATION = 0.5
 
+        
         self.SPHERO_TAGS = [
             "SB-B11D",
             "SB-BD0A",

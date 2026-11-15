@@ -491,4 +491,4 @@ class Algorithm:
         gets the roll duration (seconds) of the sphero using the distance (inches)
         '''
         
-        return (-1.79375048e-06*distance**4 + 1.05751213e-04*distance**3 -1.66337509e-03*distance**2 + 4.98387249e-02*distance + 9.02541531e-02) * 0.85
+        return (-4.54773164e-06*distance**4 + 2.51090142e-04*distance**3 -3.72190186e-03*distance**2 + 5.54426170e-02*distance + 5.93057970e-02) * 0.85
